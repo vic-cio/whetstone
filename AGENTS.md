@@ -63,3 +63,17 @@ and a `.txt` of the visible text beside it, and exits.
 WHETSTONE_COURSES=$PWD/fixtures/courses WHETSTONE_THEME=light \
   WHETSTONE_CAPTURE=/tmp/shot.png npx electron .
 ```
+
+## Packaging
+
+`npm run dist:mac` writes `dist/mac-arm64/Whetstone.app` and a dmg beside it. Apple
+Silicon only, and deliberately unsigned, so Gatekeeper quarantines a copy that has been
+moved or downloaded. Clear it with:
+
+```
+xattr -dr com.apple.quarantine /Applications/Whetstone.app
+```
+
+A brand-new courses root is seeded with the sample Course from `fixtures/`, which ships in
+the bundle under `Contents/Resources/sample-course`. Seeding runs once, only on a root
+that did not exist, and never touches a root the user already has.

@@ -1,6 +1,7 @@
 import { app } from 'electron'
-import { existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { parseCourse } from '../shared/parseCourse'
 import type { CourseError } from '../shared/format'
@@ -24,13 +25,40 @@ export interface BrokenCourse {
 }
 
 export function coursesRoot(): string {
-  // In development, read the fixtures so there is something to look at before the
-  // Constructor exists. A real root is created on first run.
   const fromEnv = process.env['WHETSTONE_COURSES']
   if (fromEnv) return fromEnv
+
   const root = join(app.getPath('userData'), 'courses')
-  if (!existsSync(root)) mkdirSync(root, { recursive: true })
+  const fresh = !existsSync(root)
+  if (fresh) {
+    mkdirSync(root, { recursive: true })
+    seedSampleCourse(root)
+  }
   return root
+}
+
+/** Where the bundled sample Course lives, packaged or running from source. */
+function sampleCoursePath(): string {
+  const packaged = join(process.resourcesPath ?? '', 'sample-course')
+  if (existsSync(packaged)) return packaged
+  const here = fileURLToPath(new URL('.', import.meta.url))
+  return join(here, '..', '..', 'fixtures', 'courses', 'gradients-by-hand')
+}
+
+/**
+ * Copy the sample Course into a brand-new root, so a fresh install opens with something
+ * to read. This runs once and only on a root that did not exist: a root the user already
+ * has is theirs, whatever is in it, and is never written to here.
+ */
+function seedSampleCourse(root: string): void {
+  const source = sampleCoursePath()
+  if (!existsSync(source)) return
+  try {
+    cpSync(source, join(root, 'gradients-by-hand'), { recursive: true })
+  } catch {
+    // Seeding is a convenience. A failure leaves an empty library, which the reader
+    // already handles, so it must never stop the app from starting.
+  }
 }
 
 export function listCourses(): { courses: CourseSummary[]; broken: BrokenCourse[] } {
