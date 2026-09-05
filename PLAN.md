@@ -535,6 +535,8 @@ A Mini-app never writes its own buttons, colours, or message plumbing. The host 
 
 `Kit.bridge` replaces raw `postMessage` in every Mini-app, so the protocol in section 3.10 is a library call rather than something each activity reimplements and gets subtly wrong. A Mini-app reports; it never decides whether an answer was right.
 
+Built, it carries a fifth call: `Kit.bridge.action(label, produce)` draws the answer button and sends what the button produced. Nothing leaves the frame without a press, which is what a Mini-app needed anyway and what test 14 asks for. `docs/toolkit.md` is the reference the Constructor is given.
+
 **How it reaches a sealed frame.** The sandbox forbids external resources, so nothing can be fetched. The host reads the toolkit and inlines its CSS and JS into the `srcdoc` ahead of the Mini-app's own markup. The Mini-app calls `Kit.*` and the host guarantees it exists.
 
 **It is pinned per Course.** A copy lives at `toolkit/` inside the Course folder and `course.json` records `toolkitVersion`. The host injects the copy from the folder, never the app's current one. So a shared Course renders the same on another machine, and installing a newer Whetstone does not silently change how a built Course behaves. The app ships the current toolkit and writes it into a Course only at build time.
@@ -555,7 +557,8 @@ The Constructor prompt is a file in the repo, versioned, and read by humans too.
 6. Order content so that it builds. Express the order in `suggestedOrder`. Never assume a lock.
 7. Every Task names one Objective. Every Objective has Tasks at every Rung the Course uses.
 8. Depth belongs to a Task, not to a Module. A late Module may hold `recall` Tasks. This is the condition Victor attached to the fixed scale.
-9. A Mini-app is one file with everything inline and no external references. Build it from the toolkit in section 3.17: use `Kit.bridge` rather than raw `postMessage`, and a toolkit widget rather than a hand-rolled control. If the toolkit cannot express the activity, write it anyway and say in the run which widget was missing.
+9. A Mini-app is one file with everything inline and no external references. Build it from the toolkit in section 3.17, and read `docs/toolkit.md`: use `Kit.bridge` rather than raw `postMessage`, a toolkit widget rather than a hand-rolled control, and a token rather than a colour. If the toolkit cannot express the activity, write it anyway and say in the run which widget was missing.
+9b. A diagram is a file, so the host cannot hand it the app's tokens. Write it as an SVG carrying both schemes in its own `<style>`, under `@media (prefers-color-scheme: dark)`, or it disappears in one of them.
 10. Rubrics are written with the Task and are strict. A criterion the user can satisfy by restating the prompt is a bad criterion.
 11. Resources are links with one line of why. Never copy content in.
 12. Ids are stable, lowercase, and prefixed by type. An `add-rung` or `remediate` run reads existing ids and never reuses or rewrites one.
@@ -618,8 +621,18 @@ Three things settled during the build.
 
 Deferred to their own phases, and stubbed rather than hidden: an `app` block and the `app-result` and `assertions-pass` kinds say the activity arrives with phase 2, and a `model` or `rubric` Task says it is judged by a model. A Course that uses them is not a broken Course.
 
-**Phase 2. Mini-apps.**
-The toolkit and its widgets, the sandbox host, `Kit.bridge`, the `app` block, and the `app-result` and `assertions-pass` Task kinds. Two sample Mini-apps in the fixture, one interactive and one running assertions, both built only from the toolkit. Tests 7, 17, 18.
+**Phase 2. Mini-apps. Done.**
+The toolkit and its widgets, the sandbox host, `Kit.bridge`, the `app` block, and the `app-result` and `assertions-pass` Task kinds. Three Mini-apps in the fixture, all built only from the toolkit: a demonstration inside a Lesson, an `app-result` Task, and an `assertions-pass` Task with a code editor. Tests 7, 17 and 18 pass, 73 assertions in all.
+
+Three things settled during the build.
+
+- **A frame written with `srcdoc` inherits the host page's policy.** The host window denies inline scripts, because it is the window holding the preload bridge, so a Mini-app delivered that way could never run: no error, no script, an empty rectangle. The frame is served over `whetstone-app://` instead, with a policy of its own in a real header. Decision record 0017.
+- **The sealed frame allows `eval`.** `Kit.editor` exists to run the learner's code, and nothing runs code without it. The policy already allows the Mini-app's own inline script, so what this adds is that the learner's code runs too, in a frame with no network, no storage, no files and no reach into the host. Decision record 0016.
+- **`Kit.bridge` gained a fifth call, `action`.** It draws the answer button and sends what the button produced. Every message that records something now starts with a press, which is what test 14 asks for later, and it is one implementation rather than one per activity.
+
+Test 7 runs the real app against `fixtures/courses-sealed/`, a Course that exists to be attacked. Its Mini-app builds its external reference at runtime, so the validator that refuses one does not catch it: the validator is one layer, and test 7 is the layer underneath. The frame reached nothing. Its origin was `null`, storage, the host document, the window above it and cookies all threw, `fetch` was rejected, the external script was blocked, and the only thing that crossed was what the Mini-app chose to post.
+
+Deferred and stubbed rather than hidden: `Kit.bridge.review` exists in toolkit 1.0.0 and the host ignores it until the Grader arrives in phase 4.
 
 **Phase 3. Constructor.**
 The harness registry and spawn layer, the Claude CLI adapter, event normalisation, the authoring plugin bundle, staging and validation, the brief conversation with its attachment tray, the build screen as an activity feed, Delete Course. Tests 5, 8, 10, 11.

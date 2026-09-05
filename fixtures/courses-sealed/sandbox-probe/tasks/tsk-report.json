@@ -1,0 +1,11 @@
+{
+  "id": "tsk-report",
+  "objective": "obj-sealed",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "app-result",
+  "prompt": "The activity reports on its own, and the host compares what it sent.",
+  "app": "auto-answer",
+  "answer": { "placed": "ok" },
+  "explanation": "The report crossed the sandbox and the host judged it."
+}

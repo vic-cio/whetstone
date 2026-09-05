@@ -3,6 +3,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { frameSource } from '../shared/miniapp'
 import { parseCourse } from '../shared/parseCourse'
 import { openProgress } from './progress'
 import { courseView } from './study'
@@ -132,6 +133,14 @@ export function loadCourse(slug: string): Course {
   const course = read(slug)
   if (!course) throw new Error(`course "${slug}" could not be read`)
   return course
+}
+
+/**
+ * The document for one Mini-app, composed in the main process and handed to the renderer
+ * as a string it puts in `srcdoc`. The renderer never reads a Course file itself.
+ */
+export function appFrame(slug: string, appId: string): string {
+  return frameSource(loadCourse(slug).path, appId)
 }
 
 export function setTick(slug: string, pageId: string, pageType: PageType, ticked: boolean): CourseView {

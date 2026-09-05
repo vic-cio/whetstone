@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { Answer } from './Answer'
+import { MiniApp } from './MiniApp'
 import { Prose } from './Prose'
 import type { LessonView } from '../main/study'
 import type { Resource } from '../shared/format'
@@ -84,16 +85,21 @@ export function Lesson({
                 <p className="q">{block.question.prompt}</p>
                 <Answer
                   question={block.question}
+                  slug={slug}
                   send={(given) => window.whetstone.tries.answer(slug, lesson.id, block.question.id, given)}
                 />
               </div>
             )
 
+          // An `app` block is a demonstration. It answers nothing, because a Lesson
+          // records nothing; a Lesson asks its questions through a `try` block.
           case 'app':
             return (
-              <div key={index} className="panel later">
-                <span className="ptype">Activity</span>
-                <p>“{block.id}” is an interactive activity, which arrives with the next release.</p>
+              <div key={index} className="panel">
+                <div className="prow">
+                  <span className="ptype">Activity</span>
+                </div>
+                <MiniApp slug={slug} appId={block.id} {...(block.height === undefined ? {} : { height: block.height })} />
               </div>
             )
 

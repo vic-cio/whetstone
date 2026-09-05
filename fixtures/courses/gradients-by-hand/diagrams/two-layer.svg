@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 150" role="img">
+  <!-- A diagram is a file, so it cannot be handed the app's tokens. It carries both
+       schemes itself, or it disappears in one of them. -->
+  <style>
+    .box, .arrow, .back { fill: none }
+    .box, .arrow { stroke: #16150f }
+    .name { font: 12px "IBM Plex Mono", monospace; fill: #16150f }
+    .box, .arrow, .back { stroke-width: 1.5 }
+    .back { stroke: #c2410c; stroke-dasharray: 4 3 }
+    .backname { font: 11px "IBM Plex Mono", monospace; fill: #c2410c }
+    @media (prefers-color-scheme: dark) {
+      .box, .arrow { stroke: #eae7df }
+      .name { fill: #eae7df }
+    }
+  </style>
+  <rect class="box" x="20" y="40" width="110" height="38" />
+  <text class="name" x="42" y="64">x  W1  b1</text>
+  <rect class="box" x="180" y="40" width="110" height="38" />
+  <text class="name" x="215" y="64">sigma</text>
+  <rect class="box" x="340" y="40" width="110" height="38" />
+  <text class="name" x="365" y="64">h  W2  b2</text>
+  <rect class="box" x="500" y="40" width="100" height="38" />
+  <text class="name" x="533" y="64">loss</text>
+  <path class="arrow" d="M130 59 H180" /><path class="arrow" d="M290 59 H340" />
+  <path class="arrow" d="M450 59 H500" />
+  <path class="back" d="M550 88 V118 H70 V88" />
+  <text class="backname" x="270" y="134">the gradient comes back this way</text>
+</svg>

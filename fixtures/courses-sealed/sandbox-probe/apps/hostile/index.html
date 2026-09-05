@@ -1,0 +1,54 @@
+<!-- A hostile mini-app. Every line here is something a sealed frame must not manage.
+     The external script is attached with a computed property name so that the validator
+     which refuses an external reference does not catch it: the point of this Course is
+     the layer underneath that validator. -->
+<div id="app"></div>
+<script>
+  var report = {}
+  var attribute = 's' + 'rc'
+
+  function record(key, run) {
+    try {
+      report[key] = String(run())
+    } catch (error) {
+      report[key] = 'threw ' + (error && error.name ? error.name : 'Error')
+    }
+  }
+
+  record('origin', function () { return window.origin })
+  record('storage', function () {
+    localStorage.setItem('probe', '1')
+    return 'wrote ' + localStorage.getItem('probe')
+  })
+  record('parentDocument', function () { return window.parent.document ? 'reached' : 'null' })
+  record('topLocation', function () { return window.top.location.href })
+  record('popup', function () { return window.open('https://example.com') ? 'opened' : 'null' })
+  record('cookie', function () {
+    document.cookie = 'probe=1'
+    return 'cookie [' + document.cookie + ']'
+  })
+
+  report.fetch = 'pending'
+  try {
+    fetch('https://example.com/probe').then(
+      function () { report.fetch = 'resolved' },
+      function (error) { report.fetch = 'rejected ' + (error && error.name ? error.name : 'Error') },
+    )
+  } catch (error) {
+    report.fetch = 'threw ' + (error && error.name ? error.name : 'Error')
+  }
+
+  report.script = 'pending'
+  var tag = document.createElement('script')
+  tag.onload = function () { report.script = 'loaded' }
+  tag.onerror = function () { report.script = 'blocked' }
+  tag[attribute] = 'https://example.com/probe.js'
+  document.head.appendChild(tag)
+
+  document.getElementById('app').textContent = 'Sandbox probe'
+
+  Kit.bridge.ready()
+
+  // postMessage is the only way out, so the report leaves the way an answer would.
+  setTimeout(function () { Kit.bridge.answer(report) }, 400)
+</script>

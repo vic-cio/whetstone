@@ -54,6 +54,10 @@ _Avoid_: Widget, applet, component, embed
 The widget set and host bridge the app injects into every Mini-app, pinned per Course so a shared Course behaves the same everywhere. It is what makes activities across different Courses look and work alike.
 _Avoid_: Library, framework, SDK, components
 
+**Bridge**:
+The single way across a line the app draws on purpose. The preload Bridge is how the renderer reaches the main process. `Kit.bridge` is how a Mini-app reaches the host. Each is the only way across its own line, and neither can reach the other.
+_Avoid_: API, IPC layer, interface, channel
+
 ### Assessment
 
 **Task**:

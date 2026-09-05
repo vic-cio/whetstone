@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { MiniApp } from './MiniApp'
+
 import type { PublicTask, PublicTry } from '../shared/format'
 import type { Outcome } from '../shared/grade'
 
@@ -19,9 +21,12 @@ type Asked = PublicTask | PublicTry
 export function Answer({
   question,
   send,
+  slug,
 }: {
   question: Asked
   send: (given: unknown) => Promise<Outcome>
+  /** Needed only by the kinds a Mini-app answers, which read one from the Course folder. */
+  slug?: string
 }): React.JSX.Element {
   const [outcome, setOutcome] = useState<Outcome | undefined>(undefined)
   const [busy, setBusy] = useState(false)
@@ -132,23 +137,29 @@ export function Answer({
         </>
       )
 
-    // A Mini-app answers these, and the sandbox that runs one arrives in phase 2. The
-    // Task is shown rather than hidden, because a Course that has them is not broken.
+    /**
+     * A Mini-app answers these. It reports what the user did and the main process decides,
+     * so the frame never holds the answer and cannot pass by claiming an assertion the
+     * Task does not declare.
+     */
     case 'app-result':
-    case 'assertions-pass':
+    case 'assertions-pass': {
+      if (slug === undefined || question.app === undefined) {
+        return <div className="later">This task names no activity to answer it in.</div>
+      }
       return (
-        <div className="later">
-          <span className="ptype">Activity</span>
-          <p>This one is done inside an activity, which arrives with the next release.</p>
-          {question.assertions !== undefined && (
-            <ul className="pending">
-              {question.assertions.map((name) => (
-                <li key={name}>{name}</li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <>
+          <MiniApp
+            slug={slug}
+            appId={question.app}
+            onAnswer={(value) => {
+              if (outcome === undefined && !busy) void submit(value)
+            }}
+          />
+          <Verdict outcome={outcome} onAgain={again} />
+        </>
       )
+    }
 
     case 'short-answer':
     case 'submission':

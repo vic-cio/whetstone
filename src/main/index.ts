@@ -3,7 +3,8 @@ import { join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 
-import { coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
+import { appFrame, coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
+import { POLICY } from '../shared/miniapp'
 import { answerTask, answerTry, reachedEndOfLesson } from './study'
 import type { PageType } from '../shared/format'
 
@@ -16,6 +17,7 @@ const here = fileURLToPath(new URL('.', import.meta.url))
  */
 protocol.registerSchemesAsPrivileged([
   { scheme: 'whetstone-course', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: 'whetstone-app', privileges: { standard: true, secure: true } },
 ])
 
 function serveCourseFile(request: Request): Promise<Response> {
@@ -27,6 +29,30 @@ function serveCourseFile(request: Request): Promise<Response> {
     return Promise.resolve(new Response('not found', { status: 404 }))
   }
   return net.fetch(pathToFileURL(file).toString())
+}
+
+/**
+ * The document a Mini-app runs in, served rather than handed to the renderer as a string.
+ *
+ * A frame written with `srcdoc` inherits the host page's Content Security Policy, and the
+ * host page denies inline scripts, so a Mini-app served that way could never run. A scheme
+ * of its own gives the frame a response with its own policy, and `sandbox="allow-scripts"`
+ * still leaves it on an opaque origin with no reach into the host.
+ */
+function serveMiniApp(request: Request): Response {
+  const url = new URL(request.url)
+  const headers = {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Security-Policy': POLICY,
+  }
+  try {
+    const document = appFrame(decodeURIComponent(url.hostname), decodeURIComponent(url.pathname).replace(/^\/+/, ''))
+    return new Response(document, { headers })
+  } catch (cause) {
+    // A Course the parser accepted always has its mini-apps, so this is a broken folder
+    // rather than a broken app, and saying so beats an empty rectangle.
+    return new Response(`<p>${(cause as Error).message}</p>`, { status: 404, headers })
+  }
 }
 
 function createWindow(): void {
@@ -62,6 +88,9 @@ function createWindow(): void {
     // step, so a capture can reach a Lesson or a Test rather than only the first screen.
     const steps: string[] = JSON.parse(process.env['WHETSTONE_CAPTURE_STEPS'] ?? '[]')
     const wait = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
+    // How long to leave between steps. A capture that has to wait for a sandboxed frame
+    // to draw and report needs longer than one that only clicks through pages.
+    const pause = Number(process.env['WHETSTONE_CAPTURE_WAIT'] ?? 600)
 
     // Whatever happens, this run ends.
     setTimeout(() => app.exit(1), 30_000)
@@ -77,12 +106,19 @@ function createWindow(): void {
             true,
           )
           if (failure !== '') console.error(`capture step failed: ${step} -> ${failure}`)
-          await wait(600)
+          await wait(pause)
         }
         const image = await window.webContents.capturePage()
         const { writeFileSync } = await import('node:fs')
         writeFileSync(capture, image.toPNG())
         writeFileSync(`${capture}.txt`, await window.webContents.executeJavaScript('document.body.innerText'))
+        // A capture can also carry a value out of the page. A step puts it on
+        // `window.__probe`, and it lands beside the png as JSON. This is how the sandbox
+        // check reads what a sealed frame managed to reach.
+        writeFileSync(
+          `${capture}.json`,
+          await window.webContents.executeJavaScript('JSON.stringify(window.__probe ?? null)', true),
+        )
         app.quit()
       })()
     })
@@ -101,6 +137,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   protocol.handle('whetstone-course', serveCourseFile)
+  protocol.handle('whetstone-app', (request) => serveMiniApp(request))
 
   // One handler per thing the reader can do. Answering happens here rather than in the
   // renderer, so an answer never crosses the bridge and an Attempt cannot be skipped.

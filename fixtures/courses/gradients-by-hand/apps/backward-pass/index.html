@@ -1,0 +1,115 @@
+<!-- An `assertions-pass` activity. It runs the assertions and reports which passed by
+     name. It never says pass or fail: the host compares the names against the Task. -->
+<div id="app"></div>
+<script>
+  var X = [[0.5, -1.0, 2.0], [1.5, 0.25, -0.5]]
+  var W = [[0.2, -0.4, 0.1], [0.7, 0.3, -0.2]]
+  var b = [0.05, -0.1]
+  var T = [[1.0, 0.0], [0.0, 1.0]]
+
+  function forward(w, bias) {
+    return X.map(function (x) {
+      return w.map(function (row, i) {
+        return row.reduce(function (sum, weight, j) { return sum + weight * x[j] }, 0) + bias[i]
+      })
+    })
+  }
+
+  function loss(w, bias) {
+    return forward(w, bias).reduce(function (total, y, s) {
+      return total + y.reduce(function (sum, value, i) { return sum + Math.pow(value - T[s][i], 2) }, 0)
+    }, 0)
+  }
+
+  // The upstream gradient the learner is handed: dL/dy for the squared error above.
+  var D = forward(W, b).map(function (y, s) {
+    return y.map(function (value, i) { return 2 * (value - T[s][i]) })
+  })
+
+  var EPS = 1e-5
+  function close(a, expected) { return Math.abs(a - expected) < 1e-4 }
+
+  var start = [
+    'function backward(X, W, b, D) {',
+    '  // X is 2 samples by 3 features. W is 2 outputs by 3 features.',
+    '  // b is 2 biases. D is dL/dy, 2 samples by 2 outputs.',
+    '  var dW = W.map(function (row, i) {',
+    '    return row.map(function (_, j) {',
+    '      return X.reduce(function (sum, x, s) { return sum + D[s][i] * x[j] }, 0)',
+    '    })',
+    '  })',
+    '',
+    '  var db = b.map(function (_, i) {',
+    '    return D.reduce(function (sum, d) { return sum + d[i] }, 0) / D.length',
+    '  })',
+    '',
+    '  var dX = X.map(function (x, s) {',
+    '    return x.map(function (_, j) {',
+    '      return W.reduce(function (sum, row, i) { return sum + row[j] * D[s][i] }, 0)',
+    '    })',
+    '  })',
+    '',
+    '  return { dW: dW, db: db, dX: dX }',
+    '}',
+  ].join('\n')
+
+  var code = Kit.editor({
+    mount: '#app',
+    label: 'backward()',
+    start: start,
+    exports: ['backward'],
+    assertions: [
+      {
+        name: 'shapes match',
+        test: function (api) {
+          var out = api.backward(X, W, b, D)
+          if (out.dW.length !== W.length) throw new Error('dW has ' + out.dW.length + ' rows, W has ' + W.length)
+          if (out.dW[0].length !== W[0].length) throw new Error('a dW row is the wrong length')
+          if (out.db.length !== b.length) throw new Error('db has ' + out.db.length + ' entries, b has ' + b.length)
+          if (out.dX.length !== X.length || out.dX[0].length !== X[0].length) throw new Error('dX is not shaped like X')
+          return true
+        },
+      },
+      {
+        name: 'numeric gradient check',
+        test: function (api) {
+          var out = api.backward(X, W, b, D)
+          for (var i = 0; i < W.length; i += 1) {
+            for (var j = 0; j < W[i].length; j += 1) {
+              var up = W.map(function (row) { return row.slice() })
+              var down = W.map(function (row) { return row.slice() })
+              up[i][j] += EPS
+              down[i][j] -= EPS
+              var slope = (loss(up, b) - loss(down, b)) / (2 * EPS)
+              if (!close(out.dW[i][j], slope)) {
+                throw new Error('dW[' + i + '][' + j + '] is ' + out.dW[i][j].toFixed(4) + ', the slope is ' + slope.toFixed(4))
+              }
+            }
+          }
+          return true
+        },
+      },
+      {
+        name: 'bias gradient',
+        test: function (api) {
+          var out = api.backward(X, W, b, D)
+          for (var i = 0; i < b.length; i += 1) {
+            var up = b.slice()
+            var down = b.slice()
+            up[i] += EPS
+            down[i] -= EPS
+            var slope = (loss(W, up) - loss(W, down)) / (2 * EPS)
+            if (!close(out.db[i], slope)) {
+              throw new Error('db[' + i + '] is ' + out.db[i].toFixed(4) + ', the slope is ' + slope.toFixed(4))
+            }
+          }
+          return true
+        },
+      },
+    ],
+  })
+
+  Kit.bridge.action('Check my code', function () { return { passed: code.run() } })
+
+  Kit.bridge.ready()
+</script>

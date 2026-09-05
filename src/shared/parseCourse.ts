@@ -3,6 +3,7 @@ import { join, relative } from 'node:path'
 import matter from 'gray-matter'
 import type { ZodType } from 'zod'
 
+import { EXTERNAL, readToolkit } from './miniapp'
 import {
   ManifestSchema,
   TaskSchema,
@@ -77,6 +78,42 @@ export function parseCourse(dir: string): ParseResult {
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
     : []
+
+  // ---------------------------------------------------------------- mini-apps
+
+  /**
+   * A Mini-app is one file with everything inline. The sandbox denies every external
+   * resource, so a Mini-app that reaches for one would silently render wrong rather than
+   * fail loudly, which is why it is rejected here instead (docs/adr/0005).
+   */
+  for (const id of apps) {
+    const file = `apps/${id}/index.html`
+    if (!existsSync(join(dir, file))) {
+      fail(file, 'is missing; a mini-app is one index.html with everything inline')
+      continue
+    }
+    if (EXTERNAL.test(readFileSync(join(dir, file), 'utf8'))) {
+      fail(file, 'refers to something outside itself; a mini-app has no network and no files')
+    }
+  }
+
+  // The toolkit is pinned per Course and the host injects this copy, never its own
+  // (docs/adr/0014). A copy that drifted from what the manifest records is an error,
+  // because the manifest is what a shared Course is read by.
+  if (apps.length > 0) {
+    const toolkit = readToolkit(join(dir, 'toolkit'))
+    if (!toolkit) {
+      fail('toolkit/kit.js', 'is missing; a course with mini-apps carries its own copy of the toolkit')
+    } else if (toolkit.version === '') {
+      fail('toolkit/kit.js', 'does not say which toolkit version it is')
+    } else if (toolkit.version !== manifest.toolkitVersion) {
+      fail(
+        'toolkit/kit.js',
+        `is toolkit ${toolkit.version} but course.json says ${manifest.toolkitVersion}`,
+        'toolkitVersion',
+      )
+    }
+  }
 
   // ---------------------------------------------------------------- cross-references
 
@@ -323,13 +360,18 @@ function readLesson(dir: string, file: string, fail: Fail): Lesson | undefined {
         break
       }
 
-      case 'app':
-        if (!id) fail(file, 'an app block has no id', 'app')
-        else {
-          apps.push(id)
-          blocks.push({ block: 'app', id })
+      case 'app': {
+        if (!id) {
+          fail(file, 'an app block has no id', 'app')
+          break
         }
+        // A Mini-app sizes itself once it has drawn. `height` is only the space held for
+        // it until then, so a lesson does not jump as each activity loads.
+        const height = Number(attribute(attributes, 'height') ?? NaN)
+        apps.push(id)
+        blocks.push({ block: 'app', id, ...(Number.isFinite(height) ? { height } : {}) })
         break
+      }
 
       case 'resource':
         if (!id) fail(file, 'a resource block has no id', 'resource')

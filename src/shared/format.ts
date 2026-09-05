@@ -170,7 +170,7 @@ export type LessonBlock =
   | { block: 'callout'; kind: string; markdown: string }
   | { block: 'diagram'; src: string; alt: string }
   | { block: 'try'; question: Try }
-  | { block: 'app'; id: string }
+  | { block: 'app'; id: string; height?: number }
   | { block: 'resource'; id: string }
 
 export interface Lesson {

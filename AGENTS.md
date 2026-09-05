@@ -10,11 +10,15 @@ Harness, Toolkit and the rest all mean something specific here.
 ## Layout
 
 ```
-src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts
+src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts,
+               miniapp.ts (the sealed frame)
 src/main/      Electron main process. Node lives here and nowhere else
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
-fixtures/      hand-written Courses the tests run against
+toolkit/       the toolkit this build ships. See docs/toolkit.md
+fixtures/courses/        hand-written Courses the tests run against, and the sample the
+                         app seeds a fresh library with
+fixtures/courses-sealed/ the hostile Course test 7 attacks. Never shipped
 tests/         vitest, run against the fixtures
 ```
 
@@ -36,11 +40,20 @@ tests/         vitest, run against the fixtures
   `answerGuide` from every Task and Try. The renderer sends what the user did and gets an
   outcome back, so the window showing a question does not hold its answer and cannot skip
   recording the Attempt.
+- **A Mini-app reaches nothing.** One sealed frame, `sandbox="allow-scripts"` and nothing
+  else, an opaque origin, and a policy denying every external resource and every connection.
+  `Kit.bridge` is the only way out, and every message that records something starts with the
+  user pressing `Kit.bridge.action`. `docs/adr/0005`, `docs/adr/0016`, `docs/adr/0017`.
+- **The toolkit is pinned per Course.** The host injects the copy in the Course folder, never
+  the one this build ships, so a Course keeps behaving the way it was built. Change
+  `toolkit/` and its version together, never a one-off inside a Course. `docs/adr/0014`.
+- **A Mini-app reports; it never decides.** `grade.ts` compares what the frame sent with what
+  the Constructor wrote. An `assertions-pass` Task passes only on the assertions it declares.
 - **Lesson prose becomes data, never markup.** `src/shared/markdown.ts` returns a tree and
   the renderer builds elements from it. Nothing in a Course may become HTML in the host
   window, which is the window holding the preload bridge.
 
-## Toolchain, and three things that will waste your afternoon
+## Toolchain, and four things that will waste your afternoon
 
 - **Vite is pinned to the 7 line on purpose.** `electron-vite@5` peers on
   `vite ^5 || ^6 || ^7`, while `@vitejs/plugin-react@6` peers on `vite ^8`. Those two
@@ -52,6 +65,10 @@ tests/         vitest, run against the fixtures
 - **SQLite comes from `node:sqlite`, not `better-sqlite3`.** No native module, so no
   rebuild against the Electron ABI. `.nvmrc` is Node 24 because the tests import the same
   module outside Electron, and a Node below 22.5 does not have it. `docs/adr/0015`.
+- **A frame written with `srcdoc` inherits the host page's policy.** The host window denies
+  inline scripts, so a Mini-app delivered that way is silently dead: no error, no script, an
+  empty rectangle. That is why the frame is served over `whetstone-app://` with a policy of
+  its own. `docs/adr/0017`.
 - **npm gates install scripts.** Electron and esbuild need theirs. Run
   `npm approve-scripts esbuild` and let Electron download its binary on first launch, or
   the app will not start and the error will not say why.
@@ -89,6 +106,13 @@ WHETSTONE_COURSES=$PWD/fixtures/courses WHETSTONE_DB=/tmp/probe.db WHETSTONE_THE
   WHETSTONE_CAPTURE_STEPS='["document.querySelectorAll(\".crow\")[0].click()"]' \
   WHETSTONE_CAPTURE=/tmp/shot.png npx electron .
 ```
+
+`WHETSTONE_CAPTURE_WAIT` sets the pause between steps, in milliseconds, default 600. A page
+holding a Mini-app needs longer, because the frame has to load, draw and report.
+
+A capture also writes `<png>.json`, holding whatever a step left on `window.__probe`. That is
+how the sandbox check reads what a sealed frame managed to reach: a message posted out of a
+frame is delivered to the page and nowhere else, so the listener has to live in the page.
 
 Set `WHETSTONE_DB` on any capture run. Without it the run writes ticks into the real
 Progress DB.

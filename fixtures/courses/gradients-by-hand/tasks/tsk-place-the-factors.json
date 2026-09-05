@@ -5,7 +5,14 @@
   "check": "deterministic",
   "kind": "app-result",
   "prompt": "Drag each factor onto the layer it comes from.",
-  "app": "slope-explorer",
-  "answer": { "placements": ["hidden", "hidden", "output", "output"] },
+  "app": "factor-placement",
+  "answer": {
+    "placements": [
+      "hidden",
+      "hidden",
+      "output",
+      "output"
+    ]
+  },
   "explanation": "The activation derivative belongs to the hidden layer, not the output."
 }

@@ -49,6 +49,7 @@ export function Test({
           )}
           <Answer
             question={task}
+            slug={slug}
             send={async (given) => {
               const result = await window.whetstone.tasks.answer(slug, test.id, task.id, given)
               onAnswered()

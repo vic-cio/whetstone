@@ -1,0 +1,33 @@
+{
+  "formatVersion": 1,
+  "id": "sandbox-probe",
+  "title": "Sandbox probe",
+  "subject": "Whetstone",
+  "summary": "One mini-app that tries everything it is not allowed to do, and reports what it reached.",
+  "toolkitVersion": "1.0.0",
+  "objectives": [
+    {
+      "id": "obj-sealed",
+      "title": "The sandbox holds"
+    }
+  ],
+  "ladder": [
+    "recall"
+  ],
+  "modules": [
+    {
+      "id": "mod-1",
+      "title": "The frame",
+      "pages": [
+        {
+          "type": "lesson",
+          "id": "les-probe"
+        },
+        {
+          "type": "test",
+          "id": "tst-sealed"
+        }
+      ]
+    }
+  ]
+}

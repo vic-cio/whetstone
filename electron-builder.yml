@@ -11,6 +11,10 @@ files:
 extraResources:
   - from: fixtures/courses/gradients-by-hand
     to: sample-course
+  # The toolkit this build ships. It is written into a Course at build time and nowhere
+  # else: the host always injects the copy pinned inside the Course folder.
+  - from: toolkit
+    to: toolkit
 mac:
   target:
     - target: dir

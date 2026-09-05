@@ -1,0 +1,30 @@
+<!-- An `app-result` activity. It reports where the user put each factor and nothing else.
+     The host holds the expected placement and decides. -->
+<div id="app"></div>
+<script>
+  var placer = Kit.pieces({
+    mount: '#app',
+    bankLabel: 'Factors',
+    pieces: [
+      { id: 'act', label: "sigma'(z1), the hidden activation derivative" },
+      { id: 'x', label: 'x, the input' },
+      { id: 'h', label: 'h, the hidden output' },
+      { id: 'err', label: 'yhat - y, the output error' },
+    ],
+    slots: [
+      { id: 'hidden', label: 'Gradient of the hidden weights' },
+      { id: 'output', label: 'Gradient of the output weights' },
+    ],
+  })
+
+  var send = Kit.bridge.action(
+    'Answer',
+    function () { return { placements: placer.value() } },
+    { empty: 'Place every factor first' },
+  )
+
+  placer.onChange(function () { send.enable(placer.complete()) })
+  send.enable(false)
+
+  Kit.bridge.ready()
+</script>

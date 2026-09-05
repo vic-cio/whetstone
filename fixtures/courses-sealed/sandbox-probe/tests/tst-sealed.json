@@ -1,0 +1,6 @@
+{
+  "id": "tst-sealed",
+  "title": "The report arrives",
+  "module": "mod-1",
+  "tasks": ["tsk-report"]
+}

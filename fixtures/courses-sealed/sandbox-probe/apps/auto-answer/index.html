@@ -1,0 +1,9 @@
+<!-- Answers on its own, so a capture can follow one report all the way from inside the
+     frame to a recorded Attempt. A real mini-app answers when the user presses the
+     button; this one is here to be watched. -->
+<div id="app"></div>
+<script>
+  document.getElementById('app').textContent = 'Reporting'
+  Kit.bridge.ready()
+  setTimeout(function () { Kit.bridge.answer({ placed: 'ok' }) }, 300)
+</script>
