@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whetstone design, sharper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Archivo:wdth,wght@75..125,400..800&family=IBM+Plex+Mono:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, li, td, th) { overflow-wrap: anywhere; }
+  :where(img, svg) { max-width: 100%; height: auto; }
+
+  :root {
+    --page: #f5f4f1; --ink: #16150f; --ink-2: #6b675c; --line: #d9d5cb;
+    --card: #fffefb; --amber: #c2410c; --code: #ebe8e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --page: #100f0d; --ink: #eae7df; --ink-2: #928d80; --line: #2c2a25; --card: #171613; --code: #1c1b17; }
+  }
+  html { color-scheme: light dark; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 "Inter Tight", system-ui, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 0 22px 100px; }
+
+  .top { border-bottom: 2px solid var(--ink); padding: 26px 0 14px; margin-bottom: 30px; }
+  h1 { font-family: Archivo, "Inter Tight", sans-serif; font-variation-settings: "wdth" 88; font-weight: 800; font-size: clamp(32px, 5.4vw, 58px); line-height: .95; letter-spacing: -0.03em; margin: 0 0 10px; text-transform: uppercase; }
+  .lede { color: var(--ink-2); max-width: 68ch; margin: 0; font-size: 16px; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .tag { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.13em; color: var(--ink-2); }
+  h2 { font-family: Archivo, sans-serif; font-variation-settings: "wdth" 88; font-weight: 700; text-transform: uppercase; letter-spacing: -0.01em; font-size: 24px; margin: 0; }
+  .h2row { display: flex; align-items: baseline; gap: 14px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin: 54px 0 18px; }
+  p { max-width: 74ch; }
+
+  .verdict-note { border-left: 3px solid var(--amber); padding: 10px 0 10px 14px; margin: 0 0 8px; max-width: 74ch; }
+  .verdict-note b { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; display: block; color: var(--amber); margin-bottom: 4px; }
+
+  /* variant block */
+  .v { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 34px; }
+  .vhead { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .vnum { font-family: Archivo, sans-serif; font-variation-settings: "wdth" 75; font-weight: 800; font-size: 54px; line-height: .8; letter-spacing: -0.04em; }
+  .vhead h3 { font-family: Archivo, sans-serif; font-variation-settings: "wdth" 88; text-transform: uppercase; font-weight: 700; font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .vhead p { margin: 0 0 8px; color: var(--ink-2); }
+  .specs { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 8px; }
+  .spec { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-2); }
+  .spec b { color: var(--ink); font-weight: 500; }
+  .ramp { display: flex; margin-top: 10px; width: fit-content; max-width: 100%; }
+  .ramp i { width: 44px; height: 16px; display: block; }
+  .mocks { display: grid; gap: 18px; margin-top: 18px; }
+  .mock-label { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .13em; color: var(--ink-2); margin: 0 0 6px; }
+
+  /* ============ shared app mock scaffold ============ */
+  .win { background: var(--bg); color: var(--text); border: var(--frame); display: grid; grid-template-columns: 178px minmax(0, 1fr) 200px; font-family: var(--font); font-size: 12.5px; line-height: 1.45; overflow: hidden; }
+  .win.two { grid-template-columns: 178px minmax(0, 1fr); }
+  @media (max-width: 900px) { .win { grid-template-columns: 160px minmax(0, 1fr); } .aside { display: none; } }
+  @media (max-width: 580px) { .win, .win.two { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
+  .rail { background: var(--rail); border-right: var(--div); padding: 14px 12px; display: grid; align-content: start; gap: 2px; }
+  .brand { font-family: var(--display); font-weight: var(--brandw); font-size: var(--brands); letter-spacing: var(--brandls); text-transform: var(--brandtt); margin-bottom: 12px; color: var(--brandc); font-variation-settings: var(--brandvs, normal); }
+  .rlabel { font-family: var(--label); font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 12px 0 4px; }
+  .rail a { display: block; padding: 4px 6px; color: var(--text); text-decoration: none; border-radius: var(--r); }
+  .rail a.sub { color: var(--muted); padding-left: 6px; }
+  .rail a.on { background: var(--sel); color: var(--selink); font-weight: 600; }
+  .body { padding: 16px 20px; display: grid; align-content: start; gap: 12px; }
+  .aside { background: var(--rail); border-left: var(--div); padding: 14px 12px; display: grid; align-content: start; gap: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .between { justify-content: space-between; }
+  .title { font-family: var(--display); font-weight: var(--titlew); font-size: var(--titles); letter-spacing: var(--titlels); text-transform: var(--titlett); margin: 0; line-height: 1.05; font-variation-settings: var(--titlevs, normal); }
+  .sub { color: var(--muted); margin: 3px 0 0; font-family: var(--label); font-size: 11px; letter-spacing: .04em; }
+  .btn { font-family: var(--label); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 6px 12px; background: var(--amber2); color: var(--onamber); border: 0; border-radius: var(--r); }
+  .btn.q { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .task { display: grid; grid-template-columns: 3px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: var(--taskpad); border-bottom: 1px solid var(--border); }
+  .task i { width: 3px; align-self: stretch; min-height: 24px; }
+  .task b { font-weight: 600; display: block; }
+  .task small { color: var(--muted); font-family: var(--label); font-size: 10.5px; letter-spacing: .04em; }
+  .chip { font-family: var(--label); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border-radius: var(--r); white-space: nowrap; }
+  .chip.k { border: 1px solid var(--border); color: var(--muted); }
+  .chip.d { color: var(--ondepth); }
+  .panel { border: var(--panel); padding: var(--panelpad); background: var(--panelbg); border-radius: var(--r); }
+  .ladder { display: flex; gap: var(--laddergap); margin: 6px 0; }
+  .ladder span { font-family: var(--label); font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 7px; color: var(--ondepth); border-radius: var(--r); }
+  .ladder span.off { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+  .bar { height: var(--barh); background: var(--track); overflow: hidden; border-radius: var(--r); }
+  .bar i { display: block; height: 100%; background: var(--amber2); }
+  .metric { font-family: var(--label); font-size: 10.5px; color: var(--muted); letter-spacing: .04em; margin-top: 6px; }
+  .prose { max-width: 60ch; font-size: 13.5px; line-height: 1.6; }
+  .prose p { margin: 0 0 10px; max-width: none; }
+  .pull { border-left: 2px solid var(--amber2); padding: 6px 0 6px 12px; margin: 10px 0; font-size: 13px; }
+  .opt { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 9px; align-items: center; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 4px; }
+  .opt i { width: 11px; height: 11px; border: 1.5px solid var(--muted); border-radius: var(--optr); display: block; }
+  .opt.pick { border-color: var(--amber2); }
+  .opt.pick i { border-color: var(--amber2); background: var(--amber2); }
+  .vd { border: 1px solid var(--border); border-left: 3px solid var(--vdc); padding: 7px 10px; font-size: 11.5px; display: grid; gap: 3px; border-radius: var(--r); }
+  .vd b { font-family: var(--label); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--vdc); }
+  .stat b { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; display: block; line-height: 1; font-variation-settings: var(--titlevs, normal); }
+  .stat small { font-family: var(--label); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .stat + .stat { margin-top: 8px; }
+
+  /* ---- V1 PRESS: hairline editorial, no boxes, mono margin labels ---- */
+  .v1 { --font: "Inter Tight", sans-serif; --display: Archivo, sans-serif; --label: "IBM Plex Mono", monospace;
+    --bg: #fffefb; --rail: #fffefb; --text: #16150f; --muted: #6b675c; --border: #ddd9cf; --amber2: #c2410c; --onamber: #fff; --sel: transparent; --selink: #c2410c; --track: #ebe8e0; --ondepth: #fff;
+    --frame: 1px solid #16150f; --div: 1px solid #ddd9cf; --r: 0px; --optr: 0px; --panel: 0; --panelbg: transparent; --panelpad: 0 0 12px; --taskpad: 9px 0; --barh: 3px; --laddergap: 0px;
+    --brandw: 800; --brands: 15px; --brandls: -0.02em; --brandtt: uppercase; --brandc: #16150f; --brandvs: "wdth" 82;
+    --titlew: 700; --titles: 26px; --titlels: -0.03em; --titlett: uppercase; --titlevs: "wdth" 85;
+    --vdc: #15803d; --d1:#fde9c8; --d2:#f7c873; --d3:#e89b25; --d4:#c2410c; --d5:#7c2d12; }
+  .v1 .rail a.on { border-left: 2px solid #c2410c; padding-left: 8px; }
+  .v1 .rail { border-right: 1px solid #16150f; }
+  .v1 .aside { border-left: 1px solid #16150f; }
+  .v1 .ladder span { border-right: 1px solid var(--bg); }
+  .v1 .ladder span:last-child { border-right: 0; }
+  .v1 .panel + .panel { border-top: 1px solid var(--border); padding-top: 12px; }
+  .v1 .chip.d { padding: 2px 7px; }
+
+  /* ---- V2 BLUEPRINT: drafting grid, all-mono, tick-mark ladder ---- */
+  .v2 { --font: "IBM Plex Sans", sans-serif; --display: "IBM Plex Mono", monospace; --label: "IBM Plex Mono", monospace;
+    --bg: #faf8f2; --rail: #f3f0e6; --text: #1a1813; --muted: #7a7466; --border: #cfc9b8; --amber2: #b45309; --onamber: #fff; --sel: #efe6d3; --selink: #7c2d12; --track: #e6e1d2; --ondepth: #1a1813;
+    --frame: 1px solid #1a1813; --div: 1px dashed #cfc9b8; --r: 0px; --optr: 0px; --panel: 1px solid #cfc9b8; --panelbg: transparent; --panelpad: 10px 12px; --taskpad: 8px 4px; --barh: 8px; --laddergap: 2px;
+    --brandw: 700; --brands: 13px; --brandls: .12em; --brandtt: uppercase; --brandc: #1a1813;
+    --titlew: 700; --titles: 19px; --titlels: -0.01em; --titlett: none;
+    --vdc: #15803d; --d1:#e8dfc6; --d2:#d9c48c; --d3:#c9a24a; --d4:#b45309; --d5:#7c2d12; }
+  .v2 .body { background-image: linear-gradient(#cfc9b81a 1px, transparent 1px), linear-gradient(90deg, #cfc9b81a 1px, transparent 1px); background-size: 16px 16px; }
+  .v2 .bar { border: 1px solid var(--border); background: repeating-linear-gradient(90deg, transparent 0 15px, #cfc9b855 15px 16px); }
+  .v2 .panel { position: relative; }
+  .v2 .panel::before, .v2 .panel::after { content: "+"; position: absolute; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); line-height: 1; }
+  .v2 .panel::before { top: -6px; left: -5px; }
+  .v2 .panel::after { bottom: -6px; right: -5px; }
+  .v2 .ladder span { border: 1px solid var(--border); }
+  .v2 .task { border-bottom: 1px dashed var(--border); }
+  .v2 .title { text-transform: none; }
+
+  /* ---- V3 SLAB: heavy display, solid ink block, thick rules ---- */
+  .v3 { --font: "Inter Tight", sans-serif; --display: Archivo, sans-serif; --label: "JetBrains Mono", monospace;
+    --bg: #f7f5f0; --rail: #16150f; --text: #16150f; --muted: #8a8578; --border: #16150f; --amber2: #ea580c; --onamber: #16150f; --sel: #ea580c; --selink: #16150f; --track: #ded9cd; --ondepth: #16150f;
+    --frame: 3px solid #16150f; --div: 0; --r: 0px; --optr: 0px; --panel: 2px solid #16150f; --panelbg: #fffefb; --panelpad: 11px 13px; --taskpad: 9px 10px; --barh: 10px; --laddergap: 3px;
+    --brandw: 800; --brands: 17px; --brandls: -0.03em; --brandtt: uppercase; --brandc: #f7f5f0; --brandvs: "wdth" 78;
+    --titlew: 800; --titles: 30px; --titlels: -0.035em; --titlett: uppercase; --titlevs: "wdth" 80;
+    --vdc: #15803d; --d1:#fde4b0; --d2:#fbbf24; --d3:#f59e0b; --d4:#ea580c; --d5:#9a3412; }
+  .v3 .rail { color: #f7f5f0; }
+  .v3 .rail a { color: #cfc9bb; }
+  .v3 .rail a.on { background: #ea580c; color: #16150f; font-weight: 700; }
+  .v3 .rail a.sub { color: #8a8578; }
+  .v3 .rlabel { color: #8a8578; }
+  .v3 .aside { background: #fffefb; border-left: 3px solid #16150f; }
+  .v3 .task { border-bottom: 2px solid #16150f; background: #fffefb; }
+  .v3 .bar { border: 2px solid #16150f; }
+  .v3 .chip.k { border: 2px solid #16150f; color: #16150f; }
+  .v3 .btn { border: 2px solid #16150f; }
+  .v3 .opt { border: 2px solid #16150f; }
+  .v3 .vd { border: 2px solid #16150f; border-left: 8px solid var(--vdc); }
+  .v3 .prose { font-size: 14px; }
+
+  /* picker */
+  .picker { border: 2px solid var(--ink); padding: 22px; margin-top: 40px; background: var(--card); }
+  .picker fieldset { border: 0; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+  .picker label.opt-l { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; align-items: start; padding: 11px 13px; border: 1px solid var(--line); cursor: pointer; }
+  .picker label.opt-l:has(input:checked) { border-color: var(--ink); box-shadow: 3px 3px 0 var(--amber); }
+  .picker textarea { width: 100%; min-height: 72px; border: 1px solid var(--line); padding: 10px; font: inherit; font-size: 14px; background: var(--page); color: var(--ink); border-radius: 0; }
+  .picker button { margin-top: 12px; background: var(--ink); color: var(--page); border: 0; padding: 11px 20px; font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+  .picker .state { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2); margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <p class="tag">Whetstone · design round 2 · 2026-09-05</p>
+    <h1>Sharper</h1>
+    <p class="lede">You kept the stone-and-amber palette and rejected the shape of it. Round 1 was rounded cards, soft borders, and even weight everywhere, which is the default look of every product built this decade. These three keep the colours and throw that form language out.</p>
+  </div>
+
+  <div class="verdict-note">
+    <b>Your note on option A</b>
+    <span>"colour scheme of this is best but its too reminiscent of slop web apps - i want something sharper with more cutting edge design rather than this bubbly inoffensive big tech slop"</span>
+  </div>
+  <p>So four things change across all three, and only the fourth is up for debate.</p>
+  <ol style="max-width:74ch">
+    <li><b>No rounded corners.</b> Radius drops to zero. A 12px radius on every surface is the single strongest signal of the look you rejected.</li>
+    <li><b>Structure through rules, not cards.</b> Hairlines and hard frames instead of floating boxes with borders on all four sides.</li>
+    <li><b>Real typographic contrast.</b> A compressed grotesque for display set tight and large, against small monospace labels in caps. Round 1 set almost everything at one weight and one size.</li>
+    <li><b>How far to push it.</b> That is the choice below. Restraint, technical, or loud.</li>
+  </ol>
+  <p>Each variant shows the same two screens with the same content, so what differs is only the design.</p>
+
+  <!-- ================= V1 ================= -->
+  <section class="v" id="option-1">
+    <div class="vhead">
+      <div class="vnum">01</div>
+      <div>
+        <h3>Press</h3>
+        <p>Newspaper structure. Hairline rules divide everything, nothing floats. Compressed Archivo caps for titles, monospace for every label and number. Amber is used once per screen and never for decoration.</p>
+        <div class="specs">
+          <span class="spec">display <b>Archivo 700, wdth 85, -3% tracking, uppercase</b></span>
+          <span class="spec">ui <b>Inter Tight</b></span>
+          <span class="spec">labels <b>IBM Plex Mono caps, +13% tracking</b></span>
+          <span class="spec">radius <b>0</b></span>
+          <span class="spec">rules <b>1px hairline</b></span>
+        </div>
+        <div class="ramp"><i style="background:#fde9c8"></i><i style="background:#f7c873"></i><i style="background:#e89b25"></i><i style="background:#c2410c"></i><i style="background:#7c2d12"></i></div>
+      </div>
+    </div>
+    <div class="mocks v1">
+      <div>
+        <p class="mock-label">Dashboard</p>
+        <div class="win" id="m1-dash">
+          <div class="rail">
+            <div class="brand">Whetstone</div>
+            <a class="on">Dashboard</a>
+            <div class="rlabel">Machine learning</div>
+            <a class="sub">Gradients by hand</a>
+            <a class="sub">Attention from scratch</a>
+            <div class="rlabel">Music</div>
+            <a class="sub">Harmony basics</a>
+            <div class="rlabel">&nbsp;</div>
+            <a class="sub">Settings</a>
+          </div>
+          <div class="body">
+            <div class="row between" style="border-bottom:1px solid #16150f;padding-bottom:8px">
+              <div><p class="title">Outstanding</p><p class="sub">4 tasks / 2 due from miss queue</p></div>
+              <span class="btn">New course</span>
+            </div>
+            <div>
+              <div class="task"><i style="background:var(--d4)"></i><div><b>Derive the gradient of a two-layer net</b><small>Gradients by hand / transfer / due today</small></div><span class="chip k">⚡ offline</span></div>
+              <div class="task"><i style="background:var(--d5)"></i><div><b>Train a classifier on the wine dataset</b><small>Gradients by hand / project / rubric shown</small></div><span class="chip k">✦ model</span></div>
+              <div class="task"><i style="background:var(--d1)"></i><div><b>Which interval is a perfect fifth?</b><small>Harmony basics / recall / miss queue</small></div><span class="chip k">⚡ offline</span></div>
+            </div>
+            <div class="row" style="gap:24px;align-items:flex-start">
+              <div class="panel" style="flex:1 1 200px">
+                <p class="title" style="font-size:15px">Gradients by hand</p>
+                <div class="ladder"><span style="background:var(--d1);color:#16150f">recall</span><span style="background:var(--d2);color:#16150f">apply</span><span style="background:var(--d3);color:#16150f">construct</span><span style="background:var(--d4)">transfer</span><span style="background:var(--d5)">project</span></div>
+                <p class="metric">Chain rule · 82%</p><div class="bar"><i style="width:82%"></i></div>
+                <p class="metric">Backprop by hand · 41%</p><div class="bar"><i style="width:41%"></i></div>
+              </div>
+              <div class="panel" style="flex:1 1 200px">
+                <p class="title" style="font-size:15px">Harmony basics</p>
+                <div class="ladder"><span style="background:var(--d1);color:#16150f">recall</span><span style="background:var(--d2);color:#16150f">apply</span><span class="off">construct</span></div>
+                <p class="metric">Intervals · 95%</p><div class="bar"><i style="width:95%"></i></div>
+                <p class="metric">Triads · 20%</p><div class="bar"><i style="width:20%"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="aside">
+            <div class="rlabel" style="margin-top:0">This week</div>
+            <div class="stat"><b>31</b><small>attempts</small></div>
+            <div class="stat"><b>$1.42</b><small>grading spend</small></div>
+            <div class="stat"><b>2</b><small>known already</small></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="mock-label">Lesson</p>
+        <div class="win" id="m1-lesson">
+          <div class="rail">
+            <div class="brand">Whetstone</div>
+            <a class="sub">Dashboard</a>
+            <div class="rlabel">Gradients by hand</div>
+            <a class="sub">01 Derivatives refresher</a>
+            <a class="on">02 The chain rule</a>
+            <a class="sub">03 Backprop by hand</a>
+            <a class="sub">Review session</a>
+          </div>
+          <div class="body">
+            <div class="row between" style="border-bottom:1px solid #16150f;padding-bottom:8px">
+              <div><p class="title">The chain rule</p><p class="sub">Module 02 / 8 min / next up</p></div>
+              <span class="btn q">I know this</span>
+            </div>
+            <div class="prose">
+              <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+              <div class="pull"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+            </div>
+            <div class="panel">
+              <div class="row" style="margin-bottom:7px"><span class="chip d" style="background:var(--d2);color:#16150f">apply</span><span class="chip k">⚡ instant</span><span class="sub" style="margin:0">obj: apply the chain rule</span></div>
+              <p style="margin:0 0 7px;font-weight:600">Differentiate f(x) = sin(3x²).</p>
+              <div class="opt pick"><i></i>6x cos(3x²)</div>
+              <div class="opt"><i></i>cos(3x²)</div>
+              <div class="opt"><i></i>6x sin(3x²)</div>
+              <div class="vd" style="margin-top:7px"><b>Correct</b><span>Outer derivative cos(3x²), inner derivative 6x, multiplied.</span></div>
+            </div>
+            <div class="panel">
+              <div class="row" style="margin-bottom:7px"><span class="chip d" style="background:var(--d4)">transfer</span><span class="chip k">✦ model grades</span></div>
+              <p style="margin:0 0 7px;font-weight:600">Explain why a very deep chain can make the gradient vanish.</p>
+              <div class="vd" style="--vdc:#b91c1c"><b>Fail</b><span>You named the product of small terms but did not connect it to the derivative of the activation being below one. That link is the whole answer.</span><span class="sub" style="margin:0">Report a broken task</span></div>
+            </div>
+          </div>
+          <div class="aside">
+            <div class="rlabel" style="margin-top:0">Tutor</div>
+            <div style="border:1px solid #ddd9cf;padding:7px 9px;font-size:11.5px">Why is the inner derivative 6x?</div>
+            <div style="font-size:11.5px;padding:0 2px">Because the inside is 3x². Its derivative is 3 · 2x = 6x. The chain rule multiplies that by the outer derivative.</div>
+            <div style="border-top:1px solid #16150f;padding-top:7px;color:#6b675c;font-size:11.5px">Ask about this lesson</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= V2 ================= -->
+  <section class="v" id="option-2">
+    <div class="vhead">
+      <div class="vnum">02</div>
+      <div>
+        <h3>Blueprint</h3>
+        <p>A technical drawing. A faint drafting grid under the content, dashed dividers, crosshair marks at panel corners, and monospace everywhere including body labels. Depth reads as a measured scale rather than a colour wash. It looks like an instrument, not a website.</p>
+        <div class="specs">
+          <span class="spec">display <b>IBM Plex Mono 700</b></span>
+          <span class="spec">ui <b>IBM Plex Sans</b></span>
+          <span class="spec">grid <b>16px, 10% opacity</b></span>
+          <span class="spec">radius <b>0</b></span>
+          <span class="spec">rules <b>1px dashed</b></span>
+        </div>
+        <div class="ramp"><i style="background:#e8dfc6"></i><i style="background:#d9c48c"></i><i style="background:#c9a24a"></i><i style="background:#b45309"></i><i style="background:#7c2d12"></i></div>
+      </div>
+    </div>
+    <div class="mocks v2">
+      <div>
+        <p class="mock-label">Dashboard</p>
+        <div class="win" id="m2-dash">
+          <div class="rail">
+            <div class="brand">Whetstone</div>
+            <a class="on">Dashboard</a>
+            <div class="rlabel">Machine learning</div>
+            <a class="sub">gradients-by-hand</a>
+            <a class="sub">attention-from-scratch</a>
+            <div class="rlabel">Music</div>
+            <a class="sub">harmony-basics</a>
+            <div class="rlabel">&nbsp;</div>
+            <a class="sub">Settings</a>
+          </div>
+          <div class="body">
+            <div class="row between">
+              <div><p class="title">Outstanding</p><p class="sub">4 tasks · 2 due · miss queue</p></div>
+              <span class="btn">New course</span>
+            </div>
+            <div class="panel">
+              <div class="task"><i style="background:var(--d4)"></i><div><b>Derive the gradient of a two-layer net</b><small>gradients-by-hand · D4 transfer · due today</small></div><span class="chip k">⚡ offline</span></div>
+              <div class="task"><i style="background:var(--d5)"></i><div><b>Train a classifier on the wine dataset</b><small>gradients-by-hand · D5 project · rubric shown</small></div><span class="chip k">✦ model</span></div>
+              <div class="task" style="border-bottom:0"><i style="background:var(--d1)"></i><div><b>Which interval is a perfect fifth?</b><small>harmony-basics · D1 recall · miss queue</small></div><span class="chip k">⚡ offline</span></div>
+            </div>
+            <div class="row" style="gap:16px;align-items:flex-start">
+              <div class="panel" style="flex:1 1 200px">
+                <p class="title" style="font-size:14px">gradients-by-hand</p>
+                <div class="ladder"><span style="background:var(--d1)">D1</span><span style="background:var(--d2)">D2</span><span style="background:var(--d3)">D3</span><span style="background:var(--d4);color:#faf8f2">D4</span><span style="background:var(--d5);color:#faf8f2">D5</span></div>
+                <p class="metric">chain-rule ......... 82%</p><div class="bar"><i style="width:82%"></i></div>
+                <p class="metric">backprop-by-hand ... 41%</p><div class="bar"><i style="width:41%"></i></div>
+              </div>
+              <div class="panel" style="flex:1 1 200px">
+                <p class="title" style="font-size:14px">harmony-basics</p>
+                <div class="ladder"><span style="background:var(--d1)">D1</span><span style="background:var(--d2)">D2</span><span class="off">D3</span></div>
+                <p class="metric">intervals .......... 95%</p><div class="bar"><i style="width:95%"></i></div>
+                <p class="metric">triads ............. 20%</p><div class="bar"><i style="width:20%"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="aside">
+            <div class="rlabel" style="margin-top:0">week 36</div>
+            <div class="stat"><b>31</b><small>attempts</small></div>
+            <div class="stat"><b>$1.42</b><small>spend</small></div>
+            <div class="stat"><b>2</b><small>known</small></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="mock-label">Lesson</p>
+        <div class="win" id="m2-lesson">
+          <div class="rail">
+            <div class="brand">Whetstone</div>
+            <a class="sub">Dashboard</a>
+            <div class="rlabel">gradients-by-hand</div>
+            <a class="sub">[01] derivatives-refresher</a>
+            <a class="on">[02] the-chain-rule</a>
+            <a class="sub">[03] backprop-by-hand</a>
+            <a class="sub">review-session</a>
+          </div>
+          <div class="body">
+            <div class="row between">
+              <div><p class="title">The chain rule</p><p class="sub">mod 02 · 8 min · next up</p></div>
+              <span class="btn q">I know this</span>
+            </div>
+            <div class="prose">
+              <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+              <div class="pull"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+            </div>
+            <div class="panel">
+              <div class="row" style="margin-bottom:7px"><span class="chip d" style="background:var(--d2)">D2 apply</span><span class="chip k">⚡ instant</span><span class="sub" style="margin:0">obj: apply-the-chain-rule</span></div>
+              <p style="margin:0 0 7px;font-weight:600">Differentiate f(x) = sin(3x²).</p>
+              <div class="opt pick"><i></i>6x cos(3x²)</div>
+              <div class="opt"><i></i>cos(3x²)</div>
+              <div class="opt"><i></i>6x sin(3x²)</div>
+              <div class="vd" style="margin-top:7px"><b>pass</b><span>Outer derivative cos(3x²), inner derivative 6x, multiplied.</span></div>
+            </div>
+            <div class="panel">
+              <div class="row" style="margin-bottom:7px"><span class="chip d" style="background:var(--d4);color:#faf8f2">D4 transfer</span><span class="chip k">✦ model grades</span></div>
+              <p style="margin:0 0 7px;font-weight:600">Explain why a very deep chain can make the gradient vanish.</p>
+              <div class="vd" style="--vdc:#b91c1c"><b>fail</b><span>You named the product of small terms but did not connect it to the derivative of the activation being below one. That link is the whole answer.</span><span class="sub" style="margin:0">report-broken-task</span></div>
+            </div>
+          </div>
+          <div class="aside">
+            <div class="rlabel" style="margin-top:0">tutor</div>
+            <div style="border:1px solid #cfc9b8;padding:7px 9px;font-size:11.5px">Why is the inner derivative 6x?</div>
+            <div style="font-size:11.5px;padding:0 2px">Because the inside is 3x². Its derivative is 3 · 2x = 6x. The chain rule multiplies that by the outer derivative.</div>
+            <div style="border-top:1px dashed #cfc9b8;padding-top:7px;color:#7a7466;font-size:11.5px">&gt; ask about this lesson</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= V3 ================= -->
+  <section class="v" id="option-3">
+    <div class="vhead">
+      <div class="vnum">03</div>
+      <div>
+        <h3>Slab</h3>
+        <p>Loud and physical. A solid ink sidebar, 2 and 3px black frames, hot amber for the selected item, and huge compressed display type. Nothing is subtle. This is the furthest from round 1 and the one most likely to tire you out over a long study session.</p>
+        <div class="specs">
+          <span class="spec">display <b>Archivo 800, wdth 80, -3.5% tracking</b></span>
+          <span class="spec">ui <b>Inter Tight</b></span>
+          <span class="spec">labels <b>JetBrains Mono caps</b></span>
+          <span class="spec">radius <b>0</b></span>
+          <span class="spec">rules <b>2 to 3px solid ink</b></span>
+        </div>
+        <div class="ramp"><i style="background:#fde4b0"></i><i style="background:#fbbf24"></i><i style="background:#f59e0b"></i><i style="background:#ea580c"></i><i style="background:#9a3412"></i></div>
+      </div>
+    </div>
+    <div class="mocks v3">
+      <div>
+        <p class="mock-label">Dashboard</p>
+        <div class="win" id="m3-dash">
+          <div class="rail">
+            <div class="brand">Whetstone</div>
+            <a class="on">Dashboard</a>
+            <div class="rlabel">Machine learning</div>
+            <a class="sub">Gradients by hand</a>
+            <a class="sub">Attention from scratch</a>
+            <div class="rlabel">Music</div>
+            <a class="sub">Harmony basics</a>
+            <div class="rlabel">&nbsp;</div>
+            <a class="sub">Settings</a>
+          </div>
+          <div class="body">
+            <div class="row between">
+              <div><p class="title">Outstanding</p><p class="sub">4 tasks / 2 due</p></div>
+              <span class="btn">New course</span>
+            </div>
+            <div>
+              <div class="task"><i style="background:var(--d4)"></i><div><b>Derive the gradient of a two-layer net</b><small>transfer / due today</small></div><span class="chip k">⚡</span></div>
+              <div class="task"><i style="background:var(--d5)"></i><div><b>Train a classifier on the wine dataset</b><small>project / rubric shown</small></div><span class="chip k">✦</span></div>
+              <div class="task"><i style="background:var(--d1)"></i><div><b>Which interval is a perfect fifth?</b><small>recall / miss queue</small></div><span class="chip k">⚡</span></div>
+            </div>
+            <div class="row" style="gap:14px;align-items:flex-start">
+              <div class="panel" style="flex:1 1 200px">
+                <p class="title" style="font-size:19px">Gradients<br>by hand</p>
+                <div class="ladder"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span style="background:var(--d3)">constr</span><span style="background:var(--d4)">transf</span><span style="background:var(--d5);color:#f7f5f0">proj</span></div>
+                <p class="metric">Chain rule 82%</p><div class="bar"><i style="width:82%"></i></div>
+                <p class="metric">Backprop 41%</p><div class="bar"><i style="width:41%"></i></div>
+              </div>
+              <div class="panel" style="flex:1 1 200px">
+                <p class="title" style="font-size:19px">Harmony<br>basics</p>
+                <div class="ladder"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span class="off">constr</span></div>
+                <p class="metric">Intervals 95%</p><div class="bar"><i style="width:95%"></i></div>
+                <p class="metric">Triads 20%</p><div class="bar"><i style="width:20%"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="aside">
+            <div class="rlabel" style="margin-top:0;color:#8a8578">This week</div>
+            <div class="stat"><b>31</b><small>attempts</small></div>
+            <div class="stat"><b>$1.42</b><small>spend</small></div>
+            <div class="stat"><b>2</b><small>known</small></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="mock-label">Lesson</p>
+        <div class="win" id="m3-lesson">
+          <div class="rail">
+            <div class="brand">Whetstone</div>
+            <a class="sub">Dashboard</a>
+            <div class="rlabel">Gradients by hand</div>
+            <a class="sub">01 Derivatives refresher</a>
+            <a class="on">02 The chain rule</a>
+            <a class="sub">03 Backprop by hand</a>
+            <a class="sub">Review session</a>
+          </div>
+          <div class="body">
+            <div class="row between">
+              <div><p class="title">The chain<br>rule</p><p class="sub">Module 02 / 8 min / next up</p></div>
+              <span class="btn q">I know this</span>
+            </div>
+            <div class="prose">
+              <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+              <div class="pull"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+            </div>
+            <div class="panel">
+              <div class="row" style="margin-bottom:7px"><span class="chip d" style="background:var(--d2)">apply</span><span class="chip k">⚡ instant</span></div>
+              <p style="margin:0 0 7px;font-weight:600">Differentiate f(x) = sin(3x²).</p>
+              <div class="opt pick"><i></i>6x cos(3x²)</div>
+              <div class="opt"><i></i>cos(3x²)</div>
+              <div class="opt"><i></i>6x sin(3x²)</div>
+              <div class="vd" style="margin-top:7px"><b>Correct</b><span>Outer derivative cos(3x²), inner derivative 6x, multiplied.</span></div>
+            </div>
+            <div class="panel">
+              <div class="row" style="margin-bottom:7px"><span class="chip d" style="background:var(--d4)">transfer</span><span class="chip k">✦ model</span></div>
+              <p style="margin:0 0 7px;font-weight:600">Explain why a very deep chain can make the gradient vanish.</p>
+              <div class="vd" style="--vdc:#b91c1c"><b>Fail</b><span>You named the product of small terms but did not connect it to the derivative of the activation being below one. That link is the whole answer.</span><span class="sub" style="margin:0">Report a broken task</span></div>
+            </div>
+          </div>
+          <div class="aside">
+            <div class="rlabel" style="margin-top:0">Tutor</div>
+            <div style="border:2px solid #16150f;padding:7px 9px;font-size:11.5px">Why is the inner derivative 6x?</div>
+            <div style="font-size:11.5px;padding:0 2px">Because the inside is 3x². Its derivative is 3 · 2x = 6x. The chain rule multiplies that by the outer derivative.</div>
+            <div style="border-top:2px solid #16150f;padding-top:7px;color:#8a8578;font-size:11.5px">Ask about this lesson</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="h2row"><h2>Pick one</h2><span class="tag">or describe a hybrid</span></div>
+  <p>My recommendation is <b>01 Press</b>. You will spend most of your hours in this app reading long prose and answering questions, and Press is the only one of the three whose sharpness comes from structure rather than from decoration, so it stays sharp without competing with the text. Blueprint wins if you want the app to feel like an instrument you operate, and it is the better fit if the live constructor terminal ends up being a screen you enjoy watching. Slab wins if you want the app to have an opinion the moment you open it, and its cost is fatigue over a long session.</p>
+
+  <form class="picker" id="picker" data-lavish-question="design-round-2"
+    onsubmit="event.preventDefault(); const f=new FormData(event.currentTarget); const c=f.get('direction'); const n=(f.get('notes')||'').trim(); if(!c){document.getElementById('pstate').textContent='Pick one first.';return;} const msg='Design round 2: use '+c+'.'+(n?' Notes: '+n:''); window.lavish.queuePrompt(msg,{tag:'choice',text:msg,element:event.currentTarget,queueKey:'design-round-2',data:{question:'design-round-2',answer:c,notes:n}}); document.getElementById('pstate').textContent='QUEUED: '+c+(n?' + notes':'')+'. Press Send to Agent.';">
+    <fieldset>
+      <label class="opt-l"><input type="radio" name="direction" value="01 Press"> <span><b>01 Press.</b> Hairline editorial. Recommended, because the sharpness is structural and stays out of the prose.</span></label>
+      <label class="opt-l"><input type="radio" name="direction" value="02 Blueprint"> <span><b>02 Blueprint.</b> Drafting grid and monospace. The app as an instrument.</span></label>
+      <label class="opt-l"><input type="radio" name="direction" value="03 Slab"> <span><b>03 Slab.</b> Ink blocks and hot amber. Loudest, and the most tiring.</span></label>
+      <label class="opt-l"><input type="radio" name="direction" value="a hybrid"> <span><b>A hybrid.</b> Describe it below, for example Press structure with Blueprint's mono labels.</span></label>
+    </fieldset>
+    <label style="display:block"><span class="tag">Notes, optional</span><textarea name="notes" placeholder="For example: Press, but keep the D1 to D5 depth codes from Blueprint. Or: still not sharp enough, push further."></textarea></label>
+    <button type="submit">Queue this answer</button>
+    <p class="state" id="pstate">Nothing queued. Selecting a radio changes only this page.</p>
+  </form>
+
+  <div class="h2row"><h2>The plan itself is unchanged</h2></div>
+  <p>Only section 7 of <span class="mono">PLAN.md</span> depends on this choice. Everything else stands as reviewed: Electron shell, pluggable Constructor Harness with a files-on-disk contract, sealed Mini-app sandbox, fixed five-point Depth scale with Depth on the Task rather than the Module, six fixed Lesson Blocks, and the Constructor as the only writer inside a Course folder. Those are recorded in <span class="mono">docs/adr/0003</span> through <span class="mono">0007</span>.</p>
+</main>
+</body>
+</html>

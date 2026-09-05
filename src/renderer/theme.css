@@ -1,0 +1,103 @@
+/* Whetstone tokens — direction 01 Press, dark rail. See docs/design-reference.html. */
+:root {
+  --paper: #f5f4f1;
+  --surface: #fffefb;
+  --ink: #16150f;
+  --muted: #6b675c;
+  --line: #d9d5cb;
+  --frame: #16150f;
+  --amber: #c2410c;
+  --on-amber: #fffefb;
+  --rail: #23211c;
+  --rail-ink: #e9e6de;
+  --rail-muted: #8d887b;
+  --rail-line: #34312a;
+  --said-bg: #edebe4;
+  --d1: #fde9c8; --d2: #f7c873; --d3: #e89b25; --d4: #c2410c; --d5: #7c2d12;
+  --on-d-light: #16150f; --on-d-dark: #fffefb;
+  --pass: #15803d; --fail: #b91c1c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #100f0d; --surface: #171613; --ink: #eae7df; --muted: #928d80;
+    --line: #2c2a25; --frame: #3a372f; --rail: #0b0b09; --rail-line: #262420;
+    --said-bg: #201f1b;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px/1.5 "Inter Tight", -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Radius is zero everywhere. Structure comes from rules, not boxes. */
+button, input, textarea { border-radius: 0; font: inherit; }
+
+.app { display: grid; grid-template-columns: 186px minmax(0, 1fr); height: 100%; }
+
+.rail {
+  background: var(--rail);
+  color: var(--rail-ink);
+  padding: 34px 0 14px;
+  display: grid;
+  align-content: start;
+  overflow-y: auto;
+}
+.rail .brand {
+  font-family: Archivo, "Inter Tight", sans-serif;
+  font-weight: 800; font-size: 15px; letter-spacing: -0.02em; text-transform: uppercase;
+  padding: 0 12px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--rail-line);
+}
+.rail button {
+  display: block; width: 100%; text-align: left;
+  padding: 5px 12px; background: none; border: 0;
+  border-left: 2px solid transparent; color: var(--rail-muted); cursor: pointer;
+}
+.rail button:hover { color: var(--rail-ink); }
+.rail button.on { border-left-color: var(--amber); color: #fff; font-weight: 600; background: #ffffff0a; }
+.rail .foot { margin-top: 14px; padding: 11px 12px 0; border-top: 1px solid var(--rail-line); }
+.rail .foot button { padding: 3px 0; border-left: 0; }
+.rail .foot button.hi { color: #fff; font-weight: 600; }
+
+.reader { padding: 34px 26px 40px; overflow-y: auto; background: var(--surface); }
+.head { border-bottom: 1px solid var(--frame); padding-bottom: 9px; margin-bottom: 4px;
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.title {
+  font-family: Archivo, "Inter Tight", sans-serif;
+  font-weight: 700; font-size: 27px; line-height: 1.05; letter-spacing: -0.03em;
+  text-transform: uppercase; margin: 0;
+}
+.btn {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+  padding: 7px 13px; background: var(--amber); color: var(--on-amber); border: 0; cursor: pointer;
+}
+
+.crow {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: baseline;
+  padding: 13px 0; border-bottom: 1px solid var(--line); width: 100%;
+  background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; cursor: pointer;
+}
+.crow:hover .cname { color: var(--amber); }
+.cname {
+  font-family: Archivo, "Inter Tight", sans-serif;
+  font-weight: 700; font-size: 17px; letter-spacing: -0.02em; text-transform: uppercase; display: block;
+}
+.cmeta, .cnt {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px; letter-spacing: 0.04em; color: var(--muted);
+}
+.cnt { white-space: nowrap; }
+
+.empty { color: var(--muted); max-width: 60ch; margin-top: 22px; }
+.broken { border-left: 3px solid var(--fail); padding: 9px 0 9px 12px; margin-top: 18px; }
+.broken h2 {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fail);
+  margin: 0 0 5px; font-weight: 500;
+}
+.broken li { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }

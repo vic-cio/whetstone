@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI School — design round 1</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, li, dd, td, th, .badge, .label) { overflow-wrap: anywhere; }
+  :where(img, svg) { max-width: 100%; height: auto; }
+  .figure-svg { width: 100%; height: auto; display: block; }
+  .figure-svg text { font-family: ui-sans-serif, system-ui, sans-serif; }
+  .n-fill   { fill: var(--color-base-200); }
+  .n-stroke { stroke: var(--color-base-content); stroke-opacity: .28; }
+  .n-label  { fill: var(--color-base-content); }
+  .n-mute   { fill: var(--color-base-content); fill-opacity: .6; }
+  .a-fill   { fill: var(--color-primary); fill-opacity: .16; }
+  .a-stroke { stroke: var(--color-primary); stroke-opacity: .75; }
+  .a-label  { fill: var(--color-primary); }
+  .s-fill   { fill: var(--color-success); fill-opacity: .14; }
+  .s-stroke { stroke: var(--color-success); stroke-opacity: .7; }
+  .s-label  { fill: var(--color-success); }
+  .w-stroke { stroke: var(--color-warning); stroke-opacity: .8; }
+  .w-label  { fill: var(--color-warning); }
+  .edge     { stroke: var(--color-base-content); stroke-opacity: .45; fill: none; }
+  .queued   { outline: 2px solid var(--color-success); outline-offset: 3px; }
+  .qcard[data-answered="yes"] .qbadge { display: inline-flex; }
+  .qbadge { display: none; }
+</style>
+</head>
+<body class="bg-base-100 text-base-content">
+
+<main class="mx-auto max-w-5xl p-5 lg:p-9">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="mb-10">
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+      <span class="badge badge-primary badge-sm">Round 1 of the grill</span>
+      <span class="badge badge-ghost badge-sm">Nothing is built yet</span>
+      <span class="badge badge-ghost badge-sm">Fable writes the plan after this</span>
+    </div>
+    <h1 class="text-4xl lg:text-5xl font-bold tracking-tight mb-4">AI School</h1>
+    <p class="text-lg text-base-content/80 max-w-3xl">
+      A macOS app where an agent turns a topic into a real course, and a task ladder carries you from
+      multiple choice up to week-long projects that a frontier model grades.
+    </p>
+    <p class="text-base-content/70 max-w-3xl mt-3">
+      Below is the picture I currently hold, then five questions. Answer them and I hand the settled design to
+      <span class="font-mono text-sm">fable</span> to write the implementation plan.
+    </p>
+
+    <div class="alert alert-soft mt-6 flex-col items-start gap-2">
+      <p class="font-semibold">Four escape hatches. Use them freely.</p>
+      <ul class="text-sm text-base-content/80 space-y-1">
+        <li><span class="font-mono">you pick</span> &mdash; I take my recommendation and record it as my call, not yours.</li>
+        <li><span class="font-mono">I don't know</span> &mdash; I explain the term and ask again. Never read as a preference.</li>
+        <li><span class="font-mono">you decide</span> &mdash; ends the interview. I settle everything and you veto.</li>
+        <li><span class="font-mono">short version</span> &mdash; every later question drops to one line.</li>
+      </ul>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <button class="btn btn-sm btn-outline" data-lavish-action
+          onclick="window.lavish.queuePrompt('you decide - settle every open question with your recommendations and show me the full design to veto', {tag:'escape', text:'You decide'})">
+          You decide, settle it all
+        </button>
+        <button class="btn btn-sm btn-outline" data-lavish-action
+          onclick="window.lavish.queuePrompt('short version - drop every later question to one line', {tag:'escape', text:'Short version'})">
+          Short version from here
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== THE PICTURE ===================== -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold mb-1">The shape I have in mind</h2>
+    <p class="text-base-content/70 mb-6">Three figures. Attack any of them by selecting and annotating.</p>
+
+    <!-- FIGURE 1: who does what -->
+    <div class="card card-border bg-base-200/40 mb-8">
+      <div class="card-body gap-4">
+        <div>
+          <h3 class="card-title text-lg" id="fig1-title">Figure 1 &mdash; Which parts need a model, and which do not</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            The expensive question in this app is not "what does it look like". It is
+            <span class="text-base-content">which actions cost money and network, and which are instant and free</span>.
+            Everything gold below calls a model. Everything green runs on your machine with no network.
+          </p>
+        </div>
+
+        <svg class="figure-svg" viewBox="0 0 900 400" role="img" aria-labelledby="fig1-title">
+          <title>Course construction calls a model once, then most daily study runs locally</title>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--color-base-content)" fill-opacity=".45" />
+            </marker>
+            <marker id="arrowGold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--color-primary)" fill-opacity=".8" />
+            </marker>
+          </defs>
+
+          <!-- lane labels -->
+          <text x="12" y="26" class="a-label" font-size="13" font-weight="700">CALLS A MODEL</text>
+          <text x="12" y="44" class="n-mute" font-size="11">costs money, needs network, slow</text>
+
+          <text x="12" y="246" class="s-label" font-size="13" font-weight="700">RUNS LOCALLY</text>
+          <text x="12" y="264" class="n-mute" font-size="11">instant, free, works offline</text>
+
+          <line x1="12" y1="212" x2="888" y2="212" class="n-stroke" stroke-dasharray="5 6" />
+
+          <!-- top lane: constructor -->
+          <g id="node-constructor">
+            <title>The course constructor: a harness plus a frontier model that turns your topic into a course</title>
+            <rect x="12" y="62" width="212" height="118" rx="12" class="a-fill a-stroke" stroke-width="1.5" />
+            <text x="30" y="90" class="a-label" font-size="15" font-weight="700">Course constructor</text>
+            <text x="30" y="112" class="n-label" font-size="12">Runs once per course.</text>
+            <text x="30" y="131" class="n-mute" font-size="12">Searches the web, picks</text>
+            <text x="30" y="148" class="n-mute" font-size="12">resources, writes lessons,</text>
+            <text x="30" y="165" class="n-mute" font-size="12">authors the whole ladder.</text>
+          </g>
+
+          <!-- top lane: tutor -->
+          <g id="node-tutor">
+            <title>The tutor: a smaller, faster model you talk to while studying</title>
+            <rect x="488" y="62" width="184" height="118" rx="12" class="a-fill a-stroke" stroke-width="1.5" />
+            <text x="506" y="90" class="a-label" font-size="15" font-weight="700">Tutor</text>
+            <text x="506" y="112" class="n-label" font-size="12">On demand.</text>
+            <text x="506" y="131" class="n-mute" font-size="12">Explains, hints, answers</text>
+            <text x="506" y="148" class="n-mute" font-size="12">"why was I wrong".</text>
+          </g>
+
+          <!-- top lane: grader -->
+          <g id="node-grader">
+            <title>The grader: a frontier model that reads your uploaded work against a rubric</title>
+            <rect x="692" y="62" width="196" height="118" rx="12" class="a-fill a-stroke" stroke-width="1.5" />
+            <text x="710" y="90" class="a-label" font-size="15" font-weight="700">Grader</text>
+            <text x="710" y="112" class="n-label" font-size="12">Only tier 3 and above.</text>
+            <text x="710" y="131" class="n-mute" font-size="12">Reads your doc or CSV,</text>
+            <text x="710" y="148" class="n-mute" font-size="12">scores it on a rubric.</text>
+          </g>
+
+          <!-- bottom lane: course folder -->
+          <g id="node-folder">
+            <title>The course folder: plain files on disk that survive the app</title>
+            <rect x="12" y="248" width="212" height="132" rx="12" class="s-fill s-stroke" stroke-width="1.5" />
+            <text x="30" y="278" class="s-label" font-size="15" font-weight="700">Course folder</text>
+            <text x="30" y="300" class="n-mute" font-size="12">course.json</text>
+            <text x="30" y="318" class="n-mute" font-size="12">lessons/*.md</text>
+            <text x="30" y="336" class="n-mute" font-size="12">tasks/*.json</text>
+            <text x="30" y="354" class="n-mute" font-size="12">resources.json</text>
+            <text x="30" y="372" class="n-label" font-size="11" font-style="italic">readable without the app</text>
+          </g>
+
+          <!-- bottom lane: app -->
+          <g id="node-app">
+            <title>The app itself: renders lessons, runs the cheap tasks, tracks progress</title>
+            <rect x="272" y="248" width="352" height="132" rx="12" class="s-fill s-stroke" stroke-width="1.5" />
+            <text x="292" y="278" class="s-label" font-size="15" font-weight="700">The app</text>
+            <text x="292" y="300" class="n-mute" font-size="12">Renders lessons and diagrams</text>
+            <text x="292" y="318" class="n-mute" font-size="12">Grades tier 1 and 2 instantly</text>
+            <text x="292" y="336" class="n-mute" font-size="12">Dashboard, streaks, review queue</text>
+            <text x="292" y="354" class="n-mute" font-size="12">Uploads your work for tier 3+</text>
+          </g>
+
+          <!-- bottom lane: progress db -->
+          <g id="node-db">
+            <title>The progress database: your attempts, scores, and mastery, separate from course content</title>
+            <rect x="672" y="248" width="216" height="132" rx="12" class="s-fill s-stroke" stroke-width="1.5" />
+            <text x="692" y="278" class="s-label" font-size="15" font-weight="700">Progress DB</text>
+            <text x="692" y="300" class="n-mute" font-size="12">every attempt, every score</text>
+            <text x="692" y="318" class="n-mute" font-size="12">mastery per objective</text>
+            <text x="692" y="336" class="n-mute" font-size="12">what is due for review</text>
+            <text x="692" y="354" class="n-label" font-size="11" font-style="italic">SQLite, one file</text>
+          </g>
+
+          <!-- edges -->
+          <path id="edge-writes" d="M118,180 L118,248" class="edge a-stroke" stroke-width="2" marker-end="url(#arrowGold)" />
+          <text x="128" y="222" class="a-label" font-size="11">writes once</text>
+
+          <path id="edge-reads" d="M224,300 L272,300" class="edge" stroke-width="2" marker-end="url(#arrow)" />
+
+          <path id="edge-ask" d="M470,248 L556,180" class="edge a-stroke" stroke-width="2" marker-end="url(#arrowGold)" />
+          <text x="470" y="228" class="n-mute" font-size="11">ask for a hint</text>
+
+          <path id="edge-submit" d="M600,248 L770,180" class="edge a-stroke" stroke-width="2" marker-end="url(#arrowGold)" />
+          <text x="646" y="228" class="n-mute" font-size="11">submit a deliverable</text>
+
+          <path id="edge-progress" d="M624,314 L672,314" class="edge" stroke-width="2" marker-end="url(#arrow)" />
+        </svg>
+
+        <div class="alert alert-warning alert-soft text-sm">
+          <span><span class="font-semibold">The claim to attack:</span> most of your daily study should never touch a model.
+          If every flashcard needs an API round trip, the app is slow, costs money to use, and is useless on a plane.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIGURE 2: the ladder -->
+    <div class="card card-border bg-base-200/40 mb-8">
+      <div class="card-body gap-4">
+        <div>
+          <h3 class="card-title text-lg" id="fig2-title">Figure 2 &mdash; The task ladder</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            You described the two ends. Here are the five rungs I would put between them, and the exact point
+            where grading stops being free.
+          </p>
+        </div>
+
+        <svg class="figure-svg" viewBox="0 0 900 460" role="img" aria-labelledby="fig2-title">
+          <title>Five task tiers, from instantly graded recall to a frontier-graded project</title>
+
+          <!-- the dividing line -->
+          <line x1="20" y1="252" x2="880" y2="252" class="w-stroke" stroke-width="1.5" stroke-dasharray="6 6" />
+          <text x="20" y="244" class="w-label" font-size="12" font-weight="700">— above this line, a model reads your answer —</text>
+
+          <!-- Tier 5 -->
+          <g id="tier-5">
+            <title>Tier 5: a project spanning days, done outside the app, uploaded as a file</title>
+            <rect x="500" y="24" width="380" height="86" rx="10" class="a-fill a-stroke" stroke-width="1.5" />
+            <text x="518" y="50" class="a-label" font-size="14" font-weight="700">5 · PROJECT</text>
+            <text x="518" y="72" class="n-label" font-size="12">Days of work outside the app. Upload a doc,</text>
+            <text x="518" y="90" class="n-label" font-size="12">a CSV, a repo link. Frontier model, full rubric.</text>
+            <text x="700" y="50" class="a-label" font-size="11" text-anchor="end">$$$ · minutes</text>
+          </g>
+
+          <!-- Tier 4 -->
+          <g id="tier-4">
+            <title>Tier 4: a multi-part problem set or an artefact built in the app</title>
+            <rect x="380" y="122" width="380" height="86" rx="10" class="a-fill a-stroke" stroke-width="1.5" />
+            <text x="398" y="148" class="a-label" font-size="14" font-weight="700">4 · TRANSFER</text>
+            <text x="398" y="170" class="n-label" font-size="12">Multi-part problem set. Annotate a diagram.</text>
+            <text x="398" y="188" class="n-label" font-size="12">Frontier model, rubric with evidence quotes.</text>
+            <text x="742" y="148" class="a-label" font-size="11" text-anchor="end">$$ · seconds</text>
+          </g>
+
+          <!-- Tier 3 -->
+          <g id="tier-3">
+            <title>Tier 3: explain it in your own words, or write a small snippet</title>
+            <rect x="260" y="220" width="380" height="86" rx="10" class="a-fill a-stroke" stroke-width="1.5" />
+            <text x="278" y="246" class="a-label" font-size="14" font-weight="700">3 · CONSTRUCT</text>
+            <text x="278" y="268" class="n-label" font-size="12">Explain it in your own words. Write a snippet.</text>
+            <text x="278" y="286" class="n-label" font-size="12">Tutor model grades, cheap and fast.</text>
+            <text x="622" y="246" class="a-label" font-size="11" text-anchor="end">$ · 2 sec</text>
+          </g>
+
+          <!-- Tier 2 -->
+          <g id="tier-2">
+            <title>Tier 2: apply the idea, with a mechanically checkable answer</title>
+            <rect x="140" y="318" width="380" height="86" rx="10" class="s-fill s-stroke" stroke-width="1.5" />
+            <text x="158" y="344" class="s-label" font-size="14" font-weight="700">2 · APPLY</text>
+            <text x="158" y="366" class="n-label" font-size="12">Numeric answer. Order the steps. Predict the</text>
+            <text x="158" y="384" class="n-label" font-size="12">output. Checked against a stored answer.</text>
+            <text x="502" y="344" class="s-label" font-size="11" text-anchor="end">free · instant</text>
+          </g>
+
+          <!-- Tier 1 -->
+          <g id="tier-1">
+            <title>Tier 1: recognise it. Multiple choice and flashcards.</title>
+            <rect x="20" y="416" width="380" height="40" rx="10" class="s-fill s-stroke" stroke-width="1.5" />
+            <text x="38" y="442" class="s-label" font-size="14" font-weight="700">1 · RECALL</text>
+            <text x="150" y="442" class="n-label" font-size="12">Multiple choice, flashcards, true/false.</text>
+            <text x="382" y="442" class="s-label" font-size="11" text-anchor="end">free · instant</text>
+          </g>
+        </svg>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="rounded-box border border-base-content/10 p-4">
+            <p class="text-sm font-semibold mb-1">Why five and not two</p>
+            <p class="text-sm text-base-content/70">
+              The jump from a multiple choice question to a week-long project is enormous. Tiers 2 to 4 are the
+              rungs that make the climb feel possible. Tier 3 is also where most real learning happens: saying it
+              back in your own words.
+            </p>
+          </div>
+          <div class="rounded-box border border-base-content/10 p-4">
+            <p class="text-sm font-semibold mb-1">Why the line sits where it does</p>
+            <p class="text-sm text-base-content/70">
+              Tiers 1 and 2 have one correct answer the constructor can write down in advance. Tier 3 onward has
+              many correct answers, so only a model can judge it. That is a hard boundary, not a preference.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIGURE 3: dashboard sketch -->
+    <div class="card card-border bg-base-200/40">
+      <div class="card-body gap-4">
+        <div>
+          <h3 class="card-title text-lg" id="fig3-title">Figure 3 &mdash; The dashboard, roughly</h3>
+          <p class="text-sm text-base-content/70 mt-1">
+            Not a design, a layout argument. Three bands: what is waiting for you, how you are doing, what you could start.
+          </p>
+        </div>
+
+        <svg class="figure-svg" viewBox="0 0 900 430" role="img" aria-labelledby="fig3-title">
+          <title>Dashboard wireframe with a sidebar of subjects and three content bands</title>
+
+          <!-- window -->
+          <rect x="10" y="10" width="880" height="410" rx="12" class="n-fill n-stroke" stroke-width="1.5" />
+          <line x1="10" y1="52" x2="890" y2="52" class="n-stroke" />
+          <circle cx="34" cy="31" r="5" class="n-mute" /><circle cx="52" cy="31" r="5" class="n-mute" /><circle cx="70" cy="31" r="5" class="n-mute" />
+
+          <!-- sidebar -->
+          <g id="wire-sidebar">
+            <title>Sidebar: subjects, the top-level category split</title>
+            <line x1="196" y1="52" x2="196" y2="420" class="n-stroke" />
+            <text x="30" y="82" class="n-mute" font-size="11" font-weight="700">SUBJECTS</text>
+            <rect x="24" y="94" width="150" height="26" rx="6" class="a-fill" />
+            <text x="36" y="112" class="a-label" font-size="12">Machine Learning</text>
+            <text x="36" y="142" class="n-label" font-size="12">Finance</text>
+            <text x="36" y="170" class="n-label" font-size="12">Music Theory</text>
+            <text x="36" y="198" class="n-label" font-size="12">Systems</text>
+            <line x1="24" y1="220" x2="174" y2="220" class="n-stroke" />
+            <text x="36" y="244" class="n-mute" font-size="12">Review queue · 12</text>
+            <text x="36" y="270" class="n-mute" font-size="12">All courses</text>
+            <text x="36" y="296" class="n-mute" font-size="12">Settings</text>
+            <rect x="24" y="368" width="150" height="32" rx="8" class="a-fill a-stroke" stroke-width="1.2" />
+            <text x="99" y="389" class="a-label" font-size="12" font-weight="700" text-anchor="middle">+ New curriculum</text>
+          </g>
+
+          <!-- band 1: outstanding -->
+          <g id="wire-band-outstanding">
+            <title>Band one: outstanding tasks, the first thing you see</title>
+            <text x="222" y="82" class="n-label" font-size="14" font-weight="700">Pick up where you left off</text>
+            <rect x="222" y="94" width="205" height="76" rx="8" class="a-fill a-stroke" stroke-width="1.2" />
+            <text x="236" y="116" class="a-label" font-size="10" font-weight="700">TIER 4 · DUE</text>
+            <text x="236" y="136" class="n-label" font-size="11">Backprop by hand</text>
+            <text x="236" y="154" class="n-mute" font-size="10">Neural Nets · 3 of 5 parts</text>
+
+            <rect x="439" y="94" width="205" height="76" rx="8" class="n-fill n-stroke" stroke-width="1.2" />
+            <text x="453" y="116" class="w-label" font-size="10" font-weight="700">TIER 5 · GRADING</text>
+            <text x="453" y="136" class="n-label" font-size="11">Portfolio backtest</text>
+            <text x="453" y="154" class="n-mute" font-size="10">Finance · submitted 2h ago</text>
+
+            <rect x="656" y="94" width="212" height="76" rx="8" class="n-fill n-stroke" stroke-width="1.2" />
+            <text x="670" y="116" class="s-label" font-size="10" font-weight="700">REVIEW · 12 CARDS</text>
+            <text x="670" y="136" class="n-label" font-size="11">Things you got wrong</text>
+            <text x="670" y="154" class="n-mute" font-size="10">~4 min · offline</text>
+          </g>
+
+          <!-- band 2: progress -->
+          <g id="wire-band-progress">
+            <title>Band two: progress, per objective rather than per lesson</title>
+            <text x="222" y="206" class="n-label" font-size="14" font-weight="700">Where you are</text>
+            <rect x="222" y="218" width="646" height="90" rx="8" class="n-fill n-stroke" stroke-width="1.2" />
+            <text x="238" y="240" class="n-mute" font-size="10">MASTERY BY OBJECTIVE</text>
+            <rect x="238" y="252" width="600" height="10" rx="5" class="n-stroke" fill="none" />
+            <rect x="238" y="252" width="380" height="10" rx="5" class="s-fill s-stroke" />
+            <text x="238" y="282" class="n-mute" font-size="10">Gradient descent</text>
+            <text x="400" y="282" class="n-mute" font-size="10">Chain rule</text>
+            <text x="560" y="282" class="n-mute" font-size="10">Regularisation</text>
+            <text x="720" y="282" class="n-mute" font-size="10">Transformers</text>
+            <text x="238" y="299" class="s-label" font-size="10">solid</text>
+            <text x="400" y="299" class="s-label" font-size="10">solid</text>
+            <text x="560" y="299" class="w-label" font-size="10">shaky</text>
+            <text x="720" y="299" class="n-mute" font-size="10">not started</text>
+          </g>
+
+          <!-- band 3: courses -->
+          <g id="wire-band-courses">
+            <title>Band three: your courses and the button to build a new one</title>
+            <text x="222" y="342" class="n-label" font-size="14" font-weight="700">Your courses</text>
+            <rect x="222" y="354" width="150" height="52" rx="8" class="n-fill n-stroke" stroke-width="1.2" />
+            <rect x="384" y="354" width="150" height="52" rx="8" class="n-fill n-stroke" stroke-width="1.2" />
+            <rect x="546" y="354" width="150" height="52" rx="8" class="n-fill n-stroke" stroke-width="1.2" />
+            <rect x="708" y="354" width="160" height="52" rx="8" class="a-fill a-stroke" stroke-width="1.2" stroke-dasharray="4 4" />
+            <text x="788" y="385" class="a-label" font-size="12" text-anchor="middle">+ Build a course</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ROUND 1 ===================== -->
+  <section class="mb-12">
+    <div class="flex items-baseline gap-3 mb-2 flex-wrap">
+      <h2 class="text-2xl font-bold">Round 1</h2>
+      <span class="text-base-content/60 text-sm">five questions, most expensive to get wrong first</span>
+    </div>
+    <p class="text-base-content/70 mb-7 max-w-3xl">
+      Each one names the decision, glosses any jargon, says what changes downstream, and gives you the options.
+      Pick one and press <span class="font-semibold">Queue this answer</span>. Nothing sends until you press
+      <span class="font-semibold">Send to Agent</span>.
+    </p>
+
+    <!-- ---------- Q1 ---------- -->
+    <article class="card card-border bg-base-200/40 mb-6 qcard" id="q1">
+      <div class="card-body gap-4">
+        <div class="flex items-start gap-3 flex-wrap">
+          <span class="badge badge-primary">Q1</span>
+          <h3 class="card-title text-xl flex-1">What is the app actually made of</h3>
+          <span class="badge badge-success badge-soft qbadge">queued</span>
+        </div>
+
+        <div class="space-y-3 text-base-content/80">
+          <p>
+            <span class="font-semibold text-base-content">The decision.</span>
+            A "macOS app" can be built two ways, and this choice is the hardest one to undo later. Everything
+            else in the plan hangs off it.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">The gloss.</span>
+            <span class="font-semibold">SwiftUI</span> is Apple's own toolkit. You write Swift, and you get a
+            genuinely native Mac app: fast, small, feels exactly like Mail or Notes.
+            <span class="font-semibold">Tauri</span> wraps a web page (HTML, React) in a real Mac window. You get a
+            proper <span class="font-mono text-sm">.app</span> in your Applications folder, but the inside is a
+            web page. Electron is the same idea, heavier, and it is what VS Code and Slack are.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">What changes downstream.</span>
+            Your lessons need to render interactive things: a slider that moves a curve, a maths formula, a small
+            code editor, a chart. On the web those are solved and free. In SwiftUI you would build each one by
+            hand, or embed a web view anyway and end up hybrid. The other side: with SwiftUI an agent writing your
+            code has far less training data to draw on, and Swift UI bugs are harder for you to diagnose yourself.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">A worked example.</span>
+            Say the constructor writes a lesson on gradient descent with a widget where you drag the learning rate
+            and watch the path bounce. In React that is roughly forty lines using a charting library. In SwiftUI it
+            is a custom Canvas view, hit testing, and your own animation, and it is not reusable for the next widget.
+          </p>
+        </div>
+
+        <form data-lavish-question="stack" class="mt-1"
+          onsubmit="event.preventDefault(); qsubmit(event, 'stack', 'Q1 tech stack');">
+          <fieldset class="fieldset gap-2">
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="stack" class="radio radio-sm radio-primary mt-0.5" value="Tauri v2 + React + TypeScript">
+              <span><span class="font-semibold">Tauri + React + TypeScript</span>
+                <span class="block text-sm text-base-content/70">Real .app, web inside. Rich interactive lessons come nearly free. My recommendation.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="stack" class="radio radio-sm radio-primary mt-0.5" value="Native SwiftUI">
+              <span><span class="font-semibold">Native SwiftUI</span>
+                <span class="block text-sm text-base-content/70">Truly native feel and speed. Interactive lesson content becomes a build-it-yourself problem.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="stack" class="radio radio-sm radio-primary mt-0.5" value="SwiftUI shell with a WebView for lesson content">
+              <span><span class="font-semibold">SwiftUI shell, web view for lessons</span>
+                <span class="block text-sm text-base-content/70">Native chrome, web content. Two codebases and a bridge between them.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="stack" class="radio radio-sm radio-primary mt-0.5" value="you pick">
+              <span><span class="font-semibold">You pick</span>
+                <span class="block text-sm text-base-content/70">Take your recommendation, record it as your call.</span></span>
+            </label>
+          </fieldset>
+
+          <div class="alert alert-soft mt-4 text-sm">
+            <span><span class="font-semibold">Recommendation: Tauri + React + TypeScript.</span>
+            The reason is not taste, it is that the content this app displays is generated at runtime by a model.
+            A model can reliably emit HTML and a fixed set of interactive block types. It cannot emit SwiftUI views
+            that compile. That single fact decides it.
+            <span class="block mt-2 text-base-content/70">SwiftUI wins instead if you want this in the menu bar, in
+            Spotlight, in Shortcuts, and on an iPad later. Say so and I will flip.</span></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm mt-4">Queue this answer</button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ---------- Q2 ---------- -->
+    <article class="card card-border bg-base-200/40 mb-6 qcard" id="q2">
+      <div class="card-body gap-4">
+        <div class="flex items-start gap-3 flex-wrap">
+          <span class="badge badge-primary">Q2</span>
+          <h3 class="card-title text-xl flex-1">How the app reaches a model</h3>
+          <span class="badge badge-success badge-soft qbadge">queued</span>
+        </div>
+
+        <div class="space-y-3 text-base-content/80">
+          <p>
+            <span class="font-semibold text-base-content">The decision.</span>
+            You said "constructor harness plus model". A <span class="font-semibold">harness</span> is the program
+            that drives the model: it holds the conversation, gives the model tools, and loops until the job is done.
+            Claude Code is a harness. The raw API is not.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">Why it matters here.</span>
+            Building a good course needs the model to <em>search the web, read pages, write many files, and check
+            its own work</em>. That is agentic behaviour, and it needs a harness. Grading one multiple choice answer
+            needs none of that: one question in, one verdict out. Using a full agent for that is slow and wasteful.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">What changes downstream.</span>
+            If the app shells out to Claude Code, it inherits your logins, your skills, and web search for free, but
+            the app now depends on a CLI being installed and it is harder to show progress in a nice UI. If the app
+            calls the API directly, it is self-contained and the UI is smooth, but you must build search and file
+            tools yourself.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">A worked example.</span>
+            You type "Bayesian statistics, I know calculus, 6 weeks, I want to be able to read a paper". Option A
+            spawns <span class="font-mono text-sm">claude -p</span> in the background; it searches, finds the good
+            lecture notes, writes twelve lesson files and sixty tasks over four minutes, and the app streams its
+            progress. Option B sends one big prompt and hopes the model knows good resources from memory.
+          </p>
+        </div>
+
+        <form data-lavish-question="harness"
+          onsubmit="event.preventDefault(); qsubmit(event, 'harness', 'Q2 model access');">
+          <fieldset class="fieldset gap-2">
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="harness" class="radio radio-sm radio-primary mt-0.5" value="Split: CLI harness subprocess for construction, direct API for tutor and grading">
+              <span><span class="font-semibold">Split it</span>
+                <span class="block text-sm text-base-content/70">Construction spawns a real agent harness. Tutor and grading call the API directly. My recommendation.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="harness" class="radio radio-sm radio-primary mt-0.5" value="Direct Anthropic API only, no CLI dependency">
+              <span><span class="font-semibold">Direct API only</span>
+                <span class="block text-sm text-base-content/70">Self-contained app, no external dependency. I build search and file writing myself.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="harness" class="radio radio-sm radio-primary mt-0.5" value="Everything through a pluggable harness, including grading">
+              <span><span class="font-semibold">Everything through a harness</span>
+                <span class="block text-sm text-base-content/70">One path for all model work. Simplest mental model, slowest cheap operations.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="harness" class="radio radio-sm radio-primary mt-0.5" value="you pick">
+              <span><span class="font-semibold">You pick</span></span>
+            </label>
+          </fieldset>
+
+          <div class="alert alert-soft mt-4 text-sm">
+            <span><span class="font-semibold">Recommendation: split it.</span>
+            The two jobs have opposite shapes. Construction is rare, slow, expensive, and needs tools. Grading is
+            frequent, must feel instant, and needs none. Forcing them down one path makes one of them bad.
+            Your Settings screen then honestly offers two independent choices, which is what you asked for.
+            <span class="block mt-2 text-base-content/70">Direct-API-only wins instead if you ever want to hand this
+            app to someone who does not have Claude Code installed.</span></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm mt-4">Queue this answer</button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ---------- Q3 ---------- -->
+    <article class="card card-border bg-base-200/40 mb-6 qcard" id="q3">
+      <div class="card-body gap-4">
+        <div class="flex items-start gap-3 flex-wrap">
+          <span class="badge badge-primary">Q3</span>
+          <h3 class="card-title text-xl flex-1">Is a course a finished thing, or a living one</h3>
+          <span class="badge badge-success badge-soft qbadge">queued</span>
+        </div>
+
+        <div class="space-y-3 text-base-content/80">
+          <p>
+            <span class="font-semibold text-base-content">The decision.</span>
+            After the constructor finishes, does the course stay exactly as written until you ask for changes, or
+            does the app quietly rewrite parts of it as it learns where you struggle?
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">The gloss.</span>
+            Khan Academy is mostly the first: a fixed tree of content, and the adaptivity is in <em>which</em> bits
+            it shows you. A "living" course goes further and generates <em>new</em> content on the fly, for example
+            three extra practice problems on the exact thing you keep failing.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">What changes downstream.</span>
+            Fixed means you can read the whole course up front, trust it, and print it. Living means the course you
+            finish is not the course you started, you cannot easily review what changed, and every generation costs
+            money. But living is far better at fixing a genuine gap.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">The middle option.</span>
+            The course is fixed, but the app can <em>append</em>. When you fail the same objective three times, it
+            offers to generate a remediation block, and that block is added to the course folder as a new, clearly
+            labelled file. Nothing already written is ever silently edited.
+          </p>
+        </div>
+
+        <form data-lavish-question="liveness"
+          onsubmit="event.preventDefault(); qsubmit(event, 'liveness', 'Q3 course liveness');">
+          <fieldset class="fieldset gap-2">
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="liveness" class="radio radio-sm radio-primary mt-0.5" value="Fixed course, append-only remediation offered on repeated failure">
+              <span><span class="font-semibold">Fixed, with opt-in remediation</span>
+                <span class="block text-sm text-base-content/70">Nothing is ever silently rewritten. New material is added and labelled. My recommendation.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="liveness" class="radio radio-sm radio-primary mt-0.5" value="Fully fixed, regeneration only when I explicitly ask">
+              <span><span class="font-semibold">Fully fixed</span>
+                <span class="block text-sm text-base-content/70">The course never changes unless you ask. Predictable, cheapest, least helpful when stuck.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="liveness" class="radio radio-sm radio-primary mt-0.5" value="Fully adaptive, the tutor rewrites upcoming content based on my performance">
+              <span><span class="font-semibold">Fully living</span>
+                <span class="block text-sm text-base-content/70">Upcoming lessons rewrite themselves around your weak points. Most powerful, least predictable.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="liveness" class="radio radio-sm radio-primary mt-0.5" value="you pick">
+              <span><span class="font-semibold">You pick</span></span>
+            </label>
+          </fieldset>
+
+          <div class="alert alert-soft mt-4 text-sm">
+            <span><span class="font-semibold">Recommendation: fixed with opt-in remediation.</span>
+            A course you cannot trust to stay put is hard to plan around, and silent rewrites make it impossible to
+            tell whether you improved or the questions got easier. Append-only keeps that honesty and still gives
+            you the rescue path when you are genuinely stuck.
+            <span class="block mt-2 text-base-content/70">Fully living wins instead if you expect to abandon courses
+            halfway and want the app to fight for your attention. I do not think that is your problem.</span></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm mt-4">Queue this answer</button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ---------- Q4 ---------- -->
+    <article class="card card-border bg-base-200/40 mb-6 qcard" id="q4">
+      <div class="card-body gap-4">
+        <div class="flex items-start gap-3 flex-wrap">
+          <span class="badge badge-primary">Q4</span>
+          <h3 class="card-title text-xl flex-1">What "ramping up" actually means mechanically</h3>
+          <span class="badge badge-success badge-soft qbadge">queued</span>
+        </div>
+
+        <div class="space-y-3 text-base-content/80">
+          <p>
+            <span class="font-semibold text-base-content">The decision.</span>
+            You want tasks to get harder as you advance. There are three different machines that produce that
+            feeling, and they cost wildly different amounts to build.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">The gloss.</span>
+            <span class="font-semibold">Gating</span> means tier 3 stays locked until you pass tier 2. It is about
+            twenty lines of code.
+            <span class="font-semibold">A mastery model</span> means the app keeps a number per objective, raises it
+            when you succeed, decays it over time, and picks your next task from whichever objective is weakest.
+            That is the Khan Academy engine, and it is a real piece of software.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">What changes downstream.</span>
+            Gating is a straight line: you climb the ladder module by module. A mastery model can send you back down
+            to a tier 1 card on a topic from three weeks ago because it thinks you have forgotten it. That is more
+            effective and it is also more machinery, more places to be wrong, and it needs many more questions per
+            objective to draw from.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">The thing worth noting.</span>
+            You can build gating now and add the mastery model later <em>without throwing anything away</em>, but
+            only if the app records every single attempt with its objective and outcome from day one. That
+            recording costs almost nothing today and is impossible to reconstruct later.
+          </p>
+        </div>
+
+        <form data-lavish-question="ramp"
+          onsubmit="event.preventDefault(); qsubmit(event, 'ramp', 'Q4 progression mechanics');">
+          <fieldset class="fieldset gap-2">
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="ramp" class="radio radio-sm radio-primary mt-0.5" value="Gated ladder plus a spaced-repetition review queue, recording full attempt history for a later mastery model">
+              <span><span class="font-semibold">Gated ladder + review queue</span>
+                <span class="block text-sm text-base-content/70">Tiers unlock in order. Things you got wrong come back on a schedule. Full history recorded from day one. My recommendation.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="ramp" class="radio radio-sm radio-primary mt-0.5" value="Simple fixed sequence, no gating, I choose what to do next">
+              <span><span class="font-semibold">Just a sequence</span>
+                <span class="block text-sm text-base-content/70">The course is a list. You pick what to do. Nothing locks. Simplest possible.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="ramp" class="radio radio-sm radio-primary mt-0.5" value="Full mastery model with per-objective scores driving task selection from v1">
+              <span><span class="font-semibold">Full mastery model now</span>
+                <span class="block text-sm text-base-content/70">The app decides what you do next, every time. Most effective, biggest build.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="ramp" class="radio radio-sm radio-primary mt-0.5" value="you pick">
+              <span><span class="font-semibold">You pick</span></span>
+            </label>
+          </fieldset>
+
+          <div class="alert alert-soft mt-4 text-sm">
+            <span><span class="font-semibold">Recommendation: gated ladder plus review queue.</span>
+            A mastery model with too few questions per objective just shows you the same three cards on a timer,
+            which feels broken and teaches you the cards rather than the idea. Gating gives you the ramp you asked
+            for immediately. The review queue gives you most of the retention benefit for a fraction of the work.
+            Recording every attempt keeps the upgrade path open.
+            <span class="block mt-2 text-base-content/70">The full model wins instead if the constructor reliably
+            produces thirty-plus items per objective. We will know that after the first real course, and we can
+            revisit it then.</span></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm mt-4">Queue this answer</button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ---------- Q5 ---------- -->
+    <article class="card card-border bg-base-200/40 mb-6 qcard" id="q5">
+      <div class="card-body gap-4">
+        <div class="flex items-start gap-3 flex-wrap">
+          <span class="badge badge-primary">Q5</span>
+          <h3 class="card-title text-xl flex-1">What happens when the grader says you failed</h3>
+          <span class="badge badge-success badge-soft qbadge">queued</span>
+        </div>
+
+        <div class="space-y-3 text-base-content/80">
+          <p>
+            <span class="font-semibold text-base-content">The decision.</span>
+            You upload a week of work. A model reads it and is not impressed. What does the app do, and can you
+            argue back?
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">Why this is not a small question.</span>
+            This is the single most likely thing to make you stop using the app. A grader that is harsh, vague, or
+            wrong on a piece of work you spent six hours on is worse than no grader at all. It is also the one
+            place where the app has power over you, so it needs a way to be overruled.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">The gloss.</span>
+            A <span class="font-semibold">rubric</span> is the list of criteria the grader scores against, written
+            when the task was created. Showing it to you <em>before</em> you start turns grading from a verdict into
+            a checklist. <span class="font-semibold">Evidence quotes</span> mean the grader must quote the part of
+            your submission that earned each score, which makes a bad grade visibly bad rather than merely annoying.
+          </p>
+          <p>
+            <span class="font-semibold text-base-content">What changes downstream.</span>
+            A blocking grader needs to be right, so it needs a second opinion pass and an appeal flow. A
+            non-blocking grader is advice, so it can be wrong occasionally without damage. That decides how much
+            machinery goes around it.
+          </p>
+        </div>
+
+        <form data-lavish-question="grading"
+          onsubmit="event.preventDefault(); qsubmit(event, 'grading', 'Q5 grading and failure');">
+          <fieldset class="fieldset gap-2">
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="grading" class="radio radio-sm radio-primary mt-0.5" value="Rubric shown upfront, per-criterion score with evidence quotes, never blocks progress, dispute opens a tutor conversation">
+              <span><span class="font-semibold">Advisory grader, rubric upfront, disputable</span>
+                <span class="block text-sm text-base-content/70">You see the rubric before you start. The grade quotes your work. It never locks you out, and you can argue. My recommendation.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="grading" class="radio radio-sm radio-primary mt-0.5" value="Grader blocks progression until passed, with an appeal flow and a second-opinion regrade">
+              <span><span class="font-semibold">Blocking grader with appeals</span>
+                <span class="block text-sm text-base-content/70">A fail means you redo it. Real stakes, real pressure. Needs an appeal path to be fair.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="grading" class="radio radio-sm radio-primary mt-0.5" value="No score at all, only structured written feedback against the rubric">
+              <span><span class="font-semibold">Feedback only, no score</span>
+                <span class="block text-sm text-base-content/70">Prose critique, no number. Nothing to dispute, but nothing to track progress with either.</span></span>
+            </label>
+            <label class="flex gap-3 items-start rounded-box border border-base-content/15 p-3 cursor-pointer hover:border-primary/50">
+              <input type="radio" name="grading" class="radio radio-sm radio-primary mt-0.5" value="you pick">
+              <span><span class="font-semibold">You pick</span></span>
+            </label>
+          </fieldset>
+
+          <div class="alert alert-soft mt-4 text-sm">
+            <span><span class="font-semibold">Recommendation: advisory, rubric upfront, disputable.</span>
+            You are the only user and there is no certificate at the end, so a hard block buys you nothing and can
+            cost you the habit. The rubric being visible in advance is where most of the value sits anyway: it tells
+            you what good looks like before you start, which is most of what a good course does.
+            <span class="block mt-2 text-base-content/70">Blocking wins instead if you know from experience that you
+            skip ahead and leave things half-learned. You know that about yourself better than I do.</span></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm mt-4">Queue this answer</button>
+        </form>
+      </div>
+    </article>
+  </section>
+
+  <!-- ===================== ASSUMED ===================== -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold mb-1">Assumed unless you say otherwise</h2>
+    <p class="text-base-content/70 mb-5 max-w-3xl">
+      These are also open decisions, but each has an obvious answer, so I am taking it rather than spending one of
+      your five. Tick anything you want to reopen and I will turn it into a proper question next round.
+    </p>
+
+    <form data-lavish-question="assumptions"
+      onsubmit="event.preventDefault(); reopenSubmit(event);">
+      <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-200/40">
+        <table class="table table-sm">
+          <thead>
+            <tr><th class="w-12">Reopen</th><th>Decision</th><th>What I am assuming</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Category hierarchy"></td>
+              <td class="font-semibold">Category hierarchy</td>
+              <td class="text-base-content/75">Subject &rarr; Course &rarr; Module &rarr; Lesson &rarr; Task. Subjects are the sidebar, exactly like Figure 3.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Where files live"></td>
+              <td class="font-semibold">Where files live</td>
+              <td class="text-base-content/75">Courses as plain folders under <span class="font-mono text-xs">~/Documents/Education/AI School/courses/</span>. Progress in one SQLite file in Application Support. Content survives the app.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="API keys"></td>
+              <td class="font-semibold">API keys</td>
+              <td class="text-base-content/75">Stored in the macOS Keychain, never in a file or the database. Set up through a wizard, not by you editing a config.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Cost visibility"></td>
+              <td class="font-semibold">Cost visibility</td>
+              <td class="text-base-content/75">Every model call records tokens and cost. Course construction shows a running total and has a hard spend ceiling you set before it starts.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Offline behaviour"></td>
+              <td class="font-semibold">Offline behaviour</td>
+              <td class="text-base-content/75">Reading, tier 1, tier 2, and the review queue all work with no network. Only construction, tutor, and grading need it.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Lesson content format"></td>
+              <td class="font-semibold">Lesson content format</td>
+              <td class="text-base-content/75">Markdown plus a fixed set of interactive blocks the app knows how to render. The model picks from that set. It never writes raw JavaScript that the app runs.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Resources"></td>
+              <td class="font-semibold">Resources</td>
+              <td class="text-base-content/75">Link, title, type, and one line on why it is worth your time. No scraping, no local copies, in version one.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Out of scope"></td>
+              <td class="font-semibold">Out of scope</td>
+              <td class="text-base-content/75">No accounts, no sync, no sharing courses, no mobile, no iPad. One user, one Mac.</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox checkbox-sm" name="reopen" value="Verification"></td>
+              <td class="font-semibold">How we prove it works</td>
+              <td class="text-base-content/75">The course file format and the grader contract get tests written before any code exists, per serious mode. A hand-written example course is the fixture.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button type="submit" class="btn btn-sm btn-outline">Reopen the ticked ones</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-lavish-action
+          onclick="window.lavish.queuePrompt('All assumptions accepted as written.', {tag:'assumptions', text:'Accept all assumptions'})">
+          Accept all as written
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===================== FREE TEXT ===================== -->
+  <section class="mb-12">
+    <h2 class="text-2xl font-bold mb-1">Anything I have not asked about</h2>
+    <p class="text-base-content/70 mb-4 max-w-3xl">
+      Things I would find useful: a topic you actually want to learn first, how you study now and what fails about
+      it, and whether there is a feature from Brilliant or Khan you specifically want.
+    </p>
+    <form data-lavish-question="freeform"
+      onsubmit="event.preventDefault(); freeSubmit(event);">
+      <textarea name="note" class="textarea textarea-bordered w-full min-h-40" placeholder="Type anything."></textarea>
+      <button type="submit" class="btn btn-sm btn-primary mt-3">Queue this note</button>
+    </form>
+  </section>
+
+  <!-- ===================== NEXT ===================== -->
+  <section>
+    <div class="card card-border bg-base-200/40">
+      <div class="card-body">
+        <h2 class="card-title text-lg">What happens after you send</h2>
+        <ul class="steps steps-vertical lg:steps-horizontal w-full mt-2">
+          <li class="step step-primary">You answer</li>
+          <li class="step">I run round 2 on whatever your answers unlocked</li>
+          <li class="step">Fable writes the implementation plan</li>
+          <li class="step">Tests first, then code</li>
+        </ul>
+        <p class="text-sm text-base-content/70 mt-4">
+          Round 2 exists because several angles cannot be asked yet. What the app does when the constructor crashes
+          halfway through a course depends on Q2. What a course file looks like depends on Q1 and Q3. Those wait.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  function mark(el) {
+    const card = el.closest('.qcard');
+    if (card) card.dataset.answered = 'yes';
+    el.classList.add('queued');
+  }
+  function qsubmit(event, name, label) {
+    const form = event.currentTarget;
+    const choice = new FormData(form).get(name);
+    if (!choice) return;
+    window.lavish.queuePrompt(label + ' answer: ' + choice, {
+      tag: 'decision',
+      text: label + ': ' + choice,
+      element: form,
+      queueKey: name,
+      data: { question: name, answer: choice }
+    });
+    mark(form);
+  }
+  function reopenSubmit(event) {
+    const form = event.currentTarget;
+    const picked = [...new FormData(form).getAll('reopen')];
+    const msg = picked.length
+      ? 'Reopen these assumptions as real questions next round: ' + picked.join('; ')
+      : 'All assumptions accepted as written.';
+    window.lavish.queuePrompt(msg, {
+      tag: 'assumptions',
+      text: picked.length ? 'Reopen: ' + picked.join(', ') : 'Accept all assumptions',
+      element: form, queueKey: 'assumptions', data: { reopen: picked }
+    });
+    mark(form);
+  }
+  function freeSubmit(event) {
+    const form = event.currentTarget;
+    const note = (new FormData(form).get('note') || '').toString().trim();
+    if (!note) return;
+    window.lavish.queuePrompt('Additional context from Victor: ' + note, {
+      tag: 'note', text: 'Note: ' + note.slice(0, 80), element: form, queueKey: 'freeform'
+    });
+    mark(form);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "id": "tsk-name-the-rule",
+  "objective": "obj-backprop",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "ordering",
+  "prompt": "Put the backward pass in the order it runs.",
+  "items": ["loss", "output layer", "activation", "hidden layer"],
+  "answer": [0, 1, 2, 3],
+  "explanation": "Backprop walks from the loss back toward the input, one step at a time."
+}

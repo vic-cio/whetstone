@@ -1,0 +1,6 @@
+{
+  "id": "tst-backprop",
+  "title": "Backprop end to end",
+  "module": "mod-3",
+  "tasks": ["tsk-name-the-rule", "tsk-write-backward", "tsk-two-layer-writeup"]
+}

@@ -1,0 +1,12 @@
+<div id="root"></div>
+<script>
+  const curve = (x) => Math.sin(3 * x * x)
+  const slope = (x) => 6 * x * Math.cos(3 * x * x)
+  const view = Kit.plot({ mount: '#root', fn: curve, domain: [-1.2, 1.2] })
+  const at = Kit.slider({ mount: '#root', label: 'x', min: -1.2, max: 1.2, value: 0.4 })
+  at.onChange((x) => {
+    view.mark(x, curve(x))
+    view.readout('slope ' + slope(x).toFixed(3))
+  })
+  Kit.ready()
+</script>

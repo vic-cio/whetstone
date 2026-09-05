@@ -1,0 +1,16 @@
+[
+  {
+    "id": "res-3b1b-chain-rule",
+    "url": "https://www.3blue1brown.com/lessons/chain-rule-and-product-rule",
+    "title": "Visualizing the chain rule and product rule",
+    "type": "video",
+    "why": "Shows the chain rule as nested rates of change rather than a formula to memorise."
+  },
+  {
+    "id": "res-nielsen-backprop",
+    "url": "http://neuralnetworksanddeeplearning.com/chap2.html",
+    "title": "How the backpropagation algorithm works",
+    "type": "article",
+    "why": "Derives the four backprop equations slowly, which is the same route this course takes."
+  }
+]

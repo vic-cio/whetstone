@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whetstone design reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Archivo:wdth,wght@75..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(img, svg) { max-width: 100%; height: auto; }
+
+  :root {
+    --paper: #f5f4f1; --surface: #fffefb; --ink: #16150f; --muted: #6b675c;
+    --line: #d9d5cb; --frame: #16150f; --amber: #c2410c; --on-amber: #fffefb;
+    --rail: #23211c; --rail-ink: #e9e6de; --rail-muted: #8d887b; --rail-line: #34312a;
+    --d1: #fde9c8; --d2: #f7c873; --d3: #e89b25; --d4: #c2410c; --d5: #7c2d12;
+    --on-d-light: #16150f; --on-d-dark: #fffefb;
+    --pass: #15803d; --fail: #b91c1c;
+    --said-bg: #edebe4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper:#100f0d; --surface:#171613; --ink:#eae7df; --muted:#928d80;
+      --line:#2c2a25; --frame:#3a372f; --rail:#0b0b09; --rail-line:#262420; --said-bg:#201f1b; }
+  }
+  html { color-scheme: light dark; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.55 "Inter Tight", system-ui, sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:0 22px 90px; }
+
+  .label { font-family:"IBM Plex Mono",monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.13em; color:var(--muted); }
+  .top { border-bottom:2px solid var(--ink); padding:26px 0 14px; margin-bottom:26px; }
+  h1 { font-family:Archivo,sans-serif; font-variation-settings:"wdth" 85; font-weight:800; font-size:clamp(30px,5vw,54px); line-height:.95; letter-spacing:-0.035em; margin:0 0 10px; text-transform:uppercase; }
+  h2 { font-family:Archivo,sans-serif; font-variation-settings:"wdth" 88; font-weight:700; text-transform:uppercase; font-size:22px; letter-spacing:-0.015em; margin:0; }
+  .h2row { display:flex; align-items:baseline; gap:14px; border-bottom:2px solid var(--ink); padding-bottom:8px; margin:48px 0 18px; }
+  p { max-width:74ch; }
+  .lede { color:var(--muted); max-width:70ch; font-size:16px; margin:0; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th,td { text-align:left; padding:7px 10px 7px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:500; }
+  .sw { display:inline-block; width:34px; height:14px; border:1px solid var(--line); vertical-align:-2px; margin-right:7px; }
+  code { font-family:"IBM Plex Mono",monospace; font-size:12px; }
+  .scroll { overflow-x:auto; }
+  .mock-label { font-family:"IBM Plex Mono",monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.13em; color:var(--muted); margin:30px 0 6px; }
+  .note { font-size:14px; color:var(--muted); max-width:74ch; margin:8px 0 0; }
+
+  .win { background:var(--surface); color:var(--ink); border:1px solid var(--frame);
+         display:grid; font-size:12.5px; line-height:1.45; overflow:hidden; }
+  .win.nav   { grid-template-columns:186px minmax(0,1fr); }
+  .win.study { grid-template-columns:186px minmax(0,1fr) 210px; }
+  .win.wide  { grid-template-columns:34px minmax(0,1fr) 34px; }
+  @media (max-width:900px){ .win.study{grid-template-columns:170px minmax(0,1fr);} .tutor{display:none;} }
+  @media (max-width:580px){ .win{grid-template-columns:minmax(0,1fr)!important;} .rail,.stub{display:none;} }
+
+  .rail { background:var(--rail); color:var(--rail-ink); padding:14px 0; display:grid; align-content:start; gap:1px; }
+  .rail .brand { font-family:Archivo,sans-serif; font-variation-settings:"wdth" 82; font-weight:800; text-transform:uppercase; letter-spacing:-0.02em; font-size:15px; padding:0 12px 12px; margin-bottom:4px; border-bottom:1px solid var(--rail-line); }
+  .rail .rlabel { font-family:"IBM Plex Mono",monospace; font-size:9.5px; text-transform:uppercase; letter-spacing:.14em; color:var(--rail-muted); padding:0 12px; margin:13px 0 5px; }
+  .rail a { display:block; padding:4px 12px; color:var(--rail-ink); text-decoration:none; border-left:2px solid transparent; }
+  .rail a.sub { color:var(--rail-muted); }
+  .rail a.on { border-left-color:var(--amber); color:#fff; font-weight:600; background:#ffffff0a; }
+  .rail .back { font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--rail-muted); padding:0 12px 11px; margin-bottom:5px; border-bottom:1px solid var(--rail-line); }
+  .rail .foot { margin-top:14px; padding:11px 12px 0; border-top:1px solid var(--rail-line); }
+  .rail .foot a { padding:3px 0; }
+  .rail .foot a.hi { color:#fff; font-weight:600; }
+  .rail a .tt { font-family:"IBM Plex Mono",monospace; font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--rail-muted); margin-left:7px; vertical-align:1px; }
+  .rail a.on .tt { color:var(--amber); }
+
+  .stub { background:var(--rail); display:grid; align-content:start; justify-items:center; padding:14px 0; gap:10px; }
+  .stub b { color:var(--rail-ink); font-size:13px; font-weight:400; }
+  .stub span { font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--rail-muted); writing-mode:vertical-rl; letter-spacing:.16em; text-transform:uppercase; }
+
+  .body { padding:16px 20px; display:grid; align-content:start; gap:12px; }
+  .tutor { border-left:1px solid var(--frame); padding:14px 12px; display:grid; align-content:start; gap:8px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .between { justify-content:space-between; }
+  .head { border-bottom:1px solid var(--frame); padding-bottom:8px; }
+  .title { font-family:Archivo,sans-serif; font-variation-settings:"wdth" 85; font-weight:700; text-transform:uppercase; letter-spacing:-0.03em; font-size:26px; line-height:1.05; margin:0; }
+  .sub { color:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.04em; margin:3px 0 0; }
+  .btn { font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; padding:6px 12px; background:var(--amber); color:var(--on-amber); border:0; }
+  .btn.q { background:transparent; color:var(--muted); border:1px solid var(--line); }
+
+  .tick { width:13px; height:13px; border:1px solid var(--muted); display:inline-grid; place-items:center; font-size:9px; line-height:1; color:transparent; }
+  .tick.on { background:var(--amber); border-color:var(--amber); color:var(--on-amber); }
+
+  .crow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px; align-items:baseline; padding:12px 0; border-bottom:1px solid var(--line); }
+  .crow b { font-family:Archivo,sans-serif; font-variation-settings:"wdth" 88; font-weight:700; text-transform:uppercase; letter-spacing:-0.02em; font-size:17px; display:block; }
+  .crow small { color:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.04em; }
+  .crow .cnt { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); white-space:nowrap; }
+
+  .mod { margin-top:8px; }
+  .mh { font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.13em; color:var(--muted); padding-bottom:5px; border-bottom:1px solid var(--frame); }
+  .ptype { font-family:"IBM Plex Mono",monospace; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .lrow2 { display:grid; grid-template-columns:14px minmax(0,1fr) auto; gap:11px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); }
+  .lrow2 small { color:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.04em; }
+  .chip { font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:2px 7px; white-space:nowrap; }
+  .chip.k { border:1px solid var(--line); color:var(--muted); }
+  .ladder { display:flex; margin:6px 0; }
+  .ladder span { font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 7px; border-right:1px solid var(--surface); }
+  .ladder span:last-child { border-right:0; }
+  .ladder span.off { background:transparent; border:1px dashed var(--line); color:var(--muted); }
+
+  .prose { max-width:60ch; font-size:13.5px; line-height:1.62; }
+  .prose p { margin:0 0 10px; max-width:none; }
+  .pull { border-left:2px solid var(--amber); padding:6px 0 6px 12px; margin:10px 0; font-size:13px; }
+  .panel { padding:0 0 12px; }
+  .panel + .panel { border-top:1px solid var(--line); padding-top:12px; }
+  .opt { display:grid; grid-template-columns:14px minmax(0,1fr); gap:9px; align-items:center; padding:5px 8px; border:1px solid var(--line); margin-bottom:4px; }
+  .opt i { width:11px; height:11px; border:1.5px solid var(--muted); display:block; }
+  .opt.pick { border-color:var(--amber); }
+  .opt.pick i { border-color:var(--amber); background:var(--amber); }
+  .vd { border:1px solid var(--line); border-left:3px solid var(--vdc,var(--pass)); padding:7px 10px; font-size:11.5px; display:grid; gap:3px; }
+  .vd b { font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--vdc,var(--pass)); }
+  .bubble { border:1px solid var(--line); padding:7px 9px; font-size:11.5px; background:var(--said-bg); }
+  .bubble.me { border-color:var(--frame); background:var(--surface); }
+  .shot { display:block; height:42px; border:1px solid var(--line); background:repeating-linear-gradient(45deg,var(--line) 0 6px,transparent 6px 12px); margin:-2px -4px 6px; font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--muted); padding:2px 4px; }
+  .tcompose { border:1px solid var(--frame); padding:7px 9px; display:flex; justify-content:space-between; gap:8px; align-items:center; color:var(--muted); font-size:11.5px; margin-top:2px; }
+  .tclip { font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.06em; white-space:nowrap; }
+
+  .composer { border:1px solid var(--frame); padding:10px 12px; display:grid; gap:9px; }
+  .composer .ph { color:var(--muted); font-size:12.5px; }
+  .attach { display:flex; flex-wrap:wrap; gap:6px; }
+  .att { font-family:"IBM Plex Mono",monospace; font-size:10px; border:1px solid var(--line); padding:3px 7px; color:var(--muted); }
+
+  .feed { display:grid; }
+  .ev { display:grid; grid-template-columns:74px minmax(0,1fr); gap:12px; padding:7px 0; border-bottom:1px solid var(--line); align-items:baseline; }
+  .ev time { font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.08em; color:var(--muted); }
+  .ev .said { color:var(--muted); }
+  .ev.now b::after { content:""; display:inline-block; width:5px; height:5px; background:var(--amber); margin-left:7px; vertical-align:middle; }
+  .disclosure { margin-top:10px; font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); border-top:1px solid var(--line); padding-top:8px; }
+  .tree { font-family:"IBM Plex Mono",monospace; font-size:10.5px; line-height:1.75; color:var(--muted); }
+  .tree b { color:var(--ink); font-weight:500; }
+
+  /* toolkit catalogue */
+  .kit { display:grid; grid-template-columns:repeat(auto-fit,minmax(258px,1fr)); gap:0; border-top:1px solid var(--frame); }
+  .kitem { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:14px 16px; display:grid; align-content:start; gap:8px; background:var(--surface); }
+  .kitem h4 { margin:0; font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.13em; color:var(--muted); font-weight:500; }
+  .kitem p { margin:0; font-size:12.5px; max-width:none; }
+  .demo { border:1px solid var(--line); padding:10px; display:grid; gap:7px; min-height:74px; align-content:center; }
+  .kslider { height:3px; background:var(--line); position:relative; }
+  .kslider i { position:absolute; left:0; top:0; height:100%; width:62%; background:var(--amber); }
+  .kslider b { position:absolute; left:62%; top:-4px; width:11px; height:11px; background:var(--amber); margin-left:-5px; }
+  .kmono { font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--muted); letter-spacing:.05em; }
+  .ktok { display:flex; flex-wrap:wrap; gap:5px; }
+  .ktok span { font-family:"IBM Plex Mono",monospace; font-size:10px; border:1px solid var(--frame); padding:3px 7px; }
+  .kslot { display:flex; gap:5px; }
+  .kslot i { flex:1; height:22px; border:1px dashed var(--muted); display:block; }
+  .kslot i.full { border:1px solid var(--amber); background:color-mix(in srgb, var(--amber) 14%, transparent); }
+  .kbtn { font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; padding:5px 10px; background:var(--amber); color:var(--on-amber); justify-self:start; }
+  .kass { display:grid; gap:3px; font-family:"IBM Plex Mono",monospace; font-size:10px; }
+  .kass span::before { content:"✓ "; color:var(--pass); }
+  .kass span.f::before { content:"✗ "; color:var(--fail); }
+  .kstep { display:flex; gap:4px; align-items:center; }
+  .kstep i { width:20px; height:3px; background:var(--line); display:block; }
+  .kstep i.on { background:var(--amber); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <p class="label">Whetstone · design reference · revised 2026-09-05</p>
+    <h1>01 Press</h1>
+    <p class="lede">Navigation, not a dashboard. Nothing measures the student. The only progress the app keeps is a tick beside each Lesson, and the sidebar carries the whole navigation model.</p>
+  </div>
+
+  <div class="h2row"><h2>What changed</h2><span class="label">this round</span></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Was</th><th>Now</th></tr></thead>
+    <tbody>
+      <tr><td>A dashboard with outstanding work, objective standing, and a weekly panel of counters</td><td>A home page that is a course library and nothing else</td></tr>
+      <tr><td>Attempts, spend, known-already and missed counts in a side panel</td><td>Gone. No counters anywhere, and no spend. That is checked at the provider</td></tr>
+      <tr><td>An "I know this" button in the Lesson header</td><td>A tickbox on the course page. It ticks itself when you finish a Lesson, and you can tick it yourself if you already knew the material</td></tr>
+      <tr><td>Two fixed side columns</td><td>Both collapse. Lessons on the left, Tutor on the right</td></tr>
+      <tr><td>A sidebar listing every Course and every Lesson at once</td><td>One level at a time. Courses at home, Modules and Lessons inside a Course, with a way back at the top</td></tr>
+      <tr><td>New course started from a form</td><td>New course starts as a conversation you can attach material to, and only then goes to the build screen</td></tr>
+      <tr><td>Subjects grouped the sidebar, and ticks appeared in it</td><td>The home rail is a flat list of Courses. Ticks live only on the course page</td></tr>
+      <tr><td>One page type, with recorded Tasks interleaved through the prose</td><td>Two. A <b>Lesson</b> is read, and may ask unrecorded questions. A <b>Test</b> holds the recorded Tasks</td></tr>
+      <tr><td>A text-only Tutor</td><td>The Tutor takes files, images, and pasted screenshots, so handwritten working and drawn diagrams can be shown to it</td></tr>
+      <tr><td>Subtext explaining the interface to itself</td><td>Gone. A heading that repeats the screen you are on, a label naming its own icons, and a chip restating a rule are all removed</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="mock-label">Home. The course library</p>
+  <div class="win nav" id="ref-home">
+    <div class="rail">
+      <div class="brand">Whetstone</div>
+      <a class="sub">Gradients by hand</a>
+      <a class="sub">Attention from scratch</a>
+      <a class="sub">Harmony basics</a>
+      <a class="sub">Hand-cut joinery</a>
+      <div class="foot"><a class="hi">+ New course</a><a class="sub">Settings</a></div>
+    </div>
+    <div class="body">
+      <div class="row between head">
+        <div><p class="title">Courses</p></div>
+        <span class="btn">New course</span>
+      </div>
+      <div>
+        <div class="crow"><div><b>Gradients by hand</b><small>Machine learning · 3 modules</small></div><span class="cnt">4 of 8 pages</span></div>
+        <div class="crow"><div><b>Attention from scratch</b><small>Machine learning · 3 modules</small></div><span class="cnt">0 of 12 pages</span></div>
+        <div class="crow"><div><b>Harmony basics</b><small>Music · 2 modules</small></div><span class="cnt">9 of 9 pages</span></div>
+        <div class="crow"><div><b>Hand-cut joinery</b><small>Woodwork · 4 modules</small></div><span class="cnt">2 of 19 pages</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">The figure is a count, not a score. It counts Pages, Lessons and Tests together, and says how much of a Course you have been through. It is the only thing the app claims to know.</p>
+
+  <p class="mock-label">A course. The sidebar has swapped to this course's contents</p>
+  <div class="win nav" id="ref-course">
+    <div class="rail">
+      <div class="back">← All courses</div>
+      <div class="rlabel" style="margin-top:0">01 Derivatives refresher</div>
+      <a class="sub">What a derivative measures</a>
+      <a class="sub">Rules you will reuse</a>
+      <a class="sub">Derivatives<span class="tt">test</span></a>
+      <div class="rlabel">02 The chain rule</div>
+      <a class="sub">The chain rule</a>
+      <a class="sub">Composed functions</a>
+      <a class="sub">The chain rule<span class="tt">test</span></a>
+      <div class="rlabel">03 Backprop by hand</div>
+      <a class="sub">One layer at a time</a>
+      <div class="foot"><a class="sub">Review session</a></div>
+    </div>
+    <div class="body">
+      <div class="row between head">
+        <div><p class="title">Gradients by hand</p><p class="sub">4 of 8 pages · 3 modules</p></div>
+        <span class="btn q">Review session</span>
+      </div>
+      <div class="prose"><p>Work out gradients on paper before letting a framework do it, so that when training misbehaves you can tell what the numbers are doing.</p></div>
+      <div class="ladder">
+        <span style="background:var(--d1);color:var(--on-d-light)">recall</span>
+        <span style="background:var(--d2);color:var(--on-d-light)">apply</span>
+        <span style="background:var(--d3);color:var(--on-d-light)">construct</span>
+        <span style="background:var(--d4);color:var(--on-d-dark)">transfer</span>
+        <span class="off">project</span>
+      </div>
+      <div class="mod">
+        <div class="mh">01 Derivatives refresher</div>
+        <div class="lrow2"><span class="tick on">✓</span><div><span class="ptype">Lesson</span> What a derivative measures</div><span class="chip k">6 min</span></div>
+        <div class="lrow2"><span class="tick on">✓</span><div><span class="ptype">Lesson</span> Rules you will reuse<br><small>has an activity</small></div><span class="chip k">9 min</span></div>
+        <div class="lrow2"><span class="tick on">✓</span><div><span class="ptype">Test</span> Derivatives<br><small>8 tasks</small></div><span class="row" style="gap:3px"><span class="chip" style="background:var(--d1);color:var(--on-d-light)">recall</span><span class="chip" style="background:var(--d2);color:var(--on-d-light)">apply</span><span class="chip k">⚡</span></span></div>
+      </div>
+      <div class="mod">
+        <div class="mh">02 The chain rule</div>
+        <div class="lrow2"><span class="tick on">✓</span><div><span class="ptype">Lesson</span> The chain rule</div><span class="chip k">8 min</span></div>
+        <div class="lrow2"><span class="tick"></span><div><span class="ptype">Lesson</span> Composed functions<br><small>has an activity</small></div><span class="chip k">11 min</span></div>
+        <div class="lrow2"><span class="tick"></span><div><span class="ptype">Test</span> The chain rule<br><small>12 tasks</small></div><span class="row" style="gap:3px"><span class="chip" style="background:var(--d2);color:var(--on-d-light)">apply</span><span class="chip" style="background:var(--d4);color:var(--on-d-dark)">transfer</span><span class="chip k">⚡</span></span></div>
+      </div>
+      <div class="mod">
+        <div class="mh">03 Backprop by hand</div>
+        <div class="lrow2"><span class="tick"></span><div><span class="ptype">Lesson</span> One layer at a time<br><small>has an activity</small></div><span class="chip k">14 min</span></div>
+        <div class="lrow2"><span class="tick"></span><div><span class="ptype">Test</span> Backprop end to end<br><small>9 tasks</small></div><span class="row" style="gap:3px"><span class="chip" style="background:var(--d3);color:var(--on-d-light)">construct</span><span class="chip" style="background:var(--d4);color:var(--on-d-dark)">transfer</span><span class="chip k">✦ 1</span></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">Ticks are the whole progress model. A Lesson ticks itself when you reach the end of it. You can tick one yourself if you already know the material, and untick it if you were wrong. There is no other record you can see.</p>
+
+  <p class="mock-label">A lesson, with both side panels open</p>
+  <div class="win study" id="ref-lesson">
+    <div class="rail">
+      <div class="back">← All courses</div>
+      <div class="rlabel" style="margin-top:0">02 The chain rule</div>
+      <a class="on">The chain rule</a>
+      <a class="sub">Composed functions</a>
+      <a class="sub">The chain rule<span class="tt">test</span></a>
+      <div class="rlabel">03 Backprop by hand</div>
+      <a class="sub">One layer at a time</a>
+      <a class="sub">Backprop end to end<span class="tt">test</span></a>
+    </div>
+    <div class="body">
+      <div class="head">
+        <p class="title">The chain rule</p><p class="sub">Module 02 / 8 min</p>
+      </div>
+      <div class="prose">
+        <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+        <div class="pull"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:7px"><span class="ptype">Try it</span></div>
+        <p style="margin:0 0 7px;font-weight:600">Differentiate f(x) = sin(3x²).</p>
+        <div class="opt pick"><i></i>6x cos(3x²)</div>
+        <div class="opt"><i></i>cos(3x²)</div>
+        <div class="opt"><i></i>6x sin(3x²)</div>
+        <div class="vd" style="margin-top:7px"><b>That's it</b><span>Outer derivative cos(3x²), inner derivative 6x, multiplied.</span></div>
+      </div>
+      <div class="prose"><p>Each layer contributes one factor. Multiply the factors and you have the gradient for the whole composition.</p></div>
+    </div>
+    <div class="tutor">
+      <div class="row between"><span class="label">Tutor</span><span class="label">✕</span></div>
+      <div class="bubble me">Why is the inner derivative 6x?</div>
+      <div class="bubble">Because the inside is 3x². Its derivative is 3 · 2x = 6x. The chain rule multiplies that by the outer derivative.</div>
+      <div class="bubble me"><span class="shot">working.jpg</span>Is my third line wrong?</div>
+      <div class="bubble">Line three drops the inner derivative. You wrote cos(3x²) where it should be 6x · cos(3x²).</div>
+      <div class="tcompose"><span>Ask, or drop in a photo…</span><span class="tclip">＋ ⌘V</span></div>
+    </div>
+  </div>
+  <p class="note">A Lesson can still ask you things. A <b>Try it</b> question answers immediately and never becomes an Attempt. The Tutor takes files, images, and a pasted screenshot, so a photo of your working on paper is a normal thing to send it. The panel is closed until you open it, and opening it is what starts a conversation.</p>
+
+  <p class="mock-label">The same lesson with both panels collapsed</p>
+  <div class="win wide" id="ref-wide">
+    <div class="stub"><b>☰</b><span>Lessons</span></div>
+    <div class="body">
+      <div class="head">
+        <p class="title">The chain rule</p><p class="sub">Module 02 / 8 min</p>
+      </div>
+      <div class="prose" style="max-width:66ch">
+        <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+        <div class="pull"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+        <p>Each layer contributes one factor. Multiply the factors and you have the gradient for the whole composition, which is what backpropagation walks backwards to collect.</p>
+      </div>
+    </div>
+    <div class="stub"><b>◨</b><span>Tutor</span></div>
+  </div>
+  <p class="note">Each panel collapses to a stub you click to bring it back. The state is remembered per Course, so one you read straight through stays wide.</p>
+
+  <p class="mock-label">A test. The same course, in a different mode</p>
+  <div class="win study" id="ref-test">
+    <div class="rail">
+      <div class="back">← All courses</div>
+      <div class="rlabel" style="margin-top:0">02 The chain rule</div>
+      <a class="sub">The chain rule</a>
+      <a class="sub">Composed functions</a>
+      <a class="on">The chain rule<span class="tt">test</span></a>
+      <div class="rlabel">03 Backprop by hand</div>
+      <a class="sub">One layer at a time</a>
+      <a class="sub">Backprop end to end<span class="tt">test</span></a>
+    </div>
+    <div class="body">
+      <div class="head">
+        <p class="title">The chain rule</p><p class="sub">Test / 12 tasks</p>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:7px"><span class="ptype">04 / 12</span><span class="chip" style="background:var(--d2);color:var(--on-d-light)">apply</span><span class="chip k">⚡ instant</span></div>
+        <p style="margin:0 0 7px;font-weight:600">Differentiate g(x) = e^(2x² − 1).</p>
+        <div class="opt pick"><i></i>4x · e^(2x² − 1)</div>
+        <div class="opt"><i></i>e^(2x² − 1)</div>
+        <div class="opt"><i></i>4x · e^(4x)</div>
+        <div class="vd" style="margin-top:7px"><b>Correct</b><span>Outer derivative is the exponential itself, inner derivative is 4x.</span></div>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:7px"><span class="ptype">05 / 12</span><span class="chip" style="background:var(--d4);color:var(--on-d-dark)">transfer</span><span class="chip k">⚡ instant</span></div>
+        <p style="margin:0 0 7px;font-weight:600">Drag each factor onto the layer it comes from.</p>
+        <div class="vd" style="--vdc:var(--fail)"><b>Not yet</b><span>Two of four placed. The activation derivative belongs to the hidden layer, not the output.</span><span class="sub" style="margin:0">Try again · Ask the tutor · Report a broken task</span></div>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:7px"><span class="ptype">06 / 12</span><span class="chip" style="background:var(--d3);color:var(--on-d-light)">construct</span><span class="chip k">⚡ instant</span></div>
+        <p style="margin:0 0 7px;font-weight:600">Write <code>backward()</code> so the three assertions below pass.</p>
+        <div class="vd"><b>3 of 3 assertions pass</b><span>Shapes match and the gradient agrees with the numeric check.</span></div>
+      </div>
+    </div>
+    <div class="tutor">
+      <div class="row between"><span class="label">Tutor</span><span class="label">✕</span></div>
+      <div class="bubble me"><span class="shot">whiteboard.png</span>Here's my working. Where does it go wrong?</div>
+      <div class="bubble">Your chain is right until the third factor, where the activation derivative is attached to the output layer instead of the hidden one.</div>
+      <div class="tcompose"><span>Ask, or drop in a photo…</span><span class="tclip">＋ ⌘V</span></div>
+    </div>
+  </div>
+  <p class="note">A Test is the same reader in a different mode. Tasks are numbered, answers are recorded as Attempts, and a wrong one offers another go, the Tutor, or a defect report. Nothing is timed and nothing is locked, so a Test is a place to find out what you can do rather than a gate.</p>
+
+  <p class="mock-label">New course. A conversation first, with material attached</p>
+  <div class="win nav" id="ref-new">
+    <div class="rail">
+      <div class="back">← All courses</div>
+      <div class="rlabel" style="margin-top:0">New course</div>
+      <a class="on">Brief</a>
+      <a class="sub">Build</a>
+    </div>
+    <div class="body">
+      <div class="head"><p class="title">What do you want to learn?</p></div>
+      <div class="bubble">Tell me the topic, what you want to be able to do at the end, and anything you already know. Attach notes, a syllabus, or a paper if you have one.</div>
+      <div class="bubble me">Attention mechanisms, from the original paper up to implementing one. I know linear algebra and basic autograd already.</div>
+      <div class="bubble">Two things. Do you want to write code as part of this, and should I cover what came before 2017 or start at the paper?</div>
+      <div class="bubble me">Code yes. Start at the paper.</div>
+      <div class="composer">
+        <span class="ph">Add anything else, or start building…</span>
+        <div class="attach">
+          <span class="att">attention-is-all-you-need.pdf</span>
+          <span class="att">my-notes.md</span>
+          <span class="att">+ attach</span>
+        </div>
+      </div>
+      <div class="row between">
+        <span class="sub">Claude Code / claude-opus-5 · change</span>
+        <span class="btn">Build the course</span>
+      </div>
+    </div>
+  </div>
+  <p class="note">The Constructor asks before it builds, so the brief is a conversation rather than a form. Attached material is copied into the staging folder and cited in Resources. The harness and model sit on one quiet line, because this is the one screen where that choice matters.</p>
+
+  <p class="mock-label">Building. An activity feed in the app's own words, never a terminal</p>
+  <div class="win nav" id="ref-run">
+    <div class="rail">
+      <div class="back">← All courses</div>
+      <div class="rlabel" style="margin-top:0">New course</div>
+      <a class="sub">Brief</a>
+      <a class="on">Build</a>
+    </div>
+    <div class="body">
+      <div class="row between head">
+        <div><p class="title">Attention from scratch</p></div>
+        <span class="btn q">Cancel</span>
+      </div>
+      <div class="row" style="gap:24px;align-items:flex-start">
+        <div style="flex:2 1 320px">
+          <div class="feed">
+            <div class="ev"><time>14:22:07</time><div><b>Researching</b> <span class="said">the paper you attached and two course syllabi</span></div></div>
+            <div class="ev"><time>14:22:19</time><div><b>Chose a four-rung ladder</b> <span class="said">recall to transfer. Project depth left out, the scope does not warrant it</span></div></div>
+            <div class="ev"><time>14:22:24</time><div><b>Wrote the outline</b> <span class="said">3 modules, 7 objectives</span></div></div>
+            <div class="ev"><time>14:22:44</time><div><b>Wrote lesson 2</b> <span class="said">Queries, keys, and values</span></div></div>
+            <div class="ev"><time>14:23:03</time><div><b>Built an activity</b> <span class="said">an attention heatmap you can drag, with its own checks</span></div></div>
+            <div class="ev now"><time>14:23:04</time><div><b>Writing tasks</b> <span class="said">transfer depth, answered offline</span></div></div>
+          </div>
+          <div class="disclosure">▸ Technical log</div>
+        </div>
+        <div style="flex:1 1 190px">
+          <div class="label">Staging</div>
+          <div class="tree">
+            <div><b>course.json</b></div>
+            <div>lessons/</div>
+            <div>&nbsp;&nbsp;<b>les-1.md</b></div>
+            <div>&nbsp;&nbsp;<b>les-2.md</b></div>
+            <div>tasks/</div>
+            <div>&nbsp;&nbsp;<b>task-a.json</b></div>
+            <div>apps/</div>
+            <div>&nbsp;&nbsp;<b>attn-heatmap/</b></div>
+            <div>resources.json <span style="opacity:.5">pending</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="h2row"><h2>Navigation</h2><span class="label">one level at a time</span></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Where you are</th><th>The sidebar holds</th><th>The main column holds</th></tr></thead>
+    <tbody>
+      <tr><td>Home</td><td>Course titles, flat, then New course and Settings</td><td>The course library, with a pages-done count per Course</td></tr>
+      <tr><td>A Course</td><td>Back to all courses, then this Course's Modules and their Pages. No ticks here</td><td>The summary, the Ladder, and every Module with its Lessons</td></tr>
+      <tr><td>A Lesson</td><td>The same Course contents, collapsible</td><td>A Lesson to read, or a Test to work through</td></tr>
+      <tr><td>New course</td><td>Back, then Brief and Build</td><td>The conversation, then the build feed</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">There is no third level and no breadcrumb. The sidebar shows one context, and the line at the top returns to the one above it.</p>
+
+  <div class="h2row"><h2>The toolkit</h2><span class="label">what every activity is built from</span></div>
+  <p>A Mini-app never writes its own buttons, colours, or message plumbing. The host injects one toolkit into every sandboxed frame, and the Constructor is told to build from it. That is what keeps a hand-cut joinery course and a machine learning course feeling like the same product, and it is the reason a Course can be interactive without each one inventing a look.</p>
+  <p>The toolkit is pinned per Course. A copy lives in the Course folder and the host injects that copy, so a Course behaves the same on another machine and a newer app never silently changes how a built Course works.</p>
+  <div class="kit">
+    <div class="kitem">
+      <h4>Kit.slider</h4>
+      <div class="demo"><div class="kslider"><i></i><b></b></div><div class="kmono">learning rate 0.062</div></div>
+      <p>A parameter you drag, with a live readout. The workhorse for "see what this number does".</p>
+    </div>
+    <div class="kitem">
+      <h4>Kit.plot</h4>
+      <div class="demo"><svg viewBox="0 0 200 56" width="100%" role="img" aria-label="A curve with one marked point"><path d="M4 50 C 50 50, 60 8, 100 8 S 150 50, 196 50" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><circle cx="100" cy="8" r="4" fill="var(--amber)"/><line x1="4" y1="53" x2="196" y2="53" stroke="currentColor" opacity=".25"/></svg></div>
+      <p>Axes, curves, points, and a draggable marker. Redraws from the slider without the Mini-app touching a canvas.</p>
+    </div>
+    <div class="kitem">
+      <h4>Kit.pieces</h4>
+      <div class="demo"><div class="ktok"><span>∂L/∂w</span><span>σ′(z)</span><span>wᵀ</span><span>x</span></div><div class="kslot"><i class="full"></i><i class="full"></i><i></i><i></i></div></div>
+      <p>Drag tokens into ordered slots. Covers ordering, matching, labelling a diagram, and building an expression.</p>
+    </div>
+    <div class="kitem">
+      <h4>Kit.hotspot</h4>
+      <div class="demo"><svg viewBox="0 0 200 56" width="100%" role="img" aria-label="A diagram with a chosen point"><rect x="4" y="6" width="192" height="44" fill="none" stroke="currentColor" opacity=".25"/><path d="M10 44 C 60 44, 70 14, 190 12" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><circle cx="72" cy="30" r="5" fill="none" stroke="var(--amber)" stroke-width="2"/></svg></div>
+      <p>Click or drag to mark a place on an image or a plot. The answer is a coordinate the host checks against a region.</p>
+    </div>
+    <div class="kitem">
+      <h4>Kit.editor</h4>
+      <div class="demo"><div class="kmono">def backward(self, g):<br>&nbsp;&nbsp;return g * self.cache</div><div class="kass"><span>shapes match</span><span>numeric check</span><span class="f">bias gradient</span></div></div>
+      <p>A small code editor with the Constructor's assertions beside it. This is what an <code>assertions-pass</code> Task runs on.</p>
+    </div>
+    <div class="kitem">
+      <h4>Kit.steps</h4>
+      <div class="demo"><div class="kstep"><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="kmono">step 2 of 4 · forward pass</div><span class="kbtn">Next</span></div>
+      <p>A walkthrough the reader advances one beat at a time. Used for a derivation or an algorithm trace.</p>
+    </div>
+    <div class="kitem">
+      <h4>Kit.sim</h4>
+      <div class="demo"><svg viewBox="0 0 200 56" width="100%" role="img" aria-label="A small grid with three cells lit"><g stroke="currentColor" opacity=".25" fill="none"><rect x="20" y="8" width="40" height="40"/><rect x="60" y="8" width="40" height="40"/><rect x="100" y="8" width="40" height="40"/><rect x="140" y="8" width="40" height="40"/></g><rect x="60" y="8" width="40" height="40" fill="var(--d2)"/><rect x="100" y="8" width="40" height="40" fill="var(--d4)"/></svg></div>
+      <p>A stepped model with a play control: a grid, a network, a signal. The Constructor supplies the rule, the toolkit supplies the loop and the transport.</p>
+    </div>
+    <div class="kitem">
+      <h4>Kit.bridge</h4>
+      <div class="demo"><div class="kmono">Kit.ready()<br>Kit.answer(value)<br>Kit.review(png, state)<br>Kit.resize()</div></div>
+      <p>The only way out of the sandbox, and the whole protocol. A Mini-app reports; it never decides whether an answer was right.</p>
+    </div>
+  </div>
+  <p class="note">Every widget inherits the tokens above, so an activity is in the same palette and type as the page around it and follows the theme without asking. A Mini-app that needs something the toolkit lacks may still write its own, and that is a signal the toolkit is missing a piece rather than a licence to restyle.</p>
+
+  <div class="h2row"><h2>Tokens</h2><span class="label">the contract</span></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Token</th><th>Light</th><th>Dark</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>paper</code></td><td><span class="sw" style="background:#f5f4f1"></span>#f5f4f1</td><td>#100f0d</td><td>Page ground</td></tr>
+      <tr><td><code>surface</code></td><td><span class="sw" style="background:#fffefb"></span>#fffefb</td><td>#171613</td><td>Reader and panels</td></tr>
+      <tr><td><code>rail</code></td><td><span class="sw" style="background:#23211c"></span>#23211c</td><td>#1a1815</td><td>Sidebar and collapsed stubs</td></tr>
+      <tr><td><code>rail-ink</code></td><td><span class="sw" style="background:#e9e6de"></span>#e9e6de</td><td>#e9e6de</td><td>Sidebar text</td></tr>
+      <tr><td><code>rail-muted</code></td><td><span class="sw" style="background:#8d887b"></span>#8d887b</td><td>#8d887b</td><td>Sidebar labels and unvisited items</td></tr>
+      <tr><td><code>ink</code></td><td><span class="sw" style="background:#16150f"></span>#16150f</td><td>#eae7df</td><td>Prose</td></tr>
+      <tr><td><code>muted</code></td><td><span class="sw" style="background:#6b675c"></span>#6b675c</td><td>#928d80</td><td>Labels and secondary text</td></tr>
+      <tr><td><code>line</code></td><td><span class="sw" style="background:#d9d5cb"></span>#d9d5cb</td><td>#2c2a25</td><td>Hairline rules</td></tr>
+      <tr><td><code>frame</code></td><td><span class="sw" style="background:#16150f"></span>#16150f</td><td>#3a372f</td><td>Window edge, section heads, panel divides</td></tr>
+      <tr><td><code>amber</code></td><td><span class="sw" style="background:#c2410c"></span>#c2410c</td><td>#c2410c</td><td>One action per screen, the selected item, a filled tick</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="h2row"><h2>Depth</h2><span class="label">five fixed tints</span></div>
+  <p>Identical in both themes, because Depth is a fixed scale and must look the same across every Course. Text on the first three is ink; on the last two it is paper. The Check marker is separate and derives from the Task's check alone: a bolt means it is answered instantly and offline, a sparkle means a model reads it.</p>
+  <div class="ladder" style="margin:0 0 12px">
+    <span style="background:var(--d1);color:var(--on-d-light)">recall</span>
+    <span style="background:var(--d2);color:var(--on-d-light)">apply</span>
+    <span style="background:var(--d3);color:var(--on-d-light)">construct</span>
+    <span style="background:var(--d4);color:var(--on-d-dark)">transfer</span>
+    <span style="background:var(--d5);color:var(--on-d-dark)">project</span>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Depth</th><th>Hex</th><th>Text on it</th></tr></thead>
+    <tbody>
+      <tr><td>recall</td><td><span class="sw" style="background:#fde9c8"></span>#fde9c8</td><td>ink</td></tr>
+      <tr><td>apply</td><td><span class="sw" style="background:#f7c873"></span>#f7c873</td><td>ink</td></tr>
+      <tr><td>construct</td><td><span class="sw" style="background:#e89b25"></span>#e89b25</td><td>ink</td></tr>
+      <tr><td>transfer</td><td><span class="sw" style="background:#c2410c"></span>#c2410c</td><td>paper</td></tr>
+      <tr><td>project</td><td><span class="sw" style="background:#7c2d12"></span>#7c2d12</td><td>paper</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="h2row"><h2>Type</h2><span class="label">three faces</span></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Role</th><th>Face</th><th>Setting</th></tr></thead>
+    <tbody>
+      <tr><td>Display: screen titles and Course names</td><td>Archivo variable</td><td>700, width 85, tracking -3%, uppercase</td></tr>
+      <tr><td>Interface and prose</td><td>Inter Tight</td><td>400 to 600. Lesson prose at 13.5 to 15px, 60ch measure, 66ch with panels collapsed</td></tr>
+      <tr><td>Every label, chip, timestamp, path and count</td><td>IBM Plex Mono</td><td>10 to 11px, uppercase, tracking +13%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">All three are self-hosted, because the app must render correctly with no network. Math renders through KaTeX. Code inside a Lesson uses IBM Plex Mono at prose size.</p>
+
+  <div class="h2row"><h2>Rules of the direction</h2><span class="label">apply to every new screen</span></div>
+  <ol style="max-width:74ch">
+    <li><b>Radius is zero everywhere</b>, including buttons, inputs, ticks, and the sandbox frame.</li>
+    <li><b>Separate with a rule, not a box.</b> A hairline under a heading, a 1px frame at the window edge. Nothing floats and there are no drop shadows.</li>
+    <li><b>Amber is a signal, not a colour.</b> One primary action per screen, plus the selected item and a filled tick. Never a background wash.</li>
+    <li><b>Metadata is monospace and small.</b> Content is Inter Tight.</li>
+    <li><b>The app counts, it never scores.</b> Lessons done out of lessons total is the only progress figure anywhere. No streaks, no percentages, no ability estimate, no spend.</li>
+    <li><b>The harness is never visible.</b> No terminal, no tool names, no exit codes. Agent activity renders as short lines in the app's own vocabulary, and the raw stream stays behind a closed disclosure on the build screen only.</li>
+    <li><b>The rail is the only dark surface</b>, and a collapsed panel keeps that colour so the window keeps its shape.</li>
+    <li><b>Motion is 150ms or nothing.</b> Fades and panel collapse only.</li>
+    <li><b>Activities are built from the toolkit</b>, never hand-rolled. A widget that does not exist yet is a gap to fill in the toolkit, not a reason for one Course to look unlike the others.</li>
+    <li><b>The interface does not explain itself.</b> No heading that repeats the screen you are on, no label naming its own icons, no chip restating a rule you already learned.</li>
+  </ol>
+</main>
+</body>
+</html>

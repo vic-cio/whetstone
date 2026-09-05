@@ -1,0 +1,14 @@
+{
+  "id": "tsk-two-layer-writeup",
+  "objective": "obj-backprop",
+  "depth": "transfer",
+  "check": "rubric",
+  "kind": "submission",
+  "prompt": "Derive the gradient of a two-layer network by hand and write up the derivation.",
+  "accepts": [".pdf", ".md", ".jpg", ".png"],
+  "rubric": [
+    { "id": "cri-shapes", "criterion": "Every gradient's shape is stated and correct." },
+    { "id": "cri-chain", "criterion": "The chain rule is applied in the right order, layer by layer." },
+    { "id": "cri-bias", "criterion": "The bias gradient sums over the batch rather than averaging." }
+  ]
+}

@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whetstone plan review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex, .layout-grid, .layout-flex) > *, :where([style*="display: grid"], [style*="display:grid"], [style*="display: flex"], [style*="display:flex"]) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, h5, h6, li, dd, blockquote, figcaption, td, th, .badge, .label) { overflow-wrap: anywhere; }
+  :where(img, svg, video, canvas, iframe) { max-width: 100%; height: auto; }
+
+  :root {
+    --page: #f6f6f4;
+    --ink: #17171a;
+    --ink-2: #5b5b63;
+    --line: #dededa;
+    --card: #ffffff;
+    --brand: #17171a;
+    --ok: #1a7f4b;
+    --warn: #b4530a;
+    --code: #f0f0ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --page: #131316; --ink: #ececea; --ink-2: #a3a3ab; --line: #2b2b31; --card: #1b1b20; --brand: #ececea; --code: #202026; }
+  }
+  html { color-scheme: light dark; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 Inter, system-ui, -apple-system, sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 96px; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 22px; margin: 56px 0 12px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  p { margin: 0 0 12px; max-width: 72ch; }
+  .lede { color: var(--ink-2); font-size: 16px; }
+  .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .scroll { overflow-x: auto; }
+  code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin: 0; line-height: 1.5; }
+  code:not(pre code) { background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); }
+  .pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .pill.me { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 18px 0 0; padding: 0; list-style: none; font-size: 14px; }
+  .toc a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--line); }
+  figure { margin: 16px 0 24px; }
+  figcaption { font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+  svg text { font-family: Inter, system-ui, sans-serif; }
+  .can-cannot { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .can-cannot ul { margin: 6px 0 0; padding-left: 18px; }
+  .can-cannot li { margin: 4px 0; }
+  ol.steps { padding-left: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }
+  ol.steps li::before { content: counter(s); width: 28px; height: 28px; border-radius: 999px; background: var(--ink); color: var(--page); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  ol.steps b { display: block; }
+  ol.steps span { color: var(--ink-2); font-size: 14px; }
+
+  /* ---------- design option cards ---------- */
+  .option { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 20px; margin: 20px 0; }
+  .option header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 6px; }
+  .option header h3 { margin: 0; font-size: 20px; }
+  .option .feel { color: var(--ink-2); }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .sw { display: grid; gap: 4px; font-size: 11px; color: var(--ink-2); }
+  .sw i { display: block; width: 56px; height: 34px; border-radius: 6px; border: 1px solid rgba(0,0,0,.08); }
+  .ramp { display: flex; gap: 0; margin: 4px 0 12px; border-radius: 6px; overflow: hidden; width: fit-content; max-width: 100%; }
+  .ramp i { width: 46px; height: 22px; display: block; }
+  .ramp-wrap { font-size: 11px; color: var(--ink-2); }
+  .mocks { display: grid; gap: 16px; margin-top: 12px; }
+  .mock-label { font-size: 12px; color: var(--ink-2); margin: 0 0 6px; font-weight: 600; }
+
+  /* ---------- shared app mock ---------- */
+  .mock { --radius: 10px; --pad: 14px; font-family: var(--font); color: var(--text); }
+  .win { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: grid; grid-template-columns: 172px minmax(0, 1fr) 210px; font-size: 12.5px; line-height: 1.45; box-shadow: var(--shadow); }
+  .win.two { grid-template-columns: 172px minmax(0, 1fr); }
+  @media (max-width: 860px) { .win { grid-template-columns: 150px minmax(0, 1fr); } .win .tutor { display: none; } }
+  @media (max-width: 560px) { .win, .win.two { grid-template-columns: minmax(0, 1fr); } .win .side { display: none; } }
+  .side { background: var(--surface); border-right: 1px solid var(--border); padding: var(--pad); display: grid; align-content: start; gap: 4px; }
+  .side .brand { font-weight: 700; font-family: var(--head); font-size: 14px; margin-bottom: 8px; letter-spacing: -0.01em; }
+  .side .h { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 4px; font-weight: 600; }
+  .side a { display: block; padding: 5px 8px; border-radius: 6px; color: var(--text); text-decoration: none; }
+  .side a.on { background: var(--sel); color: var(--sel-ink); font-weight: 600; }
+  .side a.sub { padding-left: 18px; color: var(--muted); }
+  .mainc { padding: 18px 22px; display: grid; gap: 14px; align-content: start; }
+  .tutor { background: var(--surface); border-left: 1px solid var(--border); padding: var(--pad); display: grid; align-content: start; gap: 8px; }
+  .tutor .h { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+  .bubble { border: 1px solid var(--border); background: var(--bg); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+  .bubble.me { background: var(--sel); border-color: transparent; color: var(--sel-ink); }
+  .tutor input { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 12px; width: 100%; }
+  .mtitle { font-family: var(--head); font-weight: 700; font-size: 22px; letter-spacing: -0.015em; margin: 0; line-height: 1.2; }
+  .msub { color: var(--muted); margin: 2px 0 0; }
+  .mcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px; color: #1c1917; }
+  .chip.k { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn { display: inline-block; background: var(--accent); color: var(--accent-ink); padding: 6px 11px; border-radius: 8px; font-weight: 600; font-size: 12px; border: 0; }
+  .btn.q { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .bar { height: 6px; background: var(--track); border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .list { display: grid; gap: 6px; }
+  .task-row { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .task-row i { display: block; width: 4px; height: 100%; min-height: 26px; border-radius: 2px; }
+  .task-row b { font-weight: 600; }
+  .task-row small { color: var(--muted); display: block; }
+  .prose { font-size: 14px; line-height: 1.6; max-width: 62ch; }
+  .prose p { margin: 0 0 10px; max-width: none; }
+  .callout { border-left: 3px solid var(--accent); background: var(--surface); padding: 8px 12px; border-radius: 0 8px 8px 0; margin: 10px 0; font-size: 13px; }
+  .opt { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 12.5px; }
+  .opt i { width: 14px; height: 14px; border-radius: 999px; border: 1.5px solid var(--muted); display: block; }
+  .opt.pick i { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+  .verdict { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg); display: grid; gap: 4px; font-size: 12px; }
+  .verdict b.fail { color: #b42318; }
+  .verdict b.pass { color: #1a7f4b; }
+  .ladder { display: flex; gap: 6px; align-items: flex-end; }
+  .ladder span { display: grid; place-items: center; font-size: 10.5px; font-weight: 600; border-radius: 6px; padding: 0 8px; color: #1c1917; }
+  .ladder span.off { background: var(--track); color: var(--muted); }
+  .mono { font-family: var(--mono); }
+  .stat { display: grid; gap: 2px; }
+  .stat b { font-size: 20px; font-family: var(--head); letter-spacing: -0.01em; }
+  .stat small { color: var(--muted); }
+
+  /* A: Stone and amber */
+  .dir-a { --font: Inter, system-ui, sans-serif; --head: Inter, system-ui, sans-serif; --mono: "JetBrains Mono", monospace;
+    --bg: #fafaf9; --surface: #ffffff; --border: #e7e5e4; --text: #1c1917; --muted: #78716c; --accent: #d97706; --accent-ink: #ffffff; --sel: #fef3c7; --sel-ink: #78350f; --track: #f5f5f4; --shadow: none;
+    --d1: #fef3c7; --d2: #fde68a; --d3: #fbbf24; --d4: #d97706; --d5: #92400e; }
+  /* B: Paper and ink */
+  .dir-b { --font: "Source Serif 4", Georgia, serif; --head: Fraunces, Georgia, serif; --mono: "JetBrains Mono", monospace;
+    --bg: #f7f3ea; --surface: #fffdf7; --border: #e2dccb; --text: #1f1d18; --muted: #6f6a5c; --accent: #1f5f3f; --accent-ink: #ffffff; --sel: #e8efe6; --sel-ink: #1f5f3f; --track: #ebe6d8; --shadow: none;
+    --d1: #e3ede4; --d2: #c6dcc9; --d3: #8fbf9a; --d4: #3f8a5c; --d5: #1f5f3f; --radius: 4px; }
+  .dir-b .win { font-size: 13px; }
+  .dir-b .side a { border-radius: 0; }
+  .dir-b .mcard { border-left: 0; border-right: 0; border-radius: 0; background: transparent; padding-left: 0; padding-right: 0; }
+  .dir-b .task-row { border-radius: 0; background: transparent; border-left: 0; border-right: 0; border-top: 0; }
+  .dir-b .prose { font-size: 15px; line-height: 1.65; }
+  .dir-b .mtitle { font-size: 26px; font-weight: 600; }
+  .dir-b .btn { border-radius: 2px; }
+  .dir-b .opt { border-radius: 2px; }
+  .dir-b .chip { font-family: Inter, sans-serif; }
+  /* C: Graphite */
+  .dir-c { --font: Inter, system-ui, sans-serif; --head: Inter, system-ui, sans-serif; --mono: "JetBrains Mono", monospace;
+    --bg: #0f1115; --surface: #161a21; --border: #262b35; --text: #e6e8ee; --muted: #8b93a3; --accent: #22d3ee; --accent-ink: #06222a; --sel: #143036; --sel-ink: #a5f3fc; --track: #1f242e; --shadow: 0 0 0 1px #000 inset;
+    --d1: #cffafe; --d2: #67e8f9; --d3: #22d3ee; --d4: #0891b2; --d5: #155e75; --radius: 8px; }
+  .dir-c .side .h, .dir-c .tutor .h, .dir-c .chip, .dir-c .msub, .dir-c .task-row small, .dir-c .stat small { font-family: var(--mono); letter-spacing: 0.02em; }
+  .dir-c .win { font-size: 12px; }
+  .dir-c .mainc { gap: 10px; padding: 14px 18px; }
+  .dir-c .mcard { padding: 10px 12px; }
+  .dir-c .verdict b.fail { color: #f87171; }
+  .dir-c .verdict b.pass { color: #34d399; }
+  .dir-c .chip.k { color: var(--muted); }
+
+  /* picker */
+  .picker { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 20px; margin-top: 24px; }
+  .picker fieldset { border: 0; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+  .picker label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+  .picker label:has(input:checked) { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; }
+  .picker textarea { width: 100%; min-height: 70px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: inherit; font-size: 14px; background: var(--page); color: var(--ink); }
+  .picker button { margin-top: 10px; background: var(--brand); color: var(--page); border: 0; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  .picker .state { font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <p class="kicker">Whetstone · 2026-09-05</p>
+  <h1>Implementation plan review</h1>
+  <p class="lede">Two parts. First, pick a design direction from three mocked candidates. Second, review the plan that every open handoff question now resolves into. The durable text lives in <code>PLAN.md</code>, <code>CONTEXT.md</code>, and <code>docs/adr/0003</code> to <code>0007</code>.</p>
+  <ul class="toc">
+    <li><a href="#design">A. Design directions</a></li>
+    <li><a href="#decisions">B1. Decisions closed</a></li>
+    <li><a href="#arch">B2. Architecture</a></li>
+    <li><a href="#format">B3. Course format</a></li>
+    <li><a href="#sandbox">B4. Sandbox boundary</a></li>
+    <li><a href="#phases">B5. Phases and tests</a></li>
+    <li><a href="#risks">B6. Risks</a></li>
+  </ul>
+
+  <!-- ============================== PART A ============================== -->
+  <h2 id="design">A. Three design directions</h2>
+  <p>Each candidate is shown as the two screens you will use most: the Dashboard and a Lesson with a Task and its Verdict. The layout, tokens, and type differ. The information on screen is identical, so the differences are purely the design. All three use a fixed five-step tint for Depth and an icon for Check: <b>⚡</b> grades instantly offline, <b>✦</b> needs a model and costs money.</p>
+
+  <!-- ---------- Option A ---------- -->
+  <div class="option" id="option-a">
+    <header><span class="pill me">Recommended</span><h3>A · Stone and amber</h3><span class="feel">Calm, spacious, Brilliant-like clarity. Warm neutrals, one amber accent, no shadows.</span></header>
+    <div class="swatches">
+      <div class="sw"><i style="background:#fafaf9"></i>background</div>
+      <div class="sw"><i style="background:#ffffff"></i>surface</div>
+      <div class="sw"><i style="background:#e7e5e4"></i>border</div>
+      <div class="sw"><i style="background:#1c1917"></i>text</div>
+      <div class="sw"><i style="background:#78716c"></i>muted</div>
+      <div class="sw"><i style="background:#d97706"></i>accent</div>
+    </div>
+    <div class="ramp-wrap">Depth tint, recall to project<div class="ramp"><i style="background:#fef3c7"></i><i style="background:#fde68a"></i><i style="background:#fbbf24"></i><i style="background:#d97706"></i><i style="background:#92400e"></i></div></div>
+    <p style="font-size:14px">Type: Inter everywhere, 17px prose at 72ch. Cards with 12px radius and a 1px border. Three columns: sidebar, reader, Tutor panel.</p>
+    <div class="mocks mock dir-a">
+      <div>
+        <p class="mock-label">Dashboard</p>
+        <div class="win" id="mock-a-dashboard">
+          <div class="side">
+            <div class="brand">Whetstone</div>
+            <a class="on">Dashboard</a>
+            <div class="h">Machine learning</div>
+            <a class="sub">Gradients by hand</a>
+            <a class="sub">Attention from scratch</a>
+            <div class="h">Music</div>
+            <a class="sub">Harmony basics</a>
+            <div class="h"></div>
+            <a>Settings</a>
+          </div>
+          <div class="mainc">
+            <div class="row" style="justify-content:space-between">
+              <div><p class="mtitle">Outstanding</p><p class="msub">4 tasks, 2 due from the miss queue</p></div>
+              <span class="btn">New course</span>
+            </div>
+            <div class="list">
+              <div class="task-row"><i style="background:var(--d4)"></i><div><b>Derive the gradient of a two-layer net</b><small>Gradients by hand · transfer · due today</small></div><span class="chip k">⚡ offline</span></div>
+              <div class="task-row"><i style="background:var(--d5)"></i><div><b>Train a classifier on the wine dataset and report</b><small>Gradients by hand · project · rubric shown</small></div><span class="chip k">✦ model</span></div>
+              <div class="task-row"><i style="background:var(--d1)"></i><div><b>Which interval is a perfect fifth?</b><small>Harmony basics · recall · miss queue</small></div><span class="chip k">⚡ offline</span></div>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+              <div class="mcard"><b>Gradients by hand</b><div class="ladder" style="margin:6px 0"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span style="background:var(--d3)">construct</span><span style="background:var(--d4)">transfer</span><span style="background:var(--d5);color:#fff">project</span></div><small class="msub">Chain rule</small><div class="bar"><i style="width:82%"></i></div><small class="msub">Backprop by hand</small><div class="bar"><i style="width:41%"></i></div></div>
+              <div class="mcard"><b>Harmony basics</b><div class="ladder" style="margin:6px 0"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span class="off">construct</span></div><small class="msub">Intervals</small><div class="bar"><i style="width:95%"></i></div><small class="msub">Triads</small><div class="bar"><i style="width:20%"></i></div></div>
+            </div>
+          </div>
+          <div class="tutor">
+            <div class="h">This week</div>
+            <div class="stat"><b>31</b><small>attempts</small></div>
+            <div class="stat"><b>$1.42</b><small>spent on grading</small></div>
+            <div class="stat"><b>2</b><small>objectives marked known</small></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="mock-label">Lesson with a Task</p>
+        <div class="win" id="mock-a-lesson">
+          <div class="side">
+            <div class="brand">Whetstone</div>
+            <a>Dashboard</a>
+            <div class="h">Gradients by hand</div>
+            <a class="sub">1 · Derivatives refresher</a>
+            <a class="sub on">2 · The chain rule</a>
+            <a class="sub">3 · Backprop by hand</a>
+            <a class="sub">Review session</a>
+          </div>
+          <div class="mainc">
+            <div class="row" style="justify-content:space-between"><div><p class="mtitle">The chain rule</p><p class="msub">Module 2 · 8 min · next up</p></div><span class="btn q">I know this</span></div>
+            <div class="prose">
+              <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+              <div class="callout"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+            </div>
+            <div class="mcard">
+              <div class="row" style="margin-bottom:8px"><span class="chip" style="background:var(--d2)">apply</span><span class="chip k">⚡ instant</span><span class="msub">Objective: apply the chain rule</span></div>
+              <p style="margin:0 0 8px;max-width:none"><b>Differentiate f(x) = sin(3x²).</b></p>
+              <div class="list">
+                <div class="opt pick"><i></i>6x cos(3x²)</div>
+                <div class="opt"><i></i>cos(3x²)</div>
+                <div class="opt"><i></i>6x sin(3x²)</div>
+              </div>
+              <div class="verdict" style="margin-top:8px"><b class="pass">Correct.</b><span>Outer derivative cos(3x²), inner derivative 6x, multiplied.</span></div>
+            </div>
+            <div class="mcard">
+              <div class="row" style="margin-bottom:8px"><span class="chip" style="background:var(--d4)">transfer</span><span class="chip k">✦ model grades</span></div>
+              <p style="margin:0 0 8px;max-width:none"><b>Explain why a very deep chain can make the gradient vanish.</b></p>
+              <div class="verdict"><b class="fail">Fail.</b><span>You named the product of small terms but did not connect it to the derivative of the activation being below one. That link is the whole answer.</span><span class="msub">Report a broken task</span></div>
+            </div>
+          </div>
+          <div class="tutor">
+            <div class="h">Tutor</div>
+            <div class="bubble me">Why does the inner derivative come out as 6x?</div>
+            <div class="bubble">Because the inside is 3x². Its derivative is 3 · 2x = 6x. The chain rule multiplies that by the outer derivative.</div>
+            <input placeholder="Ask about this lesson">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- Option B ---------- -->
+  <div class="option" id="option-b">
+    <header><h3>B · Paper and ink</h3><span class="feel">Editorial. Reads like a well-set textbook. Serif type, cream paper, a deep green accent, rules instead of cards.</span></header>
+    <div class="swatches">
+      <div class="sw"><i style="background:#f7f3ea"></i>background</div>
+      <div class="sw"><i style="background:#fffdf7"></i>surface</div>
+      <div class="sw"><i style="background:#e2dccb"></i>border</div>
+      <div class="sw"><i style="background:#1f1d18"></i>text</div>
+      <div class="sw"><i style="background:#6f6a5c"></i>muted</div>
+      <div class="sw"><i style="background:#1f5f3f"></i>accent</div>
+    </div>
+    <div class="ramp-wrap">Depth tint, recall to project<div class="ramp"><i style="background:#e3ede4"></i><i style="background:#c6dcc9"></i><i style="background:#8fbf9a"></i><i style="background:#3f8a5c"></i><i style="background:#1f5f3f"></i></div></div>
+    <p style="font-size:14px">Type: Fraunces headings, Source Serif prose at 18px and 65ch, Inter for chips and controls. Two columns. The Tutor opens as a drawer over the page rather than a permanent panel, so the reading measure stays wide.</p>
+    <div class="mocks mock dir-b">
+      <div>
+        <p class="mock-label">Dashboard</p>
+        <div class="win two" id="mock-b-dashboard">
+          <div class="side">
+            <div class="brand">Whetstone</div>
+            <a class="on">Dashboard</a>
+            <div class="h">Machine learning</div>
+            <a class="sub">Gradients by hand</a>
+            <a class="sub">Attention from scratch</a>
+            <div class="h">Music</div>
+            <a class="sub">Harmony basics</a>
+            <div class="h"></div>
+            <a>Settings</a>
+          </div>
+          <div class="mainc">
+            <div class="row" style="justify-content:space-between">
+              <div><p class="mtitle">Outstanding</p><p class="msub">Four tasks. Two are due from the miss queue.</p></div>
+              <span class="btn">New course</span>
+            </div>
+            <div class="list">
+              <div class="task-row"><i style="background:var(--d4)"></i><div><b>Derive the gradient of a two-layer net</b><small>Gradients by hand · transfer · due today</small></div><span class="chip k">⚡ offline</span></div>
+              <div class="task-row"><i style="background:var(--d5)"></i><div><b>Train a classifier on the wine dataset and report</b><small>Gradients by hand · project · rubric shown</small></div><span class="chip k">✦ model</span></div>
+              <div class="task-row"><i style="background:var(--d1)"></i><div><b>Which interval is a perfect fifth?</b><small>Harmony basics · recall · miss queue</small></div><span class="chip k">⚡ offline</span></div>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+              <div class="mcard"><b class="mtitle" style="font-size:17px">Gradients by hand</b><div class="ladder" style="margin:6px 0"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span style="background:var(--d3)">construct</span><span style="background:var(--d4);color:#fff">transfer</span><span style="background:var(--d5);color:#fff">project</span></div><small class="msub">Chain rule</small><div class="bar"><i style="width:82%"></i></div><small class="msub">Backprop by hand</small><div class="bar"><i style="width:41%"></i></div></div>
+              <div class="mcard"><b class="mtitle" style="font-size:17px">Harmony basics</b><div class="ladder" style="margin:6px 0"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span class="off">construct</span></div><small class="msub">Intervals</small><div class="bar"><i style="width:95%"></i></div><small class="msub">Triads</small><div class="bar"><i style="width:20%"></i></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="mock-label">Lesson with a Task</p>
+        <div class="win two" id="mock-b-lesson">
+          <div class="side">
+            <div class="brand">Whetstone</div>
+            <a>Dashboard</a>
+            <div class="h">Gradients by hand</div>
+            <a class="sub">1 · Derivatives refresher</a>
+            <a class="sub on">2 · The chain rule</a>
+            <a class="sub">3 · Backprop by hand</a>
+            <a class="sub">Review session</a>
+            <div class="h"></div>
+            <a>Ask the tutor</a>
+          </div>
+          <div class="mainc">
+            <div class="row" style="justify-content:space-between"><div><p class="mtitle">The chain rule</p><p class="msub">Module 2 · 8 minutes · next up</p></div><span class="btn q">I know this</span></div>
+            <div class="prose">
+              <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+              <div class="callout"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+            </div>
+            <div class="mcard">
+              <div class="row" style="margin-bottom:8px"><span class="chip" style="background:var(--d2)">apply</span><span class="chip k">⚡ instant</span><span class="msub">Objective: apply the chain rule</span></div>
+              <p style="margin:0 0 8px;max-width:none"><b>Differentiate f(x) = sin(3x²).</b></p>
+              <div class="list">
+                <div class="opt pick"><i></i>6x cos(3x²)</div>
+                <div class="opt"><i></i>cos(3x²)</div>
+                <div class="opt"><i></i>6x sin(3x²)</div>
+              </div>
+              <div class="verdict" style="margin-top:8px"><b class="pass">Correct.</b><span>Outer derivative cos(3x²), inner derivative 6x, multiplied.</span></div>
+            </div>
+            <div class="mcard">
+              <div class="row" style="margin-bottom:8px"><span class="chip" style="background:var(--d4);color:#fff">transfer</span><span class="chip k">✦ model grades</span></div>
+              <p style="margin:0 0 8px;max-width:none"><b>Explain why a very deep chain can make the gradient vanish.</b></p>
+              <div class="verdict"><b class="fail">Fail.</b><span>You named the product of small terms but did not connect it to the derivative of the activation being below one. That link is the whole answer.</span><span class="msub">Report a broken task</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- Option C ---------- -->
+  <div class="option" id="option-c">
+    <header><h3>C · Graphite</h3><span class="feel">Dark workshop. Dense, precise, tool-like. Graphite surfaces, a cyan accent, monospace labels. Matches the live constructor terminal.</span></header>
+    <div class="swatches">
+      <div class="sw"><i style="background:#0f1115"></i>background</div>
+      <div class="sw"><i style="background:#161a21"></i>surface</div>
+      <div class="sw"><i style="background:#262b35"></i>border</div>
+      <div class="sw"><i style="background:#e6e8ee"></i>text</div>
+      <div class="sw"><i style="background:#8b93a3"></i>muted</div>
+      <div class="sw"><i style="background:#22d3ee"></i>accent</div>
+    </div>
+    <div class="ramp-wrap">Depth tint, recall to project<div class="ramp"><i style="background:#cffafe"></i><i style="background:#67e8f9"></i><i style="background:#22d3ee"></i><i style="background:#0891b2"></i><i style="background:#155e75"></i></div></div>
+    <p style="font-size:14px">Type: Inter for prose, JetBrains Mono for every label, chip, and number. Tighter spacing, 8px radius. Three columns. Dark is the default and light is the alternate.</p>
+    <div class="mocks mock dir-c">
+      <div>
+        <p class="mock-label">Dashboard</p>
+        <div class="win" id="mock-c-dashboard">
+          <div class="side">
+            <div class="brand">Whetstone</div>
+            <a class="on">Dashboard</a>
+            <div class="h">Machine learning</div>
+            <a class="sub">Gradients by hand</a>
+            <a class="sub">Attention from scratch</a>
+            <div class="h">Music</div>
+            <a class="sub">Harmony basics</a>
+            <div class="h"></div>
+            <a>Settings</a>
+          </div>
+          <div class="mainc">
+            <div class="row" style="justify-content:space-between">
+              <div><p class="mtitle">Outstanding</p><p class="msub">4 tasks · 2 due from miss queue</p></div>
+              <span class="btn">New course</span>
+            </div>
+            <div class="list">
+              <div class="task-row"><i style="background:var(--d4)"></i><div><b>Derive the gradient of a two-layer net</b><small>gradients-by-hand · transfer · due today</small></div><span class="chip k">⚡ offline</span></div>
+              <div class="task-row"><i style="background:var(--d5)"></i><div><b>Train a classifier on the wine dataset and report</b><small>gradients-by-hand · project · rubric shown</small></div><span class="chip k">✦ model</span></div>
+              <div class="task-row"><i style="background:var(--d1)"></i><div><b>Which interval is a perfect fifth?</b><small>harmony-basics · recall · miss queue</small></div><span class="chip k">⚡ offline</span></div>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+              <div class="mcard"><b>Gradients by hand</b><div class="ladder" style="margin:6px 0"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span style="background:var(--d3)">construct</span><span style="background:var(--d4);color:#fff">transfer</span><span style="background:var(--d5);color:#fff">project</span></div><small class="msub">chain-rule</small><div class="bar"><i style="width:82%"></i></div><small class="msub">backprop-by-hand</small><div class="bar"><i style="width:41%"></i></div></div>
+              <div class="mcard"><b>Harmony basics</b><div class="ladder" style="margin:6px 0"><span style="background:var(--d1)">recall</span><span style="background:var(--d2)">apply</span><span class="off">construct</span></div><small class="msub">intervals</small><div class="bar"><i style="width:95%"></i></div><small class="msub">triads</small><div class="bar"><i style="width:20%"></i></div></div>
+            </div>
+          </div>
+          <div class="tutor">
+            <div class="h">this week</div>
+            <div class="stat"><b>31</b><small>attempts</small></div>
+            <div class="stat"><b>$1.42</b><small>grading spend</small></div>
+            <div class="stat"><b>2</b><small>objectives known</small></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="mock-label">Lesson with a Task</p>
+        <div class="win" id="mock-c-lesson">
+          <div class="side">
+            <div class="brand">Whetstone</div>
+            <a>Dashboard</a>
+            <div class="h">Gradients by hand</div>
+            <a class="sub">1 · Derivatives refresher</a>
+            <a class="sub on">2 · The chain rule</a>
+            <a class="sub">3 · Backprop by hand</a>
+            <a class="sub">Review session</a>
+          </div>
+          <div class="mainc">
+            <div class="row" style="justify-content:space-between"><div><p class="mtitle">The chain rule</p><p class="msub">module 2 · 8 min · next up</p></div><span class="btn q">I know this</span></div>
+            <div class="prose">
+              <p>When a function is built from other functions, its rate of change is the product of the rates at each layer. That is the whole idea, and every neural network trains on it.</p>
+              <div class="callout"><b>Insight.</b> Backpropagation is the chain rule applied in reverse order, once per layer, reusing what it already computed.</div>
+            </div>
+            <div class="mcard">
+              <div class="row" style="margin-bottom:8px"><span class="chip" style="background:var(--d2)">apply</span><span class="chip k">⚡ instant</span><span class="msub">objective: apply the chain rule</span></div>
+              <p style="margin:0 0 8px;max-width:none"><b>Differentiate f(x) = sin(3x²).</b></p>
+              <div class="list">
+                <div class="opt pick"><i></i>6x cos(3x²)</div>
+                <div class="opt"><i></i>cos(3x²)</div>
+                <div class="opt"><i></i>6x sin(3x²)</div>
+              </div>
+              <div class="verdict" style="margin-top:8px"><b class="pass">Correct.</b><span>Outer derivative cos(3x²), inner derivative 6x, multiplied.</span></div>
+            </div>
+            <div class="mcard">
+              <div class="row" style="margin-bottom:8px"><span class="chip" style="background:var(--d4);color:#fff">transfer</span><span class="chip k">✦ model grades</span></div>
+              <p style="margin:0 0 8px;max-width:none"><b>Explain why a very deep chain can make the gradient vanish.</b></p>
+              <div class="verdict"><b class="fail">Fail.</b><span>You named the product of small terms but did not connect it to the derivative of the activation being below one. That link is the whole answer.</span><span class="msub">report a broken task</span></div>
+            </div>
+          </div>
+          <div class="tutor">
+            <div class="h">tutor</div>
+            <div class="bubble me">Why does the inner derivative come out as 6x?</div>
+            <div class="bubble">Because the inside is 3x². Its derivative is 3 · 2x = 6x. The chain rule multiplies that by the outer derivative.</div>
+            <input placeholder="Ask about this lesson">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form class="picker" id="design-picker" data-lavish-question="design-direction"
+    onsubmit="event.preventDefault(); const f=new FormData(event.currentTarget); const c=f.get('direction'); const n=(f.get('notes')||'').trim(); if(!c){document.getElementById('pick-state').textContent='Pick one direction first.';return;} const msg='Design direction: use option '+c+'.'+(n?' Notes: '+n:''); window.lavish.queuePrompt(msg,{tag:'choice',text:msg,element:event.currentTarget,queueKey:'design-direction',data:{question:'design-direction',answer:c,notes:n}}); document.getElementById('pick-state').textContent='Queued: option '+c+(n?' with notes':'')+'. Press Send to Agent when ready.';">
+    <p class="kicker">Your pick</p>
+    <fieldset>
+      <label><input type="radio" name="direction" value="A"> <span><b>A · Stone and amber.</b> Calm and spacious. My recommendation, because study is mostly reading and this stays out of the way.</span></label>
+      <label><input type="radio" name="direction" value="B"> <span><b>B · Paper and ink.</b> Editorial serif. Wins if you want it to feel like a book rather than an app.</span></label>
+      <label><input type="radio" name="direction" value="C"> <span><b>C · Graphite.</b> Dark tool. Wins if you will live in the run log and want density over calm.</span></label>
+    </fieldset>
+    <label style="display:block;border:0;padding:0"><span class="kicker">Tweaks, optional</span><textarea name="notes" placeholder="For example: A but with the green accent from B. Or: B with a permanent tutor panel."></textarea></label>
+    <button type="submit">Queue this answer</button>
+    <p class="state" id="pick-state">Nothing queued yet. Selecting a radio changes only this page.</p>
+  </form>
+
+  <!-- ============================== PART B ============================== -->
+  <h2 id="decisions">B1. Decisions closed</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Decision</th><th>Answer</th><th>Who</th></tr></thead>
+    <tbody>
+      <tr><td>Shell</td><td>Electron, React, TypeScript. Every candidate harness is a Node library, and Electron ships Node. Tauri would need a Node sidecar.</td><td><span class="pill ok">Victor: web shell</span> <span class="pill me">Me: Electron</span></td></tr>
+      <tr><td>Constructor</td><td>Pluggable Harness. Claude Agent SDK first, Codex and pi adapters in phase 6. The only contract is files on disk plus an event stream.</td><td><span class="pill ok">Victor</span></td></tr>
+      <tr><td>Tutor and Grader</td><td>Direct Provider API behind one interface. Anthropic first, OpenAI in phase 6.</td><td><span class="pill me">Me</span></td></tr>
+      <tr><td>Sandbox</td><td>Fully sealed. No files, no network, no host state. One message channel.</td><td><span class="pill ok">Victor</span></td></tr>
+      <tr><td>Depth scale</td><td>Fixed five points. Ladder per Course. Depth belongs to the Task, never the Module, so a late Module may hold recall Tasks.</td><td><span class="pill ok">Victor, with condition</span></td></tr>
+      <tr><td>Lesson content</td><td>Markdown plus six fixed Blocks, plus a sealed Mini-app where the Blocks fall short.</td><td><span class="pill ok">Victor</span></td></tr>
+      <tr><td>Who writes content</td><td>The Constructor writes everything in the folder. The Tutor writes nothing there. A folder is complete and shareable as-is.</td><td><span class="pill ok">Victor</span></td></tr>
+      <tr><td>Credentials</td><td>API key per Provider, encrypted with the macOS Keychain. Anthropic's docs forbid subscription login for SDK apps.</td><td><span class="pill">Fact</span></td></tr>
+      <tr><td>Name</td><td>Whetstone.</td><td><span class="pill me">Assumed, not vetoed</span></td></tr>
+      <tr><td>Design</td><td>Part A above.</td><td><span class="pill">Open, yours</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="arch">B2. Architecture</h2>
+  <p>The question this answers: where does each piece run, and what may talk to what?</p>
+  <figure>
+    <svg viewBox="0 0 1000 560" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arch-title" style="color:var(--ink)">
+      <title id="arch-title">Process layout: main process, renderer, sandbox, course folder, progress database, and external model services</title>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker>
+      </defs>
+      <!-- cloud -->
+      <g id="arch-cloud">
+        <rect x="20" y="20" width="960" height="90" rx="12" fill="none" stroke="currentColor" stroke-dasharray="6 5" opacity=".5"/>
+        <text x="36" y="44" font-size="12" font-weight="600" fill="currentColor" opacity=".7">CALLS A MODEL, COSTS MONEY</text>
+        <g id="arch-harness"><title>Constructor Harness: Claude Agent SDK, Codex, or pi</title><rect x="40" y="56" width="280" height="40" rx="8" fill="var(--card)" stroke="currentColor"/><text x="180" y="81" text-anchor="middle" font-size="14" fill="currentColor">Harness · agent-sdk / codex / pi</text></g>
+        <g id="arch-provider"><title>Provider for Tutor and Grader</title><rect x="360" y="56" width="280" height="40" rx="8" fill="var(--card)" stroke="currentColor"/><text x="500" y="81" text-anchor="middle" font-size="14" fill="currentColor">Provider · anthropic / openai</text></g>
+        <g id="arch-search"><title>Web search and fetch, used only by the Constructor</title><rect x="680" y="56" width="280" height="40" rx="8" fill="var(--card)" stroke="currentColor" opacity=".8"/><text x="820" y="81" text-anchor="middle" font-size="14" fill="currentColor">Web search and fetch</text></g>
+      </g>
+      <!-- main process -->
+      <g id="arch-main">
+        <rect x="20" y="150" width="960" height="140" rx="12" fill="var(--card)" stroke="currentColor"/>
+        <text x="36" y="174" font-size="12" font-weight="600" fill="currentColor" opacity=".7">ELECTRON MAIN PROCESS · NODE · RUNS LOCALLY</text>
+        <g id="arch-coursestore"><title>CourseStore validates folders</title><rect x="40" y="190" width="170" height="80" rx="8" fill="none" stroke="currentColor"/><text x="125" y="222" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">CourseStore</text><text x="125" y="244" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">validate, watch, move</text></g>
+        <g id="arch-progress"><title>ProgressDB in SQLite</title><rect x="230" y="190" width="170" height="80" rx="8" fill="none" stroke="currentColor"/><text x="315" y="222" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">ProgressDB</text><text x="315" y="244" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">attempts, marks, spend</text></g>
+        <g id="arch-runs"><title>Runs: constructor jobs with budgets</title><rect x="420" y="190" width="170" height="80" rx="8" fill="none" stroke="currentColor"/><text x="505" y="222" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Runs</text><text x="505" y="244" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">staging, budget, events</text></g>
+        <g id="arch-registries"><title>Harness and Provider registries</title><rect x="610" y="190" width="170" height="80" rx="8" fill="none" stroke="currentColor"/><text x="695" y="222" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Registries</text><text x="695" y="244" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">harness, provider</text></g>
+        <g id="arch-secrets"><title>Secrets encrypted with safeStorage</title><rect x="800" y="190" width="160" height="80" rx="8" fill="none" stroke="currentColor"/><text x="880" y="222" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Secrets</text><text x="880" y="244" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">Keychain, per provider</text></g>
+      </g>
+      <!-- renderer -->
+      <g id="arch-renderer">
+        <rect x="20" y="330" width="640" height="210" rx="12" fill="var(--card)" stroke="currentColor"/>
+        <text x="36" y="354" font-size="12" font-weight="600" fill="currentColor" opacity=".7">RENDERER · REACT · NO NODE ACCESS</text>
+        <text x="40" y="384" font-size="13" fill="currentColor">Sidebar · Dashboard · Course · Lesson · Task · Run · Settings</text>
+        <g id="arch-sandbox"><title>Sandbox iframe, allow-scripts only, opaque origin</title><rect x="40" y="404" width="600" height="116" rx="8" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/><text x="56" y="428" font-size="12" font-weight="600" fill="currentColor" opacity=".7">SANDBOX IFRAME · allow-scripts only · opaque origin</text><text x="56" y="456" font-size="13" fill="currentColor">Mini-app: one self-contained index.html</text><text x="56" y="478" font-size="13" fill="currentColor">in: init {inputs}</text><text x="56" y="500" font-size="13" fill="currentColor">out: ready · resize · result</text><text x="620" y="500" text-anchor="end" font-size="12" fill="currentColor" opacity=".7">no files · no network · no host state</text></g>
+      </g>
+      <!-- course folder -->
+      <g id="arch-folder"><title>Course folder of plain files</title>
+        <rect x="700" y="330" width="280" height="90" rx="12" fill="var(--card)" stroke="currentColor"/>
+        <text x="840" y="358" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Course folder</text>
+        <text x="840" y="380" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">course.json · lessons · tasks · apps · resources</text>
+        <text x="840" y="402" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">plain files · shareable · deletable</text>
+      </g>
+      <g id="arch-db"><title>SQLite progress database</title>
+        <rect x="700" y="450" width="280" height="90" rx="12" fill="var(--card)" stroke="currentColor"/>
+        <text x="840" y="478" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">progress.db</text>
+        <text x="840" y="500" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">attempts · known-already · defect reports</text>
+        <text x="840" y="522" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">miss queue · tutor threads · runs</text>
+      </g>
+      <!-- edges -->
+      <g stroke="currentColor" fill="none" stroke-width="1.5" marker-end="url(#arr)">
+        <path id="e-harness-runs" d="M180 96 L180 140 L505 140 L505 190"><title>Runs drives a Harness</title></path>
+        <path id="e-provider-reg" d="M500 96 L500 120 L695 120 L695 190"><title>Registries hold Providers</title></path>
+        <path id="e-harness-folder" d="M320 76 L 960 76 L 960 140 L 990 140" opacity="0"/>
+        <path id="e-runs-folder" d="M590 250 L 690 250 L 690 330 L 760 330"><title>Runs writes to staging, CourseStore moves it in</title></path>
+        <path id="e-store-folder" d="M210 250 L 220 250 L 220 300 L 840 300 L 840 330"><title>CourseStore reads and validates the folder</title></path>
+        <path id="e-progress-db" d="M400 250 L 410 250 L 410 310 L 700 310 L 700 480" opacity=".0"/>
+        <path id="e-progress-db2" d="M315 270 L 315 320 L 780 320 L 780 450"><title>ProgressDB owns progress.db</title></path>
+        <path id="e-ipc" d="M340 290 L 340 330"><title>Typed IPC, one channel per feature</title></path>
+      </g>
+      <text x="352" y="316" font-size="11" fill="currentColor" opacity=".7">typed IPC</text>
+    </svg>
+    <figcaption>Everything below the dashed top band runs on the Mac with no network. The Mini-app frame is the only place untrusted code runs, and it reaches nothing but the message channel.</figcaption>
+  </figure>
+
+  <h3>How a Course gets built, for any Harness</h3>
+  <figure>
+    <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="flow-title" style="color:var(--ink)">
+      <title id="flow-title">Constructor run flow: brief, staging, harness, validate, move or repair</title>
+      <defs><marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+      <g id="flow-brief"><title>The user's brief</title><rect x="20" y="60" width="150" height="70" rx="10" fill="var(--card)" stroke="currentColor"/><text x="95" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Brief</text><text x="95" y="110" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">topic, objectives, notes</text></g>
+      <g id="flow-staging"><title>Staging folder with prompt files and the format spec</title><rect x="220" y="60" width="150" height="70" rx="10" fill="var(--card)" stroke="currentColor"/><text x="295" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Staging</text><text x="295" y="110" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">prompt + format spec</text></g>
+      <g id="flow-harness"><title>Any Harness writes files under a budget cap</title><rect x="420" y="60" width="150" height="70" rx="10" fill="var(--card)" stroke="currentColor" stroke-width="2"/><text x="495" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Harness</text><text x="495" y="110" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">writes files, capped</text></g>
+      <g id="flow-validate"><title>Strict validator against the format schema</title><rect x="620" y="60" width="150" height="70" rx="10" fill="var(--card)" stroke="currentColor"/><text x="695" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Validate</text><text x="695" y="110" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">schema, ids, apps</text></g>
+      <g id="flow-move"><title>Atomic move into courses/</title><rect x="820" y="20" width="160" height="60" rx="10" fill="var(--card)" stroke="currentColor"/><text x="900" y="45" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Move in</text><text x="900" y="65" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">atomic, ids stable</text></g>
+      <g id="flow-repair"><title>One repair run with the errors appended</title><rect x="820" y="110" width="160" height="60" rx="10" fill="var(--card)" stroke="currentColor" stroke-dasharray="4 3"/><text x="900" y="135" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Repair once</text><text x="900" y="155" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">errors go back in</text></g>
+      <g stroke="currentColor" fill="none" stroke-width="1.5" marker-end="url(#arr2)">
+        <path d="M170 95 L220 95"/><path d="M370 95 L420 95"/><path d="M570 95 L620 95"/>
+        <path d="M770 85 L820 55"/><path d="M770 105 L820 135"/>
+        <path d="M900 170 L900 185 L495 185 L495 130" stroke-dasharray="4 3"/>
+      </g>
+      <text x="790" y="50" font-size="11" fill="currentColor" opacity=".7">valid</text>
+      <text x="790" y="150" font-size="11" fill="currentColor" opacity=".7">invalid</text>
+    </svg>
+    <figcaption>The validator is the real interface. A Harness never writes into <code>courses/</code>. A second failure stops and shows the errors.</figcaption>
+  </figure>
+
+  <h2 id="format">B3. Course format</h2>
+  <div class="grid cols-2">
+    <div>
+      <p>One folder is the whole Course. It holds no progress and no Tutor chat, so copying it shares the Course and trashing it deletes the Course.</p>
+<pre>courses/&lt;slug&gt;/
+  course.json          manifest, objectives, ladder, modules, suggestedOrder
+  lessons/&lt;id&gt;.md      prose plus :::block directives
+  tasks/&lt;id&gt;.json      one Task: objective, depth, check, kind
+  apps/&lt;id&gt;/index.html one self-contained Mini-app
+  resources.json       links with one line of why</pre>
+      <p style="margin-top:12px">A Lesson is made only of six Blocks: <code>prose</code>, <code>callout</code>, <code>diagram</code>, <code>task</code>, <code>app</code>, <code>resource</code>. No raw HTML, no script.</p>
+    </div>
+    <div>
+      <p>Depth and Check are independent. Every cell below is legal. Check alone decides offline, cost, and the marker.</p>
+      <figure style="margin:0">
+        <svg viewBox="0 0 520 250" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="grid-title" style="color:var(--ink)">
+          <title id="grid-title">Grid of five Depths by three Checks, every cell legal</title>
+          <text x="130" y="22" font-size="12" font-weight="600" fill="currentColor" opacity=".7">CHECK →</text>
+          <text x="180" y="44" text-anchor="middle" font-size="12" fill="currentColor">deterministic ⚡</text>
+          <text x="300" y="44" text-anchor="middle" font-size="12" fill="currentColor">model ✦</text>
+          <text x="420" y="44" text-anchor="middle" font-size="12" fill="currentColor">rubric ✦</text>
+          <g font-size="12" fill="currentColor">
+            <text x="110" y="78" text-anchor="end">recall</text>
+            <text x="110" y="116" text-anchor="end">apply</text>
+            <text x="110" y="154" text-anchor="end">construct</text>
+            <text x="110" y="192" text-anchor="end">transfer</text>
+            <text x="110" y="230" text-anchor="end">project</text>
+          </g>
+          <text x="20" y="22" font-size="12" font-weight="600" fill="currentColor" opacity=".7">DEPTH ↓</text>
+          <g id="grid-cells" stroke="currentColor" stroke-opacity=".35">
+            <rect x="125" y="60" width="110" height="30" rx="5" fill="#fef3c7"/><rect x="245" y="60" width="110" height="30" rx="5" fill="#fef3c7"/><rect x="365" y="60" width="110" height="30" rx="5" fill="#fef3c7"/>
+            <rect x="125" y="98" width="110" height="30" rx="5" fill="#fde68a"/><rect x="245" y="98" width="110" height="30" rx="5" fill="#fde68a"/><rect x="365" y="98" width="110" height="30" rx="5" fill="#fde68a"/>
+            <rect x="125" y="136" width="110" height="30" rx="5" fill="#fbbf24"/><rect x="245" y="136" width="110" height="30" rx="5" fill="#fbbf24"/><rect x="365" y="136" width="110" height="30" rx="5" fill="#fbbf24"/>
+            <rect x="125" y="174" width="110" height="30" rx="5" fill="#d97706"/><rect x="245" y="174" width="110" height="30" rx="5" fill="#d97706"/><rect x="365" y="174" width="110" height="30" rx="5" fill="#d97706"/>
+            <rect x="125" y="212" width="110" height="30" rx="5" fill="#92400e"/><rect x="245" y="212" width="110" height="30" rx="5" fill="#92400e"/><rect x="365" y="212" width="110" height="30" rx="5" fill="#92400e"/>
+          </g>
+          <g id="grid-example" font-size="11" fill="#1c1917">
+            <text x="180" y="194" text-anchor="middle" fill="#fff">MCQ, offline</text>
+            <text x="180" y="232" text-anchor="middle" fill="#fff">app-result</text>
+            <text x="420" y="232" text-anchor="middle" fill="#fff">files + rubric</text>
+            <text x="300" y="79" text-anchor="middle">short answer</text>
+          </g>
+        </svg>
+        <figcaption>A transfer-depth multiple choice question is a good Task, not a mistake. A recall Task may sit in the last Module.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <h3>Deterministic kinds, all graded by the host</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>kind</th><th>Answer shape</th><th>Compared how</th></tr></thead>
+    <tbody>
+      <tr><td><code>multiple-choice</code></td><td>One or more option indexes</td><td>Set equality</td></tr>
+      <tr><td><code>numeric</code></td><td>A number</td><td>Within <code>tolerance</code></td></tr>
+      <tr><td><code>exact-text</code></td><td>A short string</td><td>Trimmed, case-folded, whitespace-collapsed</td></tr>
+      <tr><td><code>ordering</code></td><td>A permutation</td><td>Sequence equality</td></tr>
+      <tr><td><code>app-result</code></td><td>Whatever the Mini-app posts</td><td>Deep equality with <code>answer</code>. The Mini-app never grades itself</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="sandbox">B4. Sandbox boundary</h2>
+  <p>Written before the first Mini-app runs. Test 7 proves each line in a real browser.</p>
+  <div class="can-cannot">
+    <div class="card"><b>A Mini-app cannot</b><ul>
+      <li>Read or write any file.</li>
+      <li>Open any network connection. <code>connect-src 'none'</code>, and Electron blocks every request from the sandbox origin.</li>
+      <li>Load an external script, style, font, or image. Inline and <code>data:</code> only.</li>
+      <li>Read the Progress DB, the Course folder, or host state.</li>
+      <li>Navigate the host, open windows, or show dialogs.</li>
+      <li>Share an origin with the host. No <code>allow-same-origin</code>, so no storage either.</li>
+    </ul></div>
+    <div class="card"><b>A Mini-app can</b><ul>
+      <li>Run script, draw, animate, take input.</li>
+      <li>Receive one <code>init</code> message with <code>{ taskId?, inputs }</code>.</li>
+      <li>Send <code>ready</code>, <code>resize { height }</code>, and <code>result { payload }</code>.</li>
+      <li>Fail on its own. A crash shows a plain card with reload and a defect report link. The Lesson stays up.</li>
+    </ul></div>
+  </div>
+
+  <h2 id="phases">B5. Phases and tests</h2>
+  <p>Each phase ends with a runnable app. Tests are written before the phase they belong to.</p>
+  <ol class="steps">
+    <li><div><b>Skeleton and format</b><span>Electron, React, Tailwind, shadcn, SQLite. Format schema, parser, validator, fixture Course. Tests 1, 2, 3.</span></div></li>
+    <li><div><b>Study offline</b><span>Sidebar, Course page, Lesson reader, every deterministic kind, Attempts, known-already, Dashboard. Tests 6, 9. Usable with hand-written Courses.</span></div></li>
+    <li><div><b>Mini-apps</b><span>Sandbox host, message protocol, app block, app-result kind. Test 7.</span></div></li>
+    <li><div><b>Constructor</b><span>Harness contract, Claude Agent SDK adapter, prompt files, staging and validation, RunView with live log and spend meter, Keychain, new-course form, Delete Course. Tests 5, 8, 11. API key wizard.</span></div></li>
+    <li><div><b>Tutor and Grader</b><span>Provider contract, Anthropic adapter, model and rubric checks, Submissions through the Files API, Verdict view, defect reports, Tutor panel with caching. Tests 4, 10.</span></div></li>
+    <li><div><b>Non-linear study</b><span>Review sessions, miss queue, add-rung and remediate runs, remediation offer after repeated fails.</span></div></li>
+    <li><div><b>More harnesses and providers</b><span>Codex adapter, pi adapter, OpenAI Provider. Each verified from its docs at this point.</span></div></li>
+    <li><div><b>Finish</b><span>Dark mode, keyboard navigation, spend dashboard, export a Course as a zip, icon and signed build.</span></div></li>
+  </ol>
+  <h3>Tests</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>#</th><th>Test</th><th>Encodes</th><th>Phase</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Fixture Course parses. A malformed copy fails naming the file and field</td><td>Format contract</td><td>0</td></tr>
+      <tr><td>2</td><td><code>depth: transfer, check: deterministic</code> is valid and grades with the network off</td><td>Independence rule</td><td>0</td></tr>
+      <tr><td>3</td><td>A recall Task in the last Module is valid</td><td>Victor's condition</td><td>0</td></tr>
+      <tr><td>4</td><td>Grader returns a complete Verdict from a recorded response, rejects a partial one</td><td>Grader contract</td><td>4</td></tr>
+      <tr><td>5</td><td>Delete leaves no row and no folder. A trash failure still clears rows and reports the path</td><td>Deletion</td><td>3</td></tr>
+      <tr><td>6</td><td>Every deterministic kind grades with the network disabled</td><td>Offline path</td><td>1</td></tr>
+      <tr><td>7</td><td>A Mini-app trying fetch, storage, parent DOM, external script, window.open gets nothing</td><td>Sandbox boundary</td><td>2</td></tr>
+      <tr><td>8</td><td>An invalid staging folder never touches <code>courses/</code>. A valid one moves atomically</td><td>Harness contract</td><td>3</td></tr>
+      <tr><td>9</td><td>Known-already on an Objective leaves the Mastery denominator</td><td>Progress honesty</td><td>1</td></tr>
+      <tr><td>10</td><td>Second Tutor turn shows <code>cache_read_input_tokens &gt; 0</code> on a recorded exchange</td><td>Caching</td><td>4</td></tr>
+      <tr><td>11</td><td>Validator rejects a Mini-app with any external <code>src</code> or <code>href</code></td><td>Constructor output</td><td>3</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="risks">B6. Risks</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Risk</th><th>Effect</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Codex or pi SDK surface differs from the contract's assumptions</td><td>Phase 6 adapters need shims</td><td>The contract is files plus an event stream. Any agent that writes files fits</td></tr>
+      <tr><td>The Constructor produces a folder that validates but reads badly</td><td>Wasted spend</td><td>Live log, one-click cancel, budget cap on every run</td></tr>
+      <tr><td>A Mini-app validates but does not work</td><td>A dead activity</td><td>Smoke-load in a hidden sandbox during validation, require <code>ready</code> within five seconds</td></tr>
+      <tr><td>Prompt cache silently invalidates</td><td>Tutor costs rise</td><td>Test 10, plus Tutor cost per turn on the spend dashboard</td></tr>
+      <tr><td>Electron size and updates</td><td>Larger app, manual updates</td><td>Accepted. No auto-update in the first version</td></tr>
+      <tr><td>API billing surprises</td><td>Money</td><td>Cap per run, spend per day in the runs table, soft monthly ceiling warns before a run</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:24px;color:var(--ink-2)">Steps that need you at a browser are wizard steps, not chat lists: an Anthropic API key in phase 3, an OpenAI key in phase 6.</p>
+</main>
+</body>
+</html>

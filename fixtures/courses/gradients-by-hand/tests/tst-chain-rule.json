@@ -1,0 +1,6 @@
+{
+  "id": "tst-chain-rule",
+  "title": "The chain rule",
+  "module": "mod-2",
+  "tasks": ["tsk-sin-of-3x2", "tsk-why-gradients-vanish", "tsk-place-the-factors"]
+}

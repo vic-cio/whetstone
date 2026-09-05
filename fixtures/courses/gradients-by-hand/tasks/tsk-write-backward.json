@@ -1,0 +1,11 @@
+{
+  "id": "tsk-write-backward",
+  "objective": "obj-backprop",
+  "depth": "construct",
+  "check": "deterministic",
+  "kind": "assertions-pass",
+  "prompt": "Write backward() so that all three assertions pass.",
+  "app": "slope-explorer",
+  "assertions": ["shapes match", "numeric gradient check", "bias gradient"],
+  "explanation": "The gradient of the bias is the summed upstream gradient, not the mean."
+}

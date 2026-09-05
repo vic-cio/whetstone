@@ -1,0 +1,11 @@
+{
+  "id": "tsk-derivative-of-square",
+  "objective": "obj-derivative",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "numeric",
+  "prompt": "For f(x) = x^2, what is f'(3)?",
+  "answer": 6,
+  "tolerance": 0.001,
+  "explanation": "f'(x) = 2x, so f'(3) = 6."
+}

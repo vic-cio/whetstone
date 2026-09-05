@@ -1,0 +1,6 @@
+{
+  "id": "tst-derivatives",
+  "title": "Derivatives",
+  "module": "mod-1",
+  "tasks": ["tsk-slope-of-flat", "tsk-derivative-of-square"]
+}

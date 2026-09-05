@@ -1,0 +1,14 @@
+{
+  "id": "tsk-why-gradients-vanish",
+  "objective": "obj-chain-rule",
+  "depth": "transfer",
+  "check": "deterministic",
+  "kind": "accepted-answers",
+  "prompt": "In one phrase: why does a long chain of factors below one make the gradient vanish?",
+  "accepted": [
+    "the product of many small numbers shrinks toward zero",
+    "multiplying many values below one drives the product to zero",
+    "repeated multiplication by factors under one decays exponentially"
+  ],
+  "explanation": "Each layer contributes a factor. Factors below one compound downward, so the product collapses."
+}

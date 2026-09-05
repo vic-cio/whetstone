@@ -1,0 +1,11 @@
+{
+  "id": "tsk-slope-of-flat",
+  "objective": "obj-derivative",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "At a point where the curve is perfectly flat, the derivative is:",
+  "options": ["zero", "one", "undefined", "negative"],
+  "answer": [0],
+  "explanation": "A flat tangent has no rise over its run, so the slope is zero."
+}

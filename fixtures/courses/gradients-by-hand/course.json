@@ -1,0 +1,53 @@
+{
+  "formatVersion": 1,
+  "id": "gradients-by-hand",
+  "title": "Gradients by hand",
+  "subject": "Machine learning",
+  "summary": "Work out gradients on paper before letting a framework do it, so that when training misbehaves you can tell what the numbers are doing.",
+  "toolkitVersion": "1.0.0",
+  "objectives": [
+    { "id": "obj-derivative", "title": "Explain what a derivative measures" },
+    { "id": "obj-chain-rule", "title": "Apply the chain rule to a composed function" },
+    { "id": "obj-backprop", "title": "Derive the gradient of a two-layer network by hand" }
+  ],
+  "ladder": ["recall", "apply", "construct", "transfer"],
+  "modules": [
+    {
+      "id": "mod-1",
+      "title": "Derivatives refresher",
+      "pages": [
+        { "type": "lesson", "id": "les-what-a-derivative-measures" },
+        { "type": "test", "id": "tst-derivatives" }
+      ]
+    },
+    {
+      "id": "mod-2",
+      "title": "The chain rule",
+      "pages": [
+        { "type": "lesson", "id": "les-the-chain-rule" },
+        { "type": "test", "id": "tst-chain-rule" }
+      ]
+    },
+    {
+      "id": "mod-3",
+      "title": "Backprop by hand",
+      "pages": [
+        { "type": "lesson", "id": "les-one-layer-at-a-time" },
+        { "type": "test", "id": "tst-backprop" }
+      ]
+    }
+  ],
+  "suggestedOrder": [
+    "les-what-a-derivative-measures",
+    "tst-derivatives",
+    "les-the-chain-rule",
+    "tst-chain-rule",
+    "les-one-layer-at-a-time",
+    "tst-backprop"
+  ],
+  "builtBy": {
+    "harness": "claude",
+    "model": "claude-opus-5",
+    "at": "2026-09-05T18:00:00.000Z"
+  }
+}

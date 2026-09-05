@@ -1,0 +1,11 @@
+{
+  "id": "tsk-sin-of-3x2",
+  "objective": "obj-chain-rule",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "Differentiate f(x) = sin(3x^2).",
+  "options": ["6x cos(3x^2)", "cos(3x^2)", "6x sin(3x^2)", "3x^2 cos(x)"],
+  "answer": [0],
+  "explanation": "Outer derivative cos(3x^2), inner derivative 6x, multiplied."
+}
