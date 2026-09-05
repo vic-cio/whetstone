@@ -59,6 +59,17 @@ To check the real window without a person at the keyboard, set `WHETSTONE_CAPTUR
 png path and optionally `WHETSTONE_THEME=light|dark`. The app renders once, writes the png
 and a `.txt` of the visible text beside it, and exits.
 
+**Look at the png.** Capture both themes for any change that touches colour. A computed-
+style contrast audit was written and then removed: it reported "all text passes" on a
+build whose screenshot plainly showed black-on-black text, and a check that misses the bug
+in front of it is worse than no check. A real one needs to sample painted pixels rather
+than trust `getComputedStyle`, and system colours such as `buttontext` are where it went
+wrong. Until that exists, the screenshot is the check.
+
+A `<button>` does not inherit `color`. Without an explicit colour it falls back to the
+user-agent default, which is legible in one theme and invisible in the other. `theme.css`
+sets `color: inherit` on buttons globally for this reason; do not remove it.
+
 ```
 WHETSTONE_COURSES=$PWD/fixtures/courses WHETSTONE_THEME=light \
   WHETSTONE_CAPTURE=/tmp/shot.png npx electron .

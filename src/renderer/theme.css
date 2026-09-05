@@ -35,7 +35,7 @@ body {
 }
 
 /* Radius is zero everywhere. Structure comes from rules, not boxes. */
-button, input, textarea { border-radius: 0; font: inherit; }
+button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
 
 .app { display: grid; grid-template-columns: 186px minmax(0, 1fr); height: 100%; }
 
@@ -81,6 +81,9 @@ button, input, textarea { border-radius: 0; font: inherit; }
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: baseline;
   padding: 13px 0; border-bottom: 1px solid var(--line); width: 100%;
   background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; cursor: pointer;
+  /* A button does not inherit colour. Without this it falls back to the UA default,
+     which is near-black and invisible on a dark ground. */
+  color: var(--ink);
 }
 .crow:hover .cname { color: var(--amber); }
 .cname {
