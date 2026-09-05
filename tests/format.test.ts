@@ -217,13 +217,55 @@ describe('test 3b — a Lesson holds no recorded Tasks', () => {
     }
   })
 
-  it('rejects a lesson whose try id collides with a task id', () => {
+  it('rejects a lesson whose try id is written as a task id', () => {
+    // The prefixes make a collision structurally impossible: a Try is `try-`, a Task is
+    // `tsk-`. The collision check in the parser stays as a second line of defence.
     const dir = brokenCopy((d) => {
       const path = join(d, 'lessons', 'les-the-chain-rule.md')
       writeFileSync(path, readFileSync(path, 'utf8').replace('try-inner-derivative', 'tsk-sin-of-3x2'))
     })
     const result = parseCourse(dir)
     expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors[0]?.message).toMatch(/try-/)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('reads the question inside a try block, and refuses one without a question', () => {
+    const lesson = course.lessons['les-the-chain-rule']!
+    const block = lesson.blocks.find((b) => b.block === 'try')
+    expect(block?.block).toBe('try')
+    if (block?.block === 'try') {
+      expect(block.question.kind).toBe('multiple-choice')
+      expect(block.question.id).toBe('try-inner-derivative')
+    }
+
+    const dir = brokenCopy((d) => {
+      const path = join(d, 'lessons', 'les-the-chain-rule.md')
+      const text = readFileSync(path, 'utf8')
+      const start = text.indexOf(':::try{id=try-inner-derivative}')
+      writeFileSync(path, text.slice(0, start) + ':::try{id=try-inner-derivative}\n:::\n')
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /has no question/.test(e.message))).toBe(true)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('keeps prose and blocks in the order they were written', () => {
+    const lesson = course.lessons['les-what-a-derivative-measures']!
+    expect(lesson.blocks.map((block) => block.block)).toEqual([
+      'prose', 'callout', 'app', 'prose', 'try', 'resource',
+    ])
+  })
+
+  it('rejects a block that is never closed', () => {
+    const dir = brokenCopy((d) => {
+      const path = join(d, 'lessons', 'les-one-layer-at-a-time.md')
+      writeFileSync(path, readFileSync(path, 'utf8').replace(/:::\n$/, ''))
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /never closed/.test(e.message))).toBe(true)
     rmSync(dir, { recursive: true, force: true })
   })
 })

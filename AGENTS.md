@@ -32,6 +32,13 @@ tests/         vitest, run against the fixtures
   figure. No ability estimate, no streaks, no spend on screen.
 - **The parser never throws.** A malformed Course produces errors naming the file and the
   field. It is the only thing standing between an agent's output and the reader.
+- **An answer never crosses the bridge.** `courses:open` strips `answer`, `accepted` and
+  `answerGuide` from every Task and Try. The renderer sends what the user did and gets an
+  outcome back, so the window showing a question does not hold its answer and cannot skip
+  recording the Attempt.
+- **Lesson prose becomes data, never markup.** `src/shared/markdown.ts` returns a tree and
+  the renderer builds elements from it. Nothing in a Course may become HTML in the host
+  window, which is the window holding the preload bridge.
 
 ## Toolchain, and three things that will waste your afternoon
 
@@ -41,7 +48,10 @@ tests/         vitest, run against the fixtures
   vite 7 + electron-vite 5 + plugin-react 5.1 + vitest 4.1. Do not bump one alone.
 - **Tests set `NODE_OPTIONS=--no-experimental-webstorage`.** On Node 26 the experimental
   global `localStorage` is unusable in a test runner and fails tests for reasons that have
-  nothing to do with the code. `.nvmrc` pins Node 22 for the same reason.
+  nothing to do with the code.
+- **SQLite comes from `node:sqlite`, not `better-sqlite3`.** No native module, so no
+  rebuild against the Electron ABI. `.nvmrc` is Node 24 because the tests import the same
+  module outside Electron, and a Node below 22.5 does not have it. `docs/adr/0015`.
 - **npm gates install scripts.** Electron and esbuild need theirs. Run
   `npm approve-scripts esbuild` and let Electron download its binary on first launch, or
   the app will not start and the error will not say why.
@@ -70,10 +80,22 @@ A `<button>` does not inherit `color`. Without an explicit colour it falls back 
 user-agent default, which is legible in one theme and invisible in the other. `theme.css`
 sets `color: inherit` on buttons globally for this reason; do not remove it.
 
+`WHETSTONE_CAPTURE_STEPS` is a JSON array of expressions run in the page between the load
+and the shot, so a capture can reach a Lesson or a Test. A step that throws is logged and
+skipped, and the run exits after 30 seconds whatever happens.
+
 ```
-WHETSTONE_COURSES=$PWD/fixtures/courses WHETSTONE_THEME=light \
+WHETSTONE_COURSES=$PWD/fixtures/courses WHETSTONE_DB=/tmp/probe.db WHETSTONE_THEME=light \
+  WHETSTONE_CAPTURE_STEPS='["document.querySelectorAll(\".crow\")[0].click()"]' \
   WHETSTONE_CAPTURE=/tmp/shot.png npx electron .
 ```
+
+Set `WHETSTONE_DB` on any capture run. Without it the run writes ticks into the real
+Progress DB.
+
+Class names are global in `theme.css`. `.end` on a lesson footer once also matched
+`class="prow end"` on a course row and drew a stray rule there; check a new utility name
+against the whole file before adding it.
 
 ## Packaging
 

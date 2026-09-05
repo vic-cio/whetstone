@@ -18,4 +18,11 @@ Each layer contributes one factor. Multiply the factors and you have the gradien
 the whole composition.
 
 :::try{id=try-inner-derivative}
+{
+  "kind": "multiple-choice",
+  "prompt": "Differentiate f(x) = sin(3x^2).",
+  "options": ["6x cos(3x^2)", "cos(3x^2)", "6x sin(3x^2)", "3x^2 cos(x)"],
+  "answer": [0],
+  "explanation": "Outer derivative cos(3x^2), inner derivative 6x, multiplied."
+}
 :::

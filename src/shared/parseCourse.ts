@@ -7,10 +7,20 @@ import {
   ManifestSchema,
   TaskSchema,
   TestSchema,
+  TrySchema,
   LessonFrontmatterSchema,
   ResourceSchema,
 } from './format'
-import type { Course, CourseError, Lesson, ParseResult, Resource, Task, Test } from './format'
+import type {
+  Course,
+  CourseError,
+  Lesson,
+  LessonBlock,
+  ParseResult,
+  Resource,
+  Task,
+  Test,
+} from './format'
 
 /**
  * Read a Course folder into memory, or say precisely what is wrong with it.
@@ -208,7 +218,15 @@ function readJson<T>(dir: string, file: string, schema: ZodType<T>, fail: Fail):
   return parsed.data
 }
 
-const DIRECTIVE = /^:::(\w+)\{([^}]*)\}/gm
+/**
+ * A block opens with `:::name{attributes}` on its own line and closes with `:::`.
+ * Everything outside a block is prose.
+ */
+const OPEN = /^:::(\w+)\{([^}]*)\}\s*$/
+const CLOSE = /^:::\s*$/
+
+const attribute = (attributes: string, name: string): string | undefined =>
+  new RegExp(`\\b${name}=([^\\s}]+)`).exec(attributes)?.[1]
 
 function readLesson(dir: string, file: string, fail: Fail): Lesson | undefined {
   let raw: string
@@ -239,35 +257,117 @@ function readLesson(dir: string, file: string, fail: Fail): Lesson | undefined {
     return undefined
   }
 
+  const blocks: LessonBlock[] = []
   const tries: string[] = []
   const apps: string[] = []
   const resources: string[] = []
-  for (const match of body.matchAll(DIRECTIVE)) {
-    const [, name = '', attributes = ''] = match
-    const id = /\bid=([^\s}]+)/.exec(attributes)?.[1]
-    const src = /\bsrc=([^\s}]+)/.exec(attributes)?.[1]
+  const diagrams: string[] = []
+
+  const lines = body.split('\n')
+  let prose: string[] = []
+  const flushProse = (): void => {
+    const markdown = prose.join('\n').trim()
+    prose = []
+    if (markdown !== '') blocks.push({ block: 'prose', markdown })
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const open = OPEN.exec(lines[index] ?? '')
+    if (!open) {
+      prose.push(lines[index] ?? '')
+      continue
+    }
+    flushProse()
+
+    const name = open[1] ?? ''
+    const attributes = open[2] ?? ''
+    const inner: string[] = []
+    index += 1
+    while (index < lines.length && !CLOSE.test(lines[index] ?? '')) {
+      inner.push(lines[index] ?? '')
+      index += 1
+    }
+    if (index >= lines.length) {
+      fail(file, `block ":::${name}" is never closed with :::`, name)
+      break
+    }
+    const content = inner.join('\n').trim()
+    const id = attribute(attributes, 'id')
+
     switch (name) {
-      case 'try':
-        if (id) tries.push(id)
-        else fail(file, 'a try block has no id', 'try')
+      case 'try': {
+        if (!id) {
+          fail(file, 'a try block has no id', 'try')
+          break
+        }
+        if (content === '') {
+          fail(file, `try block "${id}" has no question in it`, 'try')
+          break
+        }
+        let value: unknown
+        try {
+          value = JSON.parse(content)
+        } catch (cause) {
+          fail(file, `try block "${id}" is not valid JSON: ${(cause as Error).message}`, 'try')
+          break
+        }
+        const question = TrySchema.safeParse({ id, ...(value as Record<string, unknown>) })
+        if (!question.success) {
+          for (const issue of question.error.issues) {
+            fail(file, `try block "${id}": ${issue.message}`, issue.path.join('.') || 'try')
+          }
+          break
+        }
+        tries.push(id)
+        blocks.push({ block: 'try', question: question.data })
         break
+      }
+
       case 'app':
-        if (id) apps.push(id)
-        else fail(file, 'an app block has no id', 'app')
+        if (!id) fail(file, 'an app block has no id', 'app')
+        else {
+          apps.push(id)
+          blocks.push({ block: 'app', id })
+        }
         break
+
       case 'resource':
-        if (id) resources.push(id)
-        else fail(file, 'a resource block has no id', 'resource')
+        if (!id) fail(file, 'a resource block has no id', 'resource')
+        else {
+          resources.push(id)
+          blocks.push({ block: 'resource', id })
+        }
         break
+
       case 'task':
         fail(file, 'holds a task block; recorded tasks belong to a test, not a lesson', 'task')
         break
+
       case 'callout':
-      case 'diagram':
-        if (name === 'diagram' && !src) fail(file, 'a diagram block has no src', 'diagram')
+        blocks.push({ block: 'callout', kind: attribute(attributes, 'kind') ?? 'note', markdown: content })
         break
+
+      case 'diagram': {
+        const src = attribute(attributes, 'src')
+        if (!src) fail(file, 'a diagram block has no src', 'diagram')
+        else {
+          diagrams.push(src)
+          blocks.push({ block: 'diagram', src, alt: content })
+        }
+        break
+      }
+
       default:
         fail(file, `unknown block ":::${name}"; the block set is prose, callout, diagram, try, app, resource`, name)
+    }
+  }
+  flushProse()
+
+  // A diagram points at a file the Constructor wrote. A missing one is a broken Lesson,
+  // not a broken image at read time.
+  for (const src of diagrams) {
+    if (src.startsWith('http') || !existsSync(join(dir, src))) {
+      fail(file, `diagram source "${src}" is not a file in the course folder`, 'diagram')
     }
   }
 
@@ -279,6 +379,7 @@ function readLesson(dir: string, file: string, fail: Fail): Lesson | undefined {
     objectives,
     ...(minutes === undefined ? {} : { minutes }),
     body,
+    blocks,
     tries,
     apps,
     resources,

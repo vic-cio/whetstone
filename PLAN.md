@@ -214,7 +214,7 @@ A `rubric` Task carries its Rubric in full, and the app shows it before the user
 
 ### 3.4 The Progress DB
 
-SQLite at `~/Library/Application Support/Whetstone/progress.db`. Tables:
+SQLite at `~/Library/Application Support/Whetstone/progress.db`, through Node's own `node:sqlite` rather than a native module (`docs/adr/0015`). Tables:
 
 | Table | Columns | Note |
 |---|---|---|
@@ -607,8 +607,16 @@ Electron, Vite, React, TypeScript. The format schema in `zod`, the parser and va
 
 Two things were left for later on purpose. Tailwind and shadcn/ui are not installed, because the direction is hairlines and zero radius and plain CSS with the tokens is currently shorter than configuring a framework to suppress its defaults; revisit when the component count grows. The three fonts are not yet self-hosted, so the app falls back to system faces and does not yet match the reference exactly. SQLite arrives with phase 1, which is the first phase that has anything to store.
 
-**Phase 1. Study offline.**
-The two-level rail with its collapse states. Home as a course library. Course page with the Ladder, Modules, Pages, and tickboxes. Both page types, Lesson and Test. Lesson reader with the block set. Every deterministic Task kind including `accepted-answers`. Attempts recorded. Tests 6 and 9. At the end of this phase the app is a usable reader for hand-written Courses.
+**Phase 1. Study offline. Done.**
+The two-level rail with its collapse states, home as a course library, the Course page with its Ladder and tickboxes, both Page types, the Lesson reader with the block set, and the deterministic answering path wired end to end. Tests 6 and 9 pass, with 3b sharpened: a Try and the Test Task that asks the identical question now sit side by side in the fixture, and only one of them records. 49 assertions in all.
+
+Three things settled during the build.
+
+- **A `try` block carries its question as JSON in the block body.** The block set had no way to say what a Try asks, so a Lesson could name one and never pose it. A Try reuses the six deterministic kinds, so the Lesson reader and the Test reader run the same answering control and a Try can never be a weaker kind of question than a Task, only an unrecorded one.
+- **Answering happens in the main process.** `courses:open` sends the renderer a Course with every answer removed, and the renderer posts what the user did and receives an outcome. So a Task's answer is never in the window that displays it, and an Attempt cannot be skipped by the page that asked. A test asserts the accepted phrasings appear nowhere in what crosses the bridge.
+- **Lesson prose is parsed to data, never to HTML.** Lesson text is written by an agent and rendered in the host window, which holds the only bridge to the main process, so `<script>` in a Lesson comes out as characters and a link the app would not open stays as text. This costs tables and math, which arrive with KaTeX later.
+
+Deferred to their own phases, and stubbed rather than hidden: an `app` block and the `app-result` and `assertions-pass` kinds say the activity arrives with phase 2, and a `model` or `rubric` Task says it is judged by a model. A Course that uses them is not a broken Course.
 
 **Phase 2. Mini-apps.**
 The toolkit and its widgets, the sandbox host, `Kit.bridge`, the `app` block, and the `app-result` and `assertions-pass` Task kinds. Two sample Mini-apps in the fixture, one interactive and one running assertions, both built only from the toolkit. Tests 7, 17, 18.

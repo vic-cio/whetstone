@@ -1,4 +1,4 @@
-import type { Task } from './format'
+import type { Answerable, Task, Try } from './format'
 
 /**
  * Answering a deterministic Task.
@@ -52,13 +52,19 @@ const deepEqual = (a: unknown, b: unknown): boolean => {
 }
 
 /**
- * Answer a deterministic Task. Throws for any other Check, because those go to a Grader
- * and reaching here with one is a programming error rather than a user-facing failure.
+ * Answer a deterministic Task, or a Lesson's Try. Throws for any other Check, because
+ * those go to a Grader and reaching here with one is a programming error rather than a
+ * user-facing failure.
+ *
+ * A Try and a Task are answered by the same code on purpose. They differ in what the app
+ * does with the outcome, never in how the outcome is reached: a Try is not an easier
+ * question, it is an unrecorded one (docs/adr/0013).
  */
-export function answerDeterministic(task: Task, given: unknown): Outcome {
-  if (task.check !== 'deterministic') {
-    throw new Error(`task ${task.id} has check "${task.check}" and cannot be answered by the host`)
+export function answerDeterministic(item: Task | Try, given: unknown): Outcome {
+  if ('check' in item && item.check !== 'deterministic') {
+    throw new Error(`task ${item.id} has check "${item.check}" and cannot be answered by the host`)
   }
+  const task = item as Answerable
   const explanation = task.explanation === undefined ? {} : { explanation: task.explanation }
 
   switch (task.kind) {

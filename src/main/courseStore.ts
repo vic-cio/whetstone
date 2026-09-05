@@ -4,7 +4,11 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { parseCourse } from '../shared/parseCourse'
-import type { CourseError } from '../shared/format'
+import { openProgress } from './progress'
+import { courseView } from './study'
+import type { Progress } from './progress'
+import type { CourseView } from './study'
+import type { Course, CourseError, PageType } from '../shared/format'
 
 /** What the library needs to draw a row, without sending a whole Course to the renderer. */
 export interface CourseSummary {
@@ -15,13 +19,28 @@ export interface CourseSummary {
   summary: string
   moduleCount: number
   pageCount: number
-  /** Pages ticked. Phase 0 has no ticks yet, so this is zero until the database lands. */
+  /** Pages ticked. The only progress figure the app keeps. */
   pagesDone: number
 }
 
 export interface BrokenCourse {
   slug: string
   errors: CourseError[]
+}
+
+/**
+ * The Progress DB, opened once and kept open for the life of the process.
+ *
+ * `WHETSTONE_DB` moves it, which is how a capture run gets a database of its own instead
+ * of writing ticks into the real one.
+ */
+let db: Progress | undefined
+export function progress(): Progress {
+  if (!db) {
+    const file = process.env['WHETSTONE_DB'] ?? join(app.getPath('userData'), 'progress.db')
+    db = openProgress(file)
+  }
+  return db
 }
 
 export function coursesRoot(): string {
@@ -87,10 +106,35 @@ export function listCourses(): { courses: CourseSummary[]; broken: BrokenCourse[
       summary: course.summary,
       moduleCount: course.modules.length,
       pageCount: course.modules.reduce((total, module) => total + module.pages.length, 0),
-      pagesDone: 0,
+      pagesDone: progress().pagesDone(entry.name),
     })
   }
 
   courses.sort((a, b) => a.title.localeCompare(b.title))
   return { courses, broken }
+}
+
+/** Read one Course fresh from disk, so an edit made outside the app is picked up. */
+function read(slug: string): Course | undefined {
+  const result = parseCourse(join(coursesRoot(), slug))
+  return result.ok ? result.course : undefined
+}
+
+export type OpenResult = { ok: true; course: CourseView } | { ok: false; errors: CourseError[] }
+
+export function openCourse(slug: string): OpenResult {
+  const result = parseCourse(join(coursesRoot(), slug))
+  if (!result.ok) return { ok: false, errors: result.errors }
+  return { ok: true, course: courseView(slug, result.course, progress()) }
+}
+
+export function loadCourse(slug: string): Course {
+  const course = read(slug)
+  if (!course) throw new Error(`course "${slug}" could not be read`)
+  return course
+}
+
+export function setTick(slug: string, pageId: string, pageType: PageType, ticked: boolean): CourseView {
+  progress().setTickByUser(slug, pageId, pageType, ticked)
+  return courseView(slug, loadCourse(slug), progress())
 }

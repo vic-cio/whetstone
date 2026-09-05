@@ -35,7 +35,7 @@ A question inside a Lesson that gives an answer immediately and is never recorde
 _Avoid_: Practice question, self-check, exercise
 
 **Block**:
-One of a fixed set of pieces the host renders inside a Lesson: prose, callout, diagram, task, app, and resource. A Lesson is made only of Blocks.
+One of a fixed set of pieces the host renders inside a Lesson: prose, callout, diagram, [[try]], app, and resource. A Lesson is made only of Blocks, and the set is closed, so no Course can invent one.
 _Avoid_: Component, widget, element, section
 
 **Objective**:

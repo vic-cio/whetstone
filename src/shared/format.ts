@@ -120,6 +120,28 @@ export function isOffline(task: Pick<Task, 'check'>): boolean {
   return task.check === 'deterministic'
 }
 
+/** The six kinds the host answers by itself. A Task and a Try both draw from this set. */
+export type DeterministicKind = z.infer<typeof deterministicKind>
+
+// ---------------------------------------------------------------- try
+
+/**
+ * A `try` block: a question inside a Lesson, answered in place and never recorded
+ * (docs/adr/0013). It carries no objective and no depth, because nothing measures it,
+ * and no `check`, because a Lesson never reaches a Grader. It is always deterministic.
+ */
+export const TrySchema = z
+  .object({
+    id: id('try'),
+    prompt: z.string().min(1),
+    explanation: z.string().optional(),
+  })
+  .and(deterministicKind)
+export type Try = z.infer<typeof TrySchema>
+
+/** Anything the host can answer on its own: a deterministic Task, or a Try. */
+export type Answerable = Try | (Extract<Task, { check: 'deterministic' }> & DeterministicKind)
+
 // ---------------------------------------------------------------- pages
 
 export const TestSchema = z.object({
@@ -138,6 +160,19 @@ export const LessonFrontmatterSchema = z.object({
   minutes: z.number().int().positive().optional(),
 })
 
+/**
+ * The fixed block set a Lesson is built from. Prose is everything between the blocks.
+ * The set is closed on purpose: a Course that could invent a block would stop looking
+ * like the same product as every other Course.
+ */
+export type LessonBlock =
+  | { block: 'prose'; markdown: string }
+  | { block: 'callout'; kind: string; markdown: string }
+  | { block: 'diagram'; src: string; alt: string }
+  | { block: 'try'; question: Try }
+  | { block: 'app'; id: string }
+  | { block: 'resource'; id: string }
+
 export interface Lesson {
   id: string
   title: string
@@ -145,6 +180,8 @@ export interface Lesson {
   objectives: string[]
   minutes?: number
   body: string
+  /** The Lesson in order, prose and blocks together. This is what the reader draws. */
+  blocks: LessonBlock[]
   /** Ids of `:::try{}` blocks. These are never Tasks and never produce an Attempt. */
   tries: string[]
   /** Ids of `:::app{}` blocks, each resolving to a folder under apps/. */
@@ -231,3 +268,71 @@ export interface CourseError {
 }
 
 export type ParseResult = { ok: true; course: Course } | { ok: false; errors: CourseError[] }
+
+// ---------------------------------------------------------------- what the renderer sees
+
+/**
+ * A Task with its answer removed.
+ *
+ * Answering happens in the main process, so an answer never crosses into the renderer and
+ * a recorded Attempt cannot be bypassed by the page that asked the question. Everything
+ * the user is meant to see survives: options, items, criteria, and the assertion names.
+ */
+export interface PublicTask {
+  id: string
+  objective: string
+  depth: Depth
+  check: Check
+  kind: string
+  prompt: string
+  options?: string[]
+  items?: string[]
+  units?: string
+  app?: string
+  assertions?: string[]
+  accepts?: string[]
+  rubric?: { id: string; criterion: string }[]
+}
+
+/** A Try with its answer removed, for the same reason. */
+export interface PublicTry {
+  id: string
+  kind: string
+  prompt: string
+  options?: string[]
+  items?: string[]
+  units?: string
+  app?: string
+  assertions?: string[]
+}
+
+const ASKED = ['options', 'items', 'units', 'app', 'assertions', 'accepts', 'rubric'] as const
+
+function shown(source: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const key of ASKED) if (source[key] !== undefined) out[key] = source[key]
+  return out
+}
+
+export function publicTask(task: Task): PublicTask {
+  const source = task as unknown as Record<string, unknown>
+  return {
+    id: task.id,
+    objective: task.objective,
+    depth: task.depth,
+    check: task.check,
+    kind: (source['kind'] as string) ?? '',
+    prompt: task.prompt,
+    ...shown(source),
+  }
+}
+
+export function publicTry(question: Try): PublicTry {
+  const source = question as unknown as Record<string, unknown>
+  return {
+    id: question.id,
+    kind: (source['kind'] as string) ?? '',
+    prompt: question.prompt,
+    ...shown(source),
+  }
+}

@@ -1,10 +1,33 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
-import { join } from 'node:path'
+import { app, BrowserWindow, ipcMain, nativeTheme, net, protocol, shell } from 'electron'
+import { join, relative, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 
-import { listCourses } from './courseStore'
+import { coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
+import { answerTask, answerTry, reachedEndOfLesson } from './study'
+import type { PageType } from '../shared/format'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
+
+/**
+ * Images a Lesson points at live in the Course folder, which is outside the app. They
+ * reach the page through a scheme of their own rather than by widening the renderer's
+ * access: this serves files under the courses root and refuses everything else.
+ */
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'whetstone-course', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+])
+
+function serveCourseFile(request: Request): Promise<Response> {
+  const url = new URL(request.url)
+  const root = resolve(coursesRoot(), decodeURIComponent(url.hostname))
+  const file = resolve(root, decodeURIComponent(url.pathname).replace(/^\/+/, ''))
+  const inside = relative(root, file)
+  if (inside.startsWith('..') || inside === '') {
+    return Promise.resolve(new Response('not found', { status: 404 }))
+  }
+  return net.fetch(pathToFileURL(file).toString())
+}
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -34,15 +57,34 @@ function createWindow(): void {
   if (capture) {
     const theme = process.env['WHETSTONE_THEME']
     if (theme === 'light' || theme === 'dark') nativeTheme.themeSource = theme
+
+    // WHETSTONE_CAPTURE_STEPS is a JSON array of expressions run in the page, one per
+    // step, so a capture can reach a Lesson or a Test rather than only the first screen.
+    const steps: string[] = JSON.parse(process.env['WHETSTONE_CAPTURE_STEPS'] ?? '[]')
+    const wait = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
+
+    // Whatever happens, this run ends.
+    setTimeout(() => app.exit(1), 30_000)
+
     window.webContents.once('did-finish-load', () => {
-      setTimeout(() => {
-        void window.webContents.capturePage().then(async (image) => {
-          const { writeFileSync } = await import('node:fs')
-          writeFileSync(capture, image.toPNG())
-          writeFileSync(`${capture}.txt`, await window.webContents.executeJavaScript('document.body.innerText'))
-          app.quit()
-        })
-      }, 1500)
+      void (async () => {
+        await wait(900)
+        for (const step of steps) {
+          // A step that misses is reported and skipped. A capture must always produce a
+          // png: a hung one is a debugging session, not a check.
+          const failure = await window.webContents.executeJavaScript(
+            `(() => { try { ${step}; return '' } catch (error) { return String(error) } })()`,
+            true,
+          )
+          if (failure !== '') console.error(`capture step failed: ${step} -> ${failure}`)
+          await wait(600)
+        }
+        const image = await window.webContents.capturePage()
+        const { writeFileSync } = await import('node:fs')
+        writeFileSync(capture, image.toPNG())
+        writeFileSync(`${capture}.txt`, await window.webContents.executeJavaScript('document.body.innerText'))
+        app.quit()
+      })()
     })
   }
 
@@ -58,7 +100,36 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  protocol.handle('whetstone-course', serveCourseFile)
+
+  // One handler per thing the reader can do. Answering happens here rather than in the
+  // renderer, so an answer never crosses the bridge and an Attempt cannot be skipped.
   ipcMain.handle('courses:list', () => listCourses())
+  ipcMain.handle('courses:open', (_event, slug: string) => openCourse(slug))
+
+  ipcMain.handle(
+    'progress:setTick',
+    (_event, slug: string, pageId: string, pageType: PageType, ticked: boolean) =>
+      setTick(slug, pageId, pageType, ticked),
+  )
+  ipcMain.handle('progress:reachedEnd', (_event, slug: string, lessonId: string) => {
+    const course = loadCourse(slug)
+    reachedEndOfLesson(slug, course, progress(), lessonId)
+    return openCourse(slug)
+  })
+
+  ipcMain.handle(
+    'tasks:answer',
+    (_event, slug: string, testId: string, taskId: string, given: unknown) => {
+      const course = loadCourse(slug)
+      return answerTask(slug, course, progress(), testId, taskId, given)
+    },
+  )
+  ipcMain.handle(
+    'tries:answer',
+    (_event, slug: string, lessonId: string, tryId: string, given: unknown) =>
+      answerTry(loadCourse(slug), lessonId, tryId, given),
+  )
 
   createWindow()
   app.on('activate', () => {
