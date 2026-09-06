@@ -26,6 +26,8 @@ export interface CourseSummary {
 
 export interface BrokenCourse {
   slug: string
+  /** The folder on disk. A broken Course cannot be opened, so this is what to act on. */
+  folder: string
   errors: CourseError[]
 }
 
@@ -49,11 +51,8 @@ export function coursesRoot(): string {
   if (fromEnv) return fromEnv
 
   const root = join(app.getPath('userData'), 'courses')
-  const fresh = !existsSync(root)
-  if (fresh) {
-    mkdirSync(root, { recursive: true })
-    seedSampleCourse(root)
-  }
+  mkdirSync(root, { recursive: true })
+  seedSampleCourses(root)
   return root
 }
 
@@ -72,16 +71,24 @@ function samplePath(name: string): string {
 }
 
 /**
- * Copy the sample Courses into a brand-new root, so a fresh install opens with something
- * to read. This runs once and only on a root that did not exist: a root the user already
- * has is theirs, whatever is in it, and is never written to here.
+ * Copy the sample Courses in, so a fresh install opens with something to read.
+ *
+ * The decision is made one sample at a time, not once for the whole root. Seeding the
+ * root only when the root was new meant a sample added in a later version never reached
+ * anyone who had already run the app, and a sample seeded by an early version stayed at
+ * that early version for ever.
+ *
+ * A folder that is already there is left alone, whatever is in it. That is the line: the
+ * app puts a Course there once and the folder is the user's from then on.
  */
-function seedSampleCourse(root: string): void {
+function seedSampleCourses(root: string): void {
   for (const name of SAMPLES) {
+    const target = join(root, name)
+    if (existsSync(target)) continue
     const source = samplePath(name)
     if (!existsSync(source)) continue
     try {
-      cpSync(source, join(root, name), { recursive: true })
+      cpSync(source, target, { recursive: true })
     } catch {
       // Seeding is a convenience. A failure leaves an empty library, which the reader
       // already handles, so it must never stop the app from starting.
@@ -103,7 +110,7 @@ export function listCourses(): { courses: CourseSummary[]; broken: BrokenCourse[
     if (!result.ok) {
       // A broken folder is reported, never silently hidden: the user should be able to
       // see that a Course is there and what is wrong with it.
-      broken.push({ slug: entry.name, errors: result.errors })
+      broken.push({ slug: entry.name, folder: join(root, entry.name), errors: result.errors })
       continue
     }
     const course = result.course

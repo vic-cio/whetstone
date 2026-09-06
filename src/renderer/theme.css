@@ -52,12 +52,14 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
   font-weight: 800; font-size: 15px; letter-spacing: -0.02em; text-transform: uppercase;
   padding: 0 12px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--rail-line);
 }
+/* A name in the rail is the thing you came here to click, so it is read at full
+   strength. Muted is for the labels around it, never for a destination. */
 .rail button {
   display: block; width: 100%; text-align: left;
   padding: 5px 12px; background: none; border: 0;
-  border-left: 2px solid transparent; color: var(--rail-muted); cursor: pointer;
+  border-left: 2px solid transparent; color: var(--rail-ink); cursor: pointer;
 }
-.rail button:hover { color: var(--rail-ink); }
+.rail button:hover { color: #fff; background: #ffffff0a; }
 .rail button.on { border-left-color: var(--amber); color: #fff; font-weight: 600; background: #ffffff0a; }
 .rail .foot { margin-top: 14px; padding: 11px 12px 0; border-top: 1px solid var(--rail-line); }
 .rail .foot button { padding: 3px 0; border-left: 0; }
@@ -78,14 +80,21 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
 }
 
 .crow {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: baseline;
-  padding: 13px 0; border-bottom: 1px solid var(--line); width: 100%;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: baseline;
+  padding: 13px 10px 13px 0; border-bottom: 1px solid var(--line); width: 100%;
   background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; cursor: pointer;
   /* A button does not inherit colour. Without this it falls back to the UA default,
      which is near-black and invisible on a dark ground. */
   color: var(--ink);
 }
-.crow:hover .cname { color: var(--amber); }
+/* A row is a button, so it says so before the pointer arrives: the arrow is always
+   there, and the whole row lights on hover rather than the title alone. */
+.crow::after {
+  content: "\2192"; color: var(--muted); font-size: 15px; align-self: center;
+  grid-column: 3; padding-left: 2px;
+}
+.crow:hover { background: var(--said-bg); }
+.crow:hover .cname, .crow:hover::after { color: var(--amber); }
 .cname {
   font-family: Archivo, "Inter Tight", sans-serif;
   font-weight: 700; font-size: 17px; letter-spacing: -0.02em; text-transform: uppercase; display: block;
@@ -104,6 +113,10 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
   margin: 0 0 5px; font-weight: 500;
 }
 .broken li { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+.broken .bpath {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px;
+  color: var(--muted); margin: 0 0 6px; word-break: break-all;
+}
 
 /* ---------------------------------------------------------------- rail, second level */
 
@@ -129,6 +142,7 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
 .rail button.on .tt { color: var(--amber); }
 .rail .collapse {
   margin-top: 18px; padding: 9px 12px 0; border-top: 1px solid var(--rail-line);
+  color: var(--rail-muted);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase;
 }

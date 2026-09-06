@@ -212,16 +212,25 @@ function Home({
       )}
 
       {broken.map((entry) => (
-        <Broken key={entry.slug} slug={entry.slug} errors={entry.errors} />
+        <Broken key={entry.slug} slug={entry.slug} folder={entry.folder} errors={entry.errors} />
       ))}
     </>
   )
 }
 
-function Broken({ slug, errors }: { slug: string; errors: CourseError[] }): React.JSX.Element {
+function Broken({
+  slug,
+  folder,
+  errors,
+}: {
+  slug: string
+  folder?: string
+  errors: CourseError[]
+}): React.JSX.Element {
   return (
     <div className="broken">
       <h2>{slug === '' ? 'This course' : slug} could not be read</h2>
+      {folder !== undefined && <p className="bpath">{folder}</p>}
       <ul>
         {errors.slice(0, 6).map((error, index) => (
           <li key={index}>

@@ -143,7 +143,9 @@ moved or downloaded. Clear it with:
 xattr -dr com.apple.quarantine /Applications/Whetstone.app
 ```
 
-A brand-new courses root is seeded with the sample Courses from `fixtures/courses/`, which
-ship in the bundle under `Contents/Resources/samples/`. They sit on different toolkit
-versions on purpose. Seeding runs once, only on a root that did not exist, and never
-touches a root the user already has.
+The courses root is seeded with the sample Courses from `fixtures/courses/`, which ship in
+the bundle under `Contents/Resources/samples/`. They sit on different toolkit versions on
+purpose. The decision is made one sample at a time: a sample whose folder is missing is
+copied in, and a folder that is already there is left alone, whatever is in it. Do not go
+back to seeding the whole root once. That made a sample added in a later version invisible
+to anyone who had already run the app, and it froze an early sample at its early state.
