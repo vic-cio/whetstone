@@ -1,0 +1,11 @@
+{
+  "id": "tsk-find-the-fork",
+  "objective": "obj-play-fork",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "app-result",
+  "app": "find-the-fork",
+  "prompt": "White to move. Play the knight move that attacks the king and the rook at the same time.",
+  "answer": { "san": "Nc7+" },
+  "explanation": "Nc7+ attacks the king on e8 and the rook on a8. Black must answer the check, so the rook falls next move. Nd6+ is also a check, but it attacks nothing else worth having."
+}

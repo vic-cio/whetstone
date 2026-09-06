@@ -4,6 +4,7 @@ import matter from 'gray-matter'
 import type { ZodType } from 'zod'
 
 import { EXTERNAL, readToolkit } from './miniapp'
+import { serviceProblem } from './services'
 import {
   ManifestSchema,
   TaskSchema,
@@ -113,6 +114,16 @@ export function parseCourse(dir: string): ParseResult {
         'toolkitVersion',
       )
     }
+  }
+
+  // ---------------------------------------------------------------- services
+
+  // A Service is a capability the host answers for, named and versioned the way the
+  // toolkit is (docs/adr/0018). One this build does not have would fail at the moment a
+  // learner pressed something, so it is refused here instead.
+  for (const [index, use] of manifest.services.entries()) {
+    const problem = serviceProblem(use)
+    if (problem) fail('course.json', problem, `services[${index}]`)
   }
 
   // ---------------------------------------------------------------- cross-references

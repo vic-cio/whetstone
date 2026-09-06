@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 import type { BrokenCourse, CourseSummary, OpenResult } from '../main/courseStore'
 import type { Outcome } from '../shared/grade'
+import type { ServiceReply } from '../shared/services'
 import type { PageType } from '../shared/format'
 import type { CourseView } from '../main/study'
 
@@ -32,6 +33,14 @@ const api = {
       given: unknown,
     ): Promise<{ outcome: Outcome; ticked: boolean }> =>
       ipcRenderer.invoke('tasks:answer', slug, testId, taskId, given),
+  },
+  services: {
+    /**
+     * A Mini-app asking the host for something a sealed frame cannot carry. The renderer
+     * only carries the question across; the main process decides whether to answer it.
+     */
+    ask: (slug: string, service: string, request: unknown): Promise<ServiceReply> =>
+      ipcRenderer.invoke('services:ask', slug, service, request),
   },
   tries: {
     answer: (slug: string, lessonId: string, tryId: string, given: unknown): Promise<Outcome> =>

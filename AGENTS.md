@@ -11,14 +11,16 @@ Harness, Toolkit and the rest all mean something specific here.
 
 ```
 src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts,
-               miniapp.ts (the sealed frame)
+               miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
+               services.ts (what the host answers for a Mini-app), chess.ts (the first one)
 src/main/      Electron main process. Node lives here and nowhere else
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
 toolkit/       the toolkit this build ships. See docs/toolkit.md
 fixtures/courses/        hand-written Courses the tests run against, and the sample the
                          app seeds a fresh library with
-fixtures/courses-sealed/ the hostile Course test 7 attacks. Never shipped
+fixtures/courses-sealed/ the Courses test 7 runs: one hostile, one that uses a Service.
+                         Never shipped
 tests/         vitest, run against the fixtures
 ```
 
@@ -47,6 +49,16 @@ tests/         vitest, run against the fixtures
 - **The toolkit is pinned per Course.** The host injects the copy in the Course folder, never
   the one this build ships, so a Course keeps behaving the way it was built. Change
   `toolkit/` and its version together, never a one-off inside a Course. `docs/adr/0014`.
+- **A Course declares the Services it uses.** `Kit.ask` reaches the host, and the host
+  answers only for a Service named in `course.json`. A Course names a capability and a
+  version, never a path: nothing in a Course folder may point at the rest of the machine.
+  A Service is offline, pure, and holds no state. `docs/adr/0018`.
+- **A Service runs in the main process, so a slow one freezes the window.** The chess
+  opponent's search depth is capped for that reason. Anything added beside it carries the
+  same obligation.
+- **A path from a Course is checked against the disk, not against a string.** `resolve` and
+  `relative` never touch the filesystem, so a symlink inside a Course passes a check written
+  that way. `fileInCourse` calls `realpathSync` first.
 - **A Mini-app reports; it never decides.** `grade.ts` compares what the frame sent with what
   the Constructor wrote. An `assertions-pass` Task passes only on the assertions it declares.
 - **Lesson prose becomes data, never markup.** `src/shared/markdown.ts` returns a tree and
@@ -131,6 +143,7 @@ moved or downloaded. Clear it with:
 xattr -dr com.apple.quarantine /Applications/Whetstone.app
 ```
 
-A brand-new courses root is seeded with the sample Course from `fixtures/`, which ships in
-the bundle under `Contents/Resources/sample-course`. Seeding runs once, only on a root
-that did not exist, and never touches a root the user already has.
+A brand-new courses root is seeded with the sample Courses from `fixtures/courses/`, which
+ship in the bundle under `Contents/Resources/samples/`. They sit on different toolkit
+versions on purpose. Seeding runs once, only on a root that did not exist, and never
+touches a root the user already has.

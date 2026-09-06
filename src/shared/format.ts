@@ -221,6 +221,13 @@ export const ManifestSchema = z.object({
   subject: z.string().min(1),
   summary: z.string().min(1),
   toolkitVersion: z.string().min(1),
+  /**
+   * The Services this Course asks the host for. A Course names a capability and a version,
+   * never a path, and the host answers nothing that is not listed here (docs/adr/0018).
+   */
+  services: z
+    .array(z.object({ id: z.string().min(1), version: z.string().min(1) }))
+    .default([]),
   objectives: z.array(ObjectiveSchema).min(1),
   /** The Rungs this Course actually uses, drawn from the fixed scale. */
   ladder: z.array(z.enum(DEPTHS)).min(1),

@@ -20,6 +20,10 @@ import { join } from 'node:path'
 const ROOT = join(import.meta.dirname, '..')
 const ELECTRON = join(ROOT, 'node_modules', '.bin', 'electron')
 
+/** Click the library row for one course, by its title rather than by its place. */
+const open = (title: string): string =>
+  `Array.from(document.querySelectorAll(".crow")).filter(function (b) { return b.textContent.indexOf(${JSON.stringify(title)}) >= 0 })[0].click()`
+
 interface Message {
   kit?: string
   type?: string
@@ -47,12 +51,17 @@ beforeAll(() => {
       WHETSTONE_COURSES: join(ROOT, 'fixtures', 'courses-sealed'),
       WHETSTONE_DB: db,
       WHETSTONE_CAPTURE: shot,
-      WHETSTONE_CAPTURE_WAIT: '2500',
+      WHETSTONE_CAPTURE_WAIT: '1500',
       WHETSTONE_CAPTURE_STEPS: JSON.stringify([
         // The listener has to be in the page, because a message posted out of the frame
         // is delivered to this window and nowhere else.
         'window.__probe = []; window.addEventListener("message", function (e) { window.__probe.push(e.data) })',
-        'document.querySelectorAll(".crow")[0].click()',
+        // The course that declares the chess service comes first, so the page text this
+        // run ends on is still the hostile course's verdict.
+        open('Chess service probe'),
+        'document.querySelectorAll(".lname")[0].click()',
+        'document.querySelector(".back").click()',
+        open('Sandbox probe'),
         'document.querySelectorAll(".lname")[0].click()',
         // Then the Test, from the rail, whose mini-app reports on its own. One run then
         // follows a report from inside the frame all the way to a recorded Attempt.
@@ -106,13 +115,38 @@ describe.runIf(existsSync(ELECTRON))('test 7 — a sealed mini-app reaches nothi
     expect(report()['script']).toBe('blocked')
   })
 
+  it('cannot reach a service this course did not declare', () => {
+    // The host has a chess service and this course does not name it, so the answer is no.
+    expect(report()['service']).toMatch(/^refused .*does not declare the "chess" service/)
+  })
+
   it('leaves only by postMessage, and only what it chose to send', () => {
-    // Three kinds of message, all from the bridge: the frame's height, that it had drawn,
-    // and what it chose to report. Nothing else crossed.
-    expect(messages.every((message) => message.kit === '1.0.0')).toBe(true)
+    // Four kinds of message, all from the toolkit: the frame's height, that it had drawn,
+    // what it chose to report, and one request the host refused. Nothing else crossed.
+    expect(messages.every((message) => message.kit === '1.1.0')).toBe(true)
     expect(new Set(messages.map((message) => message.type))).toEqual(
-      new Set(['resize', 'ready', 'answer']),
+      new Set(['resize', 'ready', 'answer', 'ask']),
     )
+  })
+})
+
+/** The service probe's report, picked the same way: by what is in it. */
+const served = (): Record<string, string> => {
+  const answer = messages.find((message) => message.type === 'answer' && message.value?.['moves'] !== undefined)
+  if (!answer?.value) throw new Error('the service probe never reported')
+  return answer.value
+}
+
+describe.runIf(existsSync(ELECTRON))('a declared service answers, in the real runtime', () => {
+  it('answers a course that declared it', () => {
+    expect(ran).toBe(true)
+    // The rules ran in the main process and the result crossed back into the sealed frame.
+    expect(served()['moves']).toBe('e3 e4')
+    expect(served()['best']).toMatch(/^[A-Za-z][a-h1-8=+#x-]+$/)
+  })
+
+  it('still refuses a service this build does not have', () => {
+    expect(served()['unknown']).toMatch(/^refused .*there is no service named "shell"/)
   })
 })
 

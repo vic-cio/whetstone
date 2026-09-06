@@ -1,10 +1,12 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, net, protocol, shell } from 'electron'
-import { join, relative, resolve } from 'node:path'
+import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 
 import { appFrame, coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
+import { fileInCourse } from '../shared/courseFile'
 import { POLICY } from '../shared/miniapp'
+import { askService } from './services'
 import { answerTask, answerTry, reachedEndOfLesson } from './study'
 import type { PageType } from '../shared/format'
 
@@ -22,12 +24,9 @@ protocol.registerSchemesAsPrivileged([
 
 function serveCourseFile(request: Request): Promise<Response> {
   const url = new URL(request.url)
-  const root = resolve(coursesRoot(), decodeURIComponent(url.hostname))
-  const file = resolve(root, decodeURIComponent(url.pathname).replace(/^\/+/, ''))
-  const inside = relative(root, file)
-  if (inside.startsWith('..') || inside === '') {
-    return Promise.resolve(new Response('not found', { status: 404 }))
-  }
+  const root = join(coursesRoot(), decodeURIComponent(url.hostname))
+  const file = fileInCourse(root, decodeURIComponent(url.pathname))
+  if (file === undefined) return Promise.resolve(new Response('not found', { status: 404 }))
   return net.fetch(pathToFileURL(file).toString())
 }
 
@@ -162,6 +161,11 @@ app.whenReady().then(() => {
       return answerTask(slug, course, progress(), testId, taskId, given)
     },
   )
+  // A Mini-app asking the host for something it cannot carry itself (docs/adr/0018).
+  ipcMain.handle('services:ask', (_event, slug: string, service: string, request: unknown) =>
+    askService(slug, service, request),
+  )
+
   ipcMain.handle(
     'tries:answer',
     (_event, slug: string, lessonId: string, tryId: string, given: unknown) =>

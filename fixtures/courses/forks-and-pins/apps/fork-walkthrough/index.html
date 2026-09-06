@@ -1,0 +1,47 @@
+<div id="board"></div>
+<div id="line"></div>
+
+<script>
+  // One fork, four positions. Each step sets the board and rings the squares that matter.
+  // The board is frozen: this is a demonstration, and a lesson records nothing.
+  var LINE = [
+    {
+      fen: '2q3k1/5ppp/8/3N4/8/8/5PPP/6K1 w - - 0 1',
+      mark: ['d5'],
+      title: 'Find the square',
+      body: 'The knight on d5 is looking for one square that attacks two pieces. The king is on g8 and the queen is on c8.',
+    },
+    {
+      fen: '2q3k1/4Nppp/8/8/8/8/5PPP/6K1 b - - 1 1',
+      mark: ['g8', 'c8'],
+      title: 'Ne7 is the fork',
+      body: 'A knight on e7 attacks g8 and c8 at the same time. It is check, so the king has to answer.',
+    },
+    {
+      fen: '2q4k/4Nppp/8/8/8/8/5PPP/6K1 w - - 2 2',
+      mark: ['c8'],
+      title: 'The check is answered',
+      body: 'The king steps to h8. That was the only thing on offer, and the queen is still standing on c8.',
+    },
+    {
+      fen: '2N4k/5ppp/8/8/8/8/5PPP/6K1 b - - 0 2',
+      mark: ['c8'],
+      title: 'The knight takes the queen',
+      body: 'Nxc8 wins the queen for nothing. The fork cost one move and gained nine points.',
+    },
+  ]
+
+  var view = Kit.board({ mount: '#board', fen: LINE[0].fen, enabled: false })
+
+  Kit.steps({
+    mount: '#line',
+    steps: LINE.map(function (item) {
+      return { title: item.title, body: item.body }
+    }),
+  }).onStep(function (index) {
+    view.set(LINE[index].fen)
+    view.mark(LINE[index].mark)
+  })
+
+  Kit.bridge.ready()
+</script>

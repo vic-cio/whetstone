@@ -57,27 +57,35 @@ export function coursesRoot(): string {
   return root
 }
 
-/** Where the bundled sample Course lives, packaged or running from source. */
-function sampleCoursePath(): string {
-  const packaged = join(process.resourcesPath ?? '', 'sample-course')
+/**
+ * The Courses that ship with the app. They sit on different toolkit versions on purpose,
+ * which is what a pinned toolkit is for.
+ */
+const SAMPLES = ['gradients-by-hand', 'forks-and-pins']
+
+/** Where a bundled sample Course lives, packaged or running from source. */
+function samplePath(name: string): string {
+  const packaged = join(process.resourcesPath ?? '', 'samples', name)
   if (existsSync(packaged)) return packaged
   const here = fileURLToPath(new URL('.', import.meta.url))
-  return join(here, '..', '..', 'fixtures', 'courses', 'gradients-by-hand')
+  return join(here, '..', '..', 'fixtures', 'courses', name)
 }
 
 /**
- * Copy the sample Course into a brand-new root, so a fresh install opens with something
+ * Copy the sample Courses into a brand-new root, so a fresh install opens with something
  * to read. This runs once and only on a root that did not exist: a root the user already
  * has is theirs, whatever is in it, and is never written to here.
  */
 function seedSampleCourse(root: string): void {
-  const source = sampleCoursePath()
-  if (!existsSync(source)) return
-  try {
-    cpSync(source, join(root, 'gradients-by-hand'), { recursive: true })
-  } catch {
-    // Seeding is a convenience. A failure leaves an empty library, which the reader
-    // already handles, so it must never stop the app from starting.
+  for (const name of SAMPLES) {
+    const source = samplePath(name)
+    if (!existsSync(source)) continue
+    try {
+      cpSync(source, join(root, name), { recursive: true })
+    } catch {
+      // Seeding is a convenience. A failure leaves an empty library, which the reader
+      // already handles, so it must never stop the app from starting.
+    }
   }
 }
 

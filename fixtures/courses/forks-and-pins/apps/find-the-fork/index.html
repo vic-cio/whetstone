@@ -1,0 +1,47 @@
+<div id="board"></div>
+<div id="bar"></div>
+
+<script>
+  // The learner plays one move. The app reports which move it was, in standard notation,
+  // and the host compares that with what the task says. The app never says right or wrong.
+  var POSITION = 'r3k3/5ppp/8/1N6/8/8/5PPP/6K1 w - - 0 1'
+
+  var played = null
+  var view = Kit.board({ mount: '#board', fen: POSITION })
+
+  var again = document.createElement('button')
+  again.type = 'button'
+  again.className = 'k-btn k-quiet'
+  again.textContent = 'Take it back'
+  again.disabled = true
+  document.querySelector('#bar').appendChild(again)
+
+  var send = Kit.bridge.action(
+    'Answer',
+    function () {
+      return played === null ? null : { san: played }
+    },
+    { mount: '#bar', empty: 'Play a move on the board first' },
+  )
+  send.enable(false)
+
+  view.onMove(function (move) {
+    if (played !== null) return
+    played = move.san
+    view.enable(false)
+    send.enable(true)
+    again.disabled = false
+  })
+
+  again.addEventListener('click', function () {
+    played = null
+    again.disabled = true
+    send.enable(false)
+    send.say('')
+    view.reset()
+    view.enable(true)
+    Kit.bridge.resize()
+  })
+
+  Kit.bridge.ready()
+</script>

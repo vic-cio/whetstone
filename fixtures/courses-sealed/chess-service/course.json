@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "id": "chess-service",
+  "title": "Chess service probe",
+  "subject": "Whetstone",
+  "summary": "One mini-app that asks the host for the chess rules and reports what came back.",
+  "toolkitVersion": "1.1.0",
+  "services": [{ "id": "chess", "version": "1.0.0" }],
+  "objectives": [{ "id": "obj-service", "title": "A declared service answers" }],
+  "ladder": ["recall"],
+  "modules": [
+    {
+      "id": "mod-1",
+      "title": "The channel",
+      "pages": [{ "type": "lesson", "id": "les-service" }]
+    }
+  ]
+}

@@ -196,7 +196,7 @@ function Home({
           <span>
             <span className="cname">{entry.title}</span>
             <span className="cmeta">
-              {entry.subject} · {entry.moduleCount} modules
+              {entry.subject} · {entry.moduleCount} {entry.moduleCount === 1 ? 'module' : 'modules'}
             </span>
           </span>
           <span className="cnt">

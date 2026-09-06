@@ -6,11 +6,14 @@ directories:
 files:
   - out/**
   - package.json
-# The sample Course ships beside the app and is copied into a brand-new courses root on
+# The sample Courses ship beside the app and are copied into a brand-new courses root on
 # first run, so a fresh install opens with something to read rather than an empty library.
+# They sit on different toolkit versions on purpose: each carries the copy it was built on.
 extraResources:
   - from: fixtures/courses/gradients-by-hand
-    to: sample-course
+    to: samples/gradients-by-hand
+  - from: fixtures/courses/forks-and-pins
+    to: samples/forks-and-pins
   # The toolkit this build ships. It is written into a Course at build time and nowhere
   # else: the host always injects the copy pinned inside the Course folder.
   - from: toolkit

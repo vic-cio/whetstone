@@ -531,7 +531,9 @@ A Mini-app never writes its own buttons, colours, or message plumbing. The host 
 | `Kit.editor` | A small code editor with the Constructor's assertions beside it. This is what `assertions-pass` runs on |
 | `Kit.steps` | A walkthrough advanced one beat at a time, for a derivation or an algorithm trace |
 | `Kit.sim` | A stepped model with a play control. The Constructor supplies the rule, the toolkit supplies the loop and the transport |
-| `Kit.bridge` | `ready()`, `answer(value)`, `review(png, state)`, `resize()`. The only way out of the sandbox |
+| `Kit.board` | A chessboard: squares, pieces, dragging, legal targets, and an opponent. Added in 1.1.0 |
+| `Kit.bridge` | `ready()`, `answer(value)`, `review(png, state)`, `resize()`, `action(label, produce)`. The only way out of the sandbox |
+| `Kit.ask` | Ask the host a question a sealed frame cannot answer itself. Added in 1.1.0, see section 3.18 |
 
 `Kit.bridge` replaces raw `postMessage` in every Mini-app, so the protocol in section 3.10 is a library call rather than something each activity reimplements and gets subtly wrong. A Mini-app reports; it never decides whether an answer was right.
 
@@ -541,9 +543,23 @@ Built, it carries a fifth call: `Kit.bridge.action(label, produce)` draws the an
 
 **It is pinned per Course.** A copy lives at `toolkit/` inside the Course folder and `course.json` records `toolkitVersion`. The host injects the copy from the folder, never the app's current one. So a shared Course renders the same on another machine, and installing a newer Whetstone does not silently change how a built Course behaves. The app ships the current toolkit and writes it into a Course only at build time.
 
-**The eight above are a starting set, not the finished toolkit.** Obvious gaps to fill as Courses ask for them: a multiple-choice and an accepted-answers control for use inside a Mini-app, numeric entry with units, a sortable list, a table, an audio and video player, and a drawing surface. Note that plain multiple choice is rendered by the host today, because a Task of that kind needs no Mini-app at all; the toolkit needs its own only when a question sits inside an activity. Filling a gap is a change to the toolkit and its version, never a one-off inside a Course.
+**The set above is a starting set, not the finished toolkit.** Obvious gaps to fill as Courses ask for them: a multiple-choice and an accepted-answers control for use inside a Mini-app, numeric entry with units, a sortable list, a table, an audio and video player, and a drawing surface. Note that plain multiple choice is rendered by the host today, because a Task of that kind needs no Mini-app at all; the toolkit needs its own only when a question sits inside an activity. Filling a gap is a change to the toolkit and its version, never a one-off inside a Course.
 
 **When it is missing something.** A Mini-app may still write its own widget. That is a signal the toolkit has a gap to fill, not a licence for one Course to look unlike the rest, and the Constructor is told to say so in its run so the gap surfaces.
+
+### 3.18 Services
+
+The toolkit is code the frame runs. A Service is a question the host answers.
+
+A Mini-app is one file with no network and no second script, which is right for a widget and wrong for a body of rules. Chess is the case that showed it: legal moves, check and mate are a few hundred lines that every chess Course would otherwise carry, each copy wrong in its own way, and none of them tested by anybody. `Kit.ask(name, request)` sends the question over the channel that already carries an answer, and the main process replies.
+
+**A Course declares what it may ask for.** `course.json` carries a `services` list beside `toolkitVersion`, and the host answers nothing that is not in it. The parser refuses a Course naming a Service this build does not have, so a Course fails at read time rather than at the moment a learner presses something.
+
+**A Course names a capability and a version, never a path.** This was the question that started the section: whether a Course could point at a program already on the machine. It cannot, and this is the reason. A Course is content an agent wrote and a person may have been sent. A path in it is a way into the rest of the machine, and no amount of checking a path makes that a good idea.
+
+**A Service is offline, pure, and small.** It reads a request and returns a value, and it holds no state between calls: a chess position crosses as a FEN, so nothing is remembered on either side. It runs in the main process, which means a slow Service is a frozen window, so the chess opponent's search depth is capped.
+
+The first Service is chess. The board widget uses it, so every chess Course behaves the same way, and a stronger engine can be put behind the same boundary later without touching a single Course. That is the point of naming a capability rather than a program. Decision record 0018.
 
 ## 4. Rules the Constructor prompt must state
 
@@ -557,7 +573,7 @@ The Constructor prompt is a file in the repo, versioned, and read by humans too.
 6. Order content so that it builds. Express the order in `suggestedOrder`. Never assume a lock.
 7. Every Task names one Objective. Every Objective has Tasks at every Rung the Course uses.
 8. Depth belongs to a Task, not to a Module. A late Module may hold `recall` Tasks. This is the condition Victor attached to the fixed scale.
-9. A Mini-app is one file with everything inline and no external references. Build it from the toolkit in section 3.17, and read `docs/toolkit.md`: use `Kit.bridge` rather than raw `postMessage`, a toolkit widget rather than a hand-rolled control, and a token rather than a colour. If the toolkit cannot express the activity, write it anyway and say in the run which widget was missing.
+9. A Mini-app is one file with everything inline and no external references. Build it from the toolkit in section 3.17, and read `docs/toolkit.md`: use `Kit.bridge` rather than raw `postMessage`, a toolkit widget rather than a hand-rolled control, and a token rather than a colour. If the toolkit cannot express the activity, write it anyway and say in the run which widget was missing. A Course that calls `Kit.ask` must also declare that Service in `course.json`, and it never names a path to anything.
 9b. A diagram is a file, so the host cannot hand it the app's tokens. Write it as an SVG carrying both schemes in its own `<style>`, under `@media (prefers-color-scheme: dark)`, or it disappears in one of them.
 10. Rubrics are written with the Task and are strict. A criterion the user can satisfy by restating the prompt is a bad criterion.
 11. Resources are links with one line of why. Never copy content in.
@@ -633,6 +649,18 @@ Three things settled during the build.
 Test 7 runs the real app against `fixtures/courses-sealed/`, a Course that exists to be attacked. Its Mini-app builds its external reference at runtime, so the validator that refuses one does not catch it: the validator is one layer, and test 7 is the layer underneath. The frame reached nothing. Its origin was `null`, storage, the host document, the window above it and cookies all threw, `fetch` was rejected, the external script was blocked, and the only thing that crossed was what the Mini-app chose to post.
 
 Deferred and stubbed rather than hidden: `Kit.bridge.review` exists in toolkit 1.0.0 and the host ignores it until the Grader arrives in phase 4.
+
+**Phase 2b. Services, and a board built on one. Done.**
+`Kit.ask` and the Service channel, the chess Service, `Kit.board`, toolkit 1.1.0, and a second fixture Course that teaches the knight fork. 116 assertions in all.
+
+Four things settled during the build.
+
+- **A Course declares its Services, and the host answers nothing else.** Same shape as `toolkitVersion`: a capability and a version, checked by the parser at read time. A Course never names a path. Decision record 0018.
+- **Pinning stopped being hypothetical.** The gradients Course stays on toolkit 1.0.0 and the chess Course is built on 1.1.0. The older Course's frame has no `Kit.board` and no `Kit.ask` in it, which is what test 18 now checks against two real Courses rather than a temporary copy.
+- **A path from a Course is checked against the disk.** `resolve` and `relative` are string arithmetic, so a symlink inside a Course folder passed the traversal check and was then followed. `realpathSync` closes it, and a test puts a symlink in a Course and watches it be refused.
+- **The opponent is the app's, and it is deliberately weak.** It searches three moves ahead. What teaches a fork is the position the Constructor chose, not the rating of the thing replying, and the Service boundary means a stronger engine is a swap rather than a rewrite.
+
+Test 7 grew a second half. One Course in `fixtures/courses-sealed/` declares chess and reports what came back, and the hostile one asks for chess without declaring it and reports the refusal. Both run in the real app, in one pass.
 
 **Phase 3. Constructor.**
 The harness registry and spawn layer, the Claude CLI adapter, event normalisation, the authoring plugin bundle, staging and validation, the brief conversation with its attachment tray, the build screen as an activity feed, Delete Course. Tests 5, 8, 10, 11.

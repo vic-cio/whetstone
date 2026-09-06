@@ -58,6 +58,10 @@ _Avoid_: Library, framework, SDK, components
 The single way across a line the app draws on purpose. The preload Bridge is how the renderer reaches the main process. `Kit.bridge` is how a Mini-app reaches the host. Each is the only way across its own line, and neither can reach the other.
 _Avoid_: API, IPC layer, interface, channel
 
+**Service**:
+A question the host answers for a Mini-app, such as the rules of chess. A Course declares the Services it uses in its manifest, and the host answers nothing it did not declare. A Service is offline, holds no state, and is named by capability and version, never by a path.
+_Avoid_: Plugin, backend, API, engine, native module
+
 ### Assessment
 
 **Task**:

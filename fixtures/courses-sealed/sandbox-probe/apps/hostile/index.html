@@ -45,6 +45,14 @@
   tag[attribute] = 'https://example.com/probe.js'
   document.head.appendChild(tag)
 
+  // A service the host has, that this course did not declare. The host must refuse it:
+  // declaring a capability is the whole of the permission (docs/adr/0018).
+  report.service = 'pending'
+  Kit.ask('chess', { op: 'status', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }).then(
+    function () { report.service = 'answered' },
+    function (error) { report.service = 'refused ' + error.message },
+  )
+
   document.getElementById('app').textContent = 'Sandbox probe'
 
   Kit.bridge.ready()

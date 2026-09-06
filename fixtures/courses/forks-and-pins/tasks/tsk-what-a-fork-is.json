@@ -1,0 +1,16 @@
+{
+  "id": "tsk-what-a-fork-is",
+  "objective": "obj-fork",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "What makes a move a fork?",
+  "options": [
+    "One piece attacks two or more pieces at once",
+    "Two pieces attack the same square",
+    "A piece moves to a square no piece can reach",
+    "A king is attacked and cannot move"
+  ],
+  "answer": [0],
+  "explanation": "A fork is one attacker and two targets. The defender can answer one of them, so the other one falls."
+}

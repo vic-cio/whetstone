@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "id": "forks-and-pins",
+  "title": "The knight fork",
+  "subject": "Chess",
+  "summary": "One move, two targets. Learn to see the square a knight can reach that attacks two pieces at once, and play it against the board.",
+  "toolkitVersion": "1.1.0",
+  "services": [{ "id": "chess", "version": "1.0.0" }],
+  "objectives": [
+    { "id": "obj-fork", "title": "Explain what makes a move a fork" },
+    { "id": "obj-play-fork", "title": "Find and play a knight fork in a given position" }
+  ],
+  "ladder": ["recall", "apply"],
+  "modules": [
+    {
+      "id": "mod-1",
+      "title": "Forks",
+      "pages": [
+        { "type": "lesson", "id": "les-the-knight-fork" },
+        { "type": "test", "id": "tst-forks" }
+      ]
+    }
+  ],
+  "suggestedOrder": ["les-the-knight-fork", "tst-forks"],
+  "builtBy": {
+    "harness": "claude",
+    "model": "claude-opus-5",
+    "at": "2026-09-06T00:00:00.000Z"
+  }
+}

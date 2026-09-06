@@ -1,0 +1,6 @@
+{
+  "id": "tst-forks",
+  "title": "Forks",
+  "module": "mod-1",
+  "tasks": ["tsk-what-a-fork-is", "tsk-find-the-fork"]
+}

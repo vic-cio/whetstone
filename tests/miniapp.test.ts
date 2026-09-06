@@ -3,12 +3,13 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { EXTERNAL, POLICY, frameSource, readToolkit } from '../src/shared/miniapp'
+import { EXTERNAL, POLICY, TOOLKIT_VERSION, frameSource, readToolkit } from '../src/shared/miniapp'
 import { parseCourse } from '../src/shared/parseCourse'
 import type { Course } from '../src/shared/format'
 
 const ROOT = join(import.meta.dirname, '..')
 const FIXTURE = join(ROOT, 'fixtures', 'courses', 'gradients-by-hand')
+const CHESS = join(ROOT, 'fixtures', 'courses', 'forks-and-pins')
 const PROBE = join(ROOT, 'fixtures', 'courses-sealed', 'sandbox-probe')
 
 /** A copy of the fixture Course somewhere writable, for the cases that need a broken one. */
@@ -82,6 +83,30 @@ describe('test 18 — the host injects the course’s pinned toolkit, not the ap
     expect(frame).not.toContain('whetstone-toolkit 1.0.0')
   })
 
+  it('gives each course the toolkit it was built with', () => {
+    // Two courses in the fixture sit on different toolkits on purpose. The older one was
+    // built before `Kit.board` existed and must keep behaving the way it was built.
+    const older = frameSource(FIXTURE, 'slope-explorer')
+    expect(older).toContain('whetstone-toolkit 1.0.0')
+    expect(older).not.toContain('function board(options)')
+    expect(older).not.toContain('function ask(service, request)')
+
+    const newer = frameSource(CHESS, 'find-the-fork')
+    expect(newer).toContain(`whetstone-toolkit ${TOOLKIT_VERSION}`)
+    expect(newer).toContain('function board(options)')
+    expect(newer).toContain('function ask(service, request)')
+  })
+
+  it('keeps the newest course in step with the toolkit this build ships', () => {
+    // The pinned copy is a copy. One that drifted from the build would make every check
+    // against it meaningless, and nothing else would notice.
+    const shipped = readToolkit(join(ROOT, 'toolkit'))
+    const pinned = readToolkit(join(CHESS, 'toolkit'))
+    expect(shipped?.version).toBe(TOOLKIT_VERSION)
+    expect(pinned?.js).toBe(shipped?.js)
+    expect(pinned?.css).toBe(shipped?.css)
+  })
+
   it('refuses a pinned copy that disagrees with the manifest', () => {
     const dir = copyFixture()
     writeFileSync(join(dir, 'toolkit', 'kit.js'), '/* whetstone-toolkit 2.0.0 */\n')
@@ -93,37 +118,46 @@ describe('test 18 — the host injects the course’s pinned toolkit, not the ap
 })
 
 describe('test 17 — a mini-app built from the toolkit has no colour of its own', () => {
-  const NAMED = /\b(?:white|black|red|green|blue|gray|grey|orange|yellow|purple|silver)\b/i
+  /**
+   * A colour is a problem where it styles something. The same words are ordinary English
+   * elsewhere: a chess mini-app says "white to move" and means the player, not a shade.
+   */
+  const STYLED = /(?:color|background|fill|stroke|border|shadow)[^;{}\n]*\b(?:white|black|red|green|blue|gray|grey|orange|yellow|purple|silver)\b/i
   const HEX = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/
-  const apps = readdirSync(join(FIXTURE, 'apps'))
+  const courses = [FIXTURE, CHESS]
+  const apps = courses.flatMap((dir) =>
+    readdirSync(join(dir, 'apps')).map((id) => ({ dir, id, source: readFileSync(join(dir, 'apps', id, 'index.html'), 'utf8') })),
+  )
 
-  it('has mini-apps to check', () => {
-    expect(apps.length).toBeGreaterThan(1)
+  it('has mini-apps in more than one course to check', () => {
+    expect(apps.length).toBeGreaterThan(3)
+    expect(new Set(apps.map((app) => app.dir)).size).toBe(courses.length)
   })
 
-  for (const id of apps) {
-    it(`${id} names no colour and no face`, () => {
-      const source = readFileSync(join(FIXTURE, 'apps', id, 'index.html'), 'utf8')
-      expect(HEX.test(source)).toBe(false)
-      expect(NAMED.test(source)).toBe(false)
-      expect(source).not.toContain('font-family')
-      expect(source).not.toContain('rgb(')
-      expect(source).not.toContain('hsl(')
+  for (const app of apps) {
+    it(`${app.id} names no colour and no face`, () => {
+      expect(HEX.test(app.source)).toBe(false)
+      expect(STYLED.test(app.source)).toBe(false)
+      expect(app.source).not.toContain('font-family')
+      expect(app.source).not.toContain('rgb(')
+      expect(app.source).not.toContain('hsl(')
     })
 
-    it(`${id} leaves the sandbox only through the bridge`, () => {
-      const source = readFileSync(join(FIXTURE, 'apps', id, 'index.html'), 'utf8')
-      expect(source).not.toContain('postMessage')
-      expect(source).toContain('Kit.bridge.ready()')
+    it(`${app.id} leaves the sandbox only through the toolkit`, () => {
+      expect(app.source).not.toContain('postMessage')
+      expect(app.source).toContain('Kit.bridge.ready()')
     })
   }
 
   it('the toolkit defines its palette for both themes', () => {
-    const toolkit = readToolkit(join(FIXTURE, 'toolkit'))
-    expect(toolkit?.version).toBe('1.0.0')
-    expect(toolkit?.css).toContain('prefers-color-scheme: dark')
-    // The frame follows the theme on its own, so the host sends it nothing.
-    expect(toolkit?.js).not.toContain('prefers-color-scheme')
+    for (const dir of courses) {
+      const toolkit = readToolkit(join(dir, 'toolkit'))
+      expect(toolkit?.css).toContain('prefers-color-scheme: dark')
+      // The frame follows the theme on its own, so the host sends it nothing.
+      expect(toolkit?.js).not.toContain('prefers-color-scheme')
+    }
+    expect(readToolkit(join(FIXTURE, 'toolkit'))?.version).toBe('1.0.0')
+    expect(readToolkit(join(CHESS, 'toolkit'))?.version).toBe('1.1.0')
   })
 })
 
@@ -132,6 +166,15 @@ describe('the app block', () => {
     const lesson = course.lessons['les-what-a-derivative-measures']
     const block = lesson?.blocks.find((item) => item.block === 'app')
     expect(block).toEqual({ block: 'app', id: 'slope-explorer', height: 320 })
+  })
+
+  it('holds the chess course’s walkthrough', () => {
+    const result = parseCourse(CHESS)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const lesson = result.course.lessons['les-the-knight-fork']
+    expect(lesson?.blocks).toContainEqual({ block: 'app', id: 'fork-walkthrough', height: 560 })
+    expect(result.course.tasks['tsk-find-the-fork']).toMatchObject({ app: 'find-the-fork' })
   })
 
   it('names a mini-app the course actually has', () => {

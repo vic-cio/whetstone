@@ -1,4 +1,4 @@
-# The toolkit, version 1.0.0
+# The toolkit, version 1.1.0
 
 Everything a Mini-app is built from. The host inlines `kit.css` and `kit.js` into the frame
 ahead of the Mini-app's own markup, so `Kit` always exists and nothing has to be fetched.
@@ -42,6 +42,43 @@ The only way out of the frame. A Mini-app never calls `postMessage`.
 send nothing and show `options.empty` instead. Pass `options.review: true` and `produce`
 returns `{ png, state }` for a review rather than an answer. A Mini-app cannot answer, and
 cannot start a review, without the user pressing this button.
+
+## Kit.ask
+
+`Kit.ask(service, request)` asks the host a question and returns a promise.
+
+A Mini-app is one file with no network and no second script, so a body of rules cannot live
+inside it. A Service is that body of rules, written once in the host and shared by every
+Course that asks for it. The host answers only for a Service the Course declared, so add the
+Service to `course.json` as well as calling it:
+
+```json
+"services": [{ "id": "chess", "version": "1.0.0" }]
+```
+
+The promise rejects when the Course did not declare the Service, when this build does not
+have it, or when the request makes no sense. Say so on the screen; do not fail silently.
+
+### The chess service
+
+```js
+Kit.ask('chess', { op: 'moves', fen: position, from: 'e2' })
+```
+
+| `op` | Sends | Returns |
+|---|---|---|
+| `status` | `fen` | `{ fen, status }` |
+| `moves` | `fen`, optional `from` | `{ moves, status }`, each move `{ from, to, promotion, san }` |
+| `move` | `fen`, `from`, `to`, optional `promotion` | `{ fen, move, capture, status }`, or rejects when the move is not legal |
+| `best` | `fen`, optional `depth` | `{ move, fen, status }`, `move` is null when the game is over |
+
+`status` is `{ turn, check, checkmate, stalemate, moves, over, result }`. A position is
+always a FEN, so the Service holds nothing between calls.
+
+The opponent searches three moves ahead at most. It is a teaching opponent, not a strong
+one: what makes a chess Course good is the position the Constructor chose. Castling, en
+passant, promotion, check, mate and stalemate are all there. The fifty-move rule and
+threefold repetition are not.
 
 ## Kit.theme
 
@@ -106,6 +143,22 @@ for.
 A walkthrough advanced one beat at a time, for a derivation or an algorithm trace. Each step
 is `{ title, body }`. Returns `index()`, `go(n)`, `onStep(fn)`.
 
+**`Kit.board({ mount, fen, orientation, label, rules, opponent, play, enabled })`**
+A chessboard. It draws from the FEN and asks the chess service for everything else, so a
+Course that uses it must declare that Service. Returns `fen()`, `set(fen)`, `status()`,
+`history()`, `mark(squares)`, `enable(on)`, `reset()`, `onMove(fn)`.
+
+`onMove` gets `{ from, to, san, fen, status, by }`, where `by` is `'you'` or `'opponent'`.
+
+- `rules: false` turns a board into a picture. It reports a drag and enforces nothing.
+- `opponent: { moves: ['e5', 'Nc6'] }` plays the replies you wrote, in order, in standard
+  notation or as `e7e5`. A written reply that is not legal shows as an error under the board,
+  so write the line the learner is being led down.
+- `opponent: { depth: 2 }` lets the service play instead.
+- `play: 'black'` sets which side is the learner's when there is an opponent. With no
+  opponent the learner moves both sides, which is what a study position wants.
+- `enabled: false` freezes the board. Use it for a demonstration, and drive it with `set`.
+
 **`Kit.sim({ mount, state, step, draw, fps, width, height, label })`**
 A stepped model with a play control. `step(state)` returns the next state and `draw(context,
 state, size)` paints it on a canvas. The toolkit supplies the loop and the transport.
@@ -117,6 +170,9 @@ toolkit, to be filled in the next version, and never a reason for one Course to 
 the rest. Known gaps: a multiple-choice and an accepted-answers control for use inside an
 activity, numeric entry with units, a sortable list, a table, an audio and a video player,
 and a drawing surface. Plain multiple choice needs no Mini-app; the host draws it.
+
+The same applies to a Service. A Course that needs rules the host does not have is a gap in
+the app, not a reason to smuggle a rules engine into a Mini-app.
 
 ## Pinning
 
