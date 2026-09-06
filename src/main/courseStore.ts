@@ -1,9 +1,10 @@
 import { app } from 'electron'
-import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { frameSource } from '../shared/miniapp'
+import { seedSamples } from '../shared/samples'
 import { parseCourse } from '../shared/parseCourse'
 import { openProgress } from './progress'
 import { courseView } from './study'
@@ -52,7 +53,10 @@ export function coursesRoot(): string {
 
   const root = join(app.getPath('userData'), 'courses')
   mkdirSync(root, { recursive: true })
-  seedSampleCourses(root)
+  seedSamples(
+    root,
+    SAMPLES.map((name) => ({ name, from: samplePath(name) })),
+  )
   return root
 }
 
@@ -68,32 +72,6 @@ function samplePath(name: string): string {
   if (existsSync(packaged)) return packaged
   const here = fileURLToPath(new URL('.', import.meta.url))
   return join(here, '..', '..', 'fixtures', 'courses', name)
-}
-
-/**
- * Copy the sample Courses in, so a fresh install opens with something to read.
- *
- * The decision is made one sample at a time, not once for the whole root. Seeding the
- * root only when the root was new meant a sample added in a later version never reached
- * anyone who had already run the app, and a sample seeded by an early version stayed at
- * that early version for ever.
- *
- * A folder that is already there is left alone, whatever is in it. That is the line: the
- * app puts a Course there once and the folder is the user's from then on.
- */
-function seedSampleCourses(root: string): void {
-  for (const name of SAMPLES) {
-    const target = join(root, name)
-    if (existsSync(target)) continue
-    const source = samplePath(name)
-    if (!existsSync(source)) continue
-    try {
-      cpSync(source, target, { recursive: true })
-    } catch {
-      // Seeding is a convenience. A failure leaves an empty library, which the reader
-      // already handles, so it must never stop the app from starting.
-    }
-  }
 }
 
 export function listCourses(): { courses: CourseSummary[]; broken: BrokenCourse[] } {

@@ -545,6 +545,18 @@ Built, it carries a fifth call: `Kit.bridge.action(label, produce)` draws the an
 
 **When it is missing something.** A Mini-app may still write its own widget. That is a signal the toolkit has a gap to fill, not a licence for one Course to look unlike the rest, and the Constructor is told to say so in its run so the gap surfaces.
 
+### 3.17b The reader's own shape
+
+Small rules the reader keeps to, written down because each one was got wrong once.
+
+**One column, centred, with the margin doing the adapting.** A line of text stops being readable past about eighty characters, so the column grows with the window only up to a measure and then stops. From there the window's extra width becomes margin on both sides. Filling a wide screen with a single long line is not using the space, it is making the page harder to read.
+
+**Every page ends with what to read next.** A Lesson or a Test ends with the next Page in the Course, named. The last Page of a Course offers the contents instead. A page that ends with nothing to press sends the reader back to the rail to work out where they were.
+
+**A panel control sits at the top of its panel.** The rail's hide control is at the top of the rail, beside the window buttons, and the Tutor's will sit at the top of its own panel on the right. That is where a person looks for it.
+
+**The window has no title bar, so the page names one.** `titleBarStyle: 'hiddenInset'` lets the rail run to the top of the glass, and it also leaves macOS nothing to drag the window by. A strip across the top of the page carries `-webkit-app-region: drag`, and every control carries `no-drag`. Without it the window cannot be moved at all.
+
 ### 3.18 A Course's own library
 
 The toolkit is how a Mini-app plugs in. A library is what one Course is about.

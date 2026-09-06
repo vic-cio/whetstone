@@ -11,7 +11,8 @@ Harness, Toolkit and the rest all mean something specific here.
 
 ```
 src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts,
-               miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at)
+               miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
+               samples.ts (keeping the shipped Courses current in a library)
 src/main/      Electron main process. Node lives here and nowhere else
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
@@ -122,6 +123,10 @@ WHETSTONE_COURSES=$PWD/fixtures/courses WHETSTONE_DB=/tmp/probe.db WHETSTONE_THE
 `WHETSTONE_CAPTURE_WAIT` sets the pause between steps, in milliseconds, default 600. A page
 holding a Mini-app needs longer, because the frame has to load, draw and report.
 
+`WHETSTONE_CAPTURE_SIZE`, as `2100x1150`, opens the window at that size. The reading column
+is centred and the margin takes the extra width, so a change to it looks right at the default
+1180 and can still be wrong on a wide screen. The screen caps the size it actually gets.
+
 A capture also writes `<png>.json`, holding whatever a step left on `window.__probe`. That is
 how the sandbox check reads what a sealed frame managed to reach: a message posted out of a
 frame is delivered to the page and nowhere else, so the listener has to live in the page.
@@ -144,8 +149,13 @@ xattr -dr com.apple.quarantine /Applications/Whetstone.app
 ```
 
 The courses root is seeded with the sample Courses from `fixtures/courses/`, which ship in
-the bundle under `Contents/Resources/samples/`. They sit on different toolkit versions on
-purpose. The decision is made one sample at a time: a sample whose folder is missing is
-copied in, and a folder that is already there is left alone, whatever is in it. Do not go
-back to seeding the whole root once. That made a sample added in a later version invisible
-to anyone who had already run the app, and it froze an early sample at its early state.
+the bundle under `Contents/Resources/samples/`. `src/shared/samples.ts` holds the rule and
+`tests/samples.test.ts` pins it: **a sample is the app's content until the user touches it.**
+Each seeded folder carries a `.whetstone-sample` note holding the digest of what was written.
+A folder whose digest still matches its note has not been edited and is replaced when the app
+ships a newer one. A folder that differs from its note, or has no note at all, is the user's
+and is never written to.
+
+Do not go back to seeding the whole root once. That made a sample added in a later version
+invisible to anyone who had already run the app, and it froze an early sample at its early
+state until it stopped parsing and drew as an error nobody could act on.

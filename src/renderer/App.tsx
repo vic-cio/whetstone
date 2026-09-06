@@ -61,10 +61,26 @@ export function App(): React.JSX.Element {
 
   const page = route.at === 'page' ? findPage(course, route.pageId) : undefined
 
+  // What to read after this one. A Course is a list of Pages in the order the Constructor
+  // put them in, so the next Page is simply the next one along.
+  const order = course ? course.modules.flatMap((module) => module.pages) : []
+  const here = route.at === 'page' ? order.findIndex((entry) => entry.id === route.pageId) : -1
+  const next = here >= 0 ? order[here + 1] : undefined
+
   return (
     <div className={`app${railOpen ? '' : ' narrow'}`}>
+      {/*
+        The window has no title bar of its own, so the page has to say which part of it is
+        one. Without this strip there is nowhere to take hold of the window and it cannot
+        be moved. Everything inside it is padding, so nothing is covered.
+      */}
+      <div className="drag" />
+
       {railOpen ? (
         <nav className="rail">
+          <button type="button" className="collapse" onClick={() => setRailOpen(false)}>
+            ☰ hide
+          </button>
           {route.at === 'home' ? (
             <>
               <div className="brand">Whetstone</div>
@@ -110,9 +126,6 @@ export function App(): React.JSX.Element {
               </div>
             </>
           )}
-          <button type="button" className="collapse" onClick={() => setRailOpen(false)}>
-            ☰ hide
-          </button>
         </nav>
       ) : (
         <button type="button" className="stub" onClick={() => setRailOpen(true)}>
@@ -165,6 +178,30 @@ export function App(): React.JSX.Element {
               })
             }}
           />
+        )}
+
+        {route.at === 'page' && course && page && (
+          <div className="onward">
+            {next ? (
+              <button type="button" className="next" onClick={() => openCourse(route.slug, next.id)}>
+                <span>
+                  <span className="nlabel">Next up</span>
+                  <span className="ntitle">{next.title}</span>
+                </span>
+                <span className="nmark">→</span>
+              </button>
+            ) : (
+              // The last Page of the Course. Going nowhere from here is worse than going
+              // back to the contents, which is the only other place there is to go.
+              <button type="button" className="next" onClick={() => openCourse(route.slug)}>
+                <span>
+                  <span className="nlabel">That is the last page</span>
+                  <span className="ntitle">Course contents</span>
+                </span>
+                <span className="nmark">→</span>
+              </button>
+            )}
+          </div>
         )}
       </main>
     </div>

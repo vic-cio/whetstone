@@ -39,6 +39,18 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
 
 .app { display: grid; grid-template-columns: 186px minmax(0, 1fr); height: 100%; }
 
+/*
+ * The window's title bar is hidden so the rail can run to the top of the glass. macOS then
+ * gives the window nothing to be dragged by, so the page has to name a part of itself as
+ * the title bar. This strip sits over the top padding of both columns, and every control
+ * is below it, so it covers nothing.
+ */
+.drag {
+  position: fixed; top: 0; left: 0; right: 0; height: 30px; z-index: 40;
+  -webkit-app-region: drag;
+}
+button, input, textarea, select, a { -webkit-app-region: no-drag; }
+
 .rail {
   background: var(--rail);
   color: var(--rail-ink);
@@ -65,7 +77,21 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
 .rail .foot button { padding: 3px 0; border-left: 0; }
 .rail .foot button.hi { color: #fff; font-weight: 600; }
 
-.reader { padding: 34px 26px 40px; overflow-y: auto; background: var(--surface); }
+/*
+ * One column, centred, with the margin doing the adapting.
+ *
+ * A line of text stops being readable somewhere past about 80 characters, so the column
+ * cannot simply grow with the window. It grows with the window up to a readable measure and
+ * then stops, and from there the extra width becomes margin on both sides. `clamp` holds all
+ * three of those at once, and `max` keeps 26px of padding on a window too narrow to have any
+ * spare width to give away.
+ */
+.reader {
+  --column: clamp(420px, 62%, 680px);
+  padding: 34px max(26px, calc((100% - var(--column)) / 2)) 40px;
+  overflow-y: auto;
+  background: var(--surface);
+}
 .head { border-bottom: 1px solid var(--frame); padding-bottom: 9px; margin-bottom: 4px;
   display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
 .title {
@@ -140,8 +166,9 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
   color: var(--rail-muted); margin-left: 7px; vertical-align: 1px;
 }
 .rail button.on .tt { color: var(--amber); }
+/* At the top, beside the window buttons, because that is where a person looks for it. */
 .rail .collapse {
-  margin-top: 18px; padding: 9px 12px 0; border-top: 1px solid var(--rail-line);
+  padding: 0 12px 10px; margin-bottom: 11px; border-bottom: 1px solid var(--rail-line);
   color: var(--rail-muted);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase;
@@ -223,8 +250,7 @@ button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
 
 /* ---------------------------------------------------------------- reading */
 
-.prose { max-width: 60ch; font-size: 13.5px; line-height: 1.62; margin: 14px 0; }
-.narrow .prose { max-width: 66ch; }
+.prose { font-size: 13.5px; line-height: 1.62; margin: 14px 0; }
 .prose p { margin: 0 0 10px; }
 .prose ul, .prose ol { margin: 0 0 10px; padding-left: 20px; }
 .prose li { margin-bottom: 3px; }
@@ -240,23 +266,44 @@ pre.code {
 }
 .pull {
   border-left: 2px solid var(--amber); padding: 7px 0 7px 12px; margin: 14px 0;
-  font-size: 13px; max-width: 60ch;
+  font-size: 13px;
 }
 .pull b { text-transform: uppercase; font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 10px; letter-spacing: 0.12em; color: var(--amber); margin-right: 6px; }
-.figure { margin: 16px 0; max-width: 60ch; }
+.figure { margin: 16px 0; }
 .figure img { max-width: 100%; display: block; border: 1px solid var(--line); }
 .figure figcaption {
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
   color: var(--muted); margin-top: 5px; letter-spacing: 0.04em;
 }
 .res {
-  display: grid; gap: 3px; max-width: 60ch; margin: 14px 0; padding: 9px 12px;
+  display: grid; gap: 3px; margin: 14px 0; padding: 9px 12px;
   border: 1px solid var(--line); color: var(--ink); text-decoration: none;
 }
 .res:hover { border-color: var(--amber); }
 .res b { font-size: 13px; }
 .res span:last-child { color: var(--muted); font-size: 12px; }
+/*
+ * What to read next, at the end of the page. Reading is a sequence, and a page that ends
+ * with nothing to press sends the reader back to the rail to work out where they were.
+ */
+.onward { margin-top: 26px; }
+.next {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center;
+  width: 100%; padding: 13px 12px 13px 0; text-align: left; cursor: pointer;
+  background: none; color: var(--ink);
+  border: 0; border-top: 1px solid var(--frame); border-bottom: 1px solid var(--line);
+}
+.next:hover { background: var(--said-bg); }
+.next:hover .ntitle, .next:hover .nmark { color: var(--amber); }
+.nlabel {
+  display: block; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+  margin-bottom: 3px;
+}
+.ntitle { font-size: 14px; font-weight: 600; }
+.nmark { color: var(--muted); font-size: 15px; }
+
 .lend {
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
@@ -265,7 +312,7 @@ pre.code {
 
 /* ---------------------------------------------------------------- answering */
 
-.panel { padding: 16px 0; max-width: 60ch; }
+.panel { padding: 16px 0; }
 .panel + .panel { border-top: 1px solid var(--line); }
 .q { margin: 8px 0 9px; font-weight: 600; font-size: 13.5px; }
 .opt {
@@ -327,7 +374,7 @@ pre.code {
 
 /* The frame is the activity. It carries a rule, not a box, and holds the page's ground
    so a Mini-app that draws nothing does not appear as a hole in the reading. */
-.kit { margin: 10px 0 4px; max-width: 60ch; }
+.kit { margin: 10px 0 4px; }
 .kframe {
   display: block; width: 100%; border: 1px solid var(--line);
   background: var(--surface); transition: height 120ms ease-out;

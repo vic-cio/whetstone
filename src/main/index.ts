@@ -54,9 +54,14 @@ function serveMiniApp(request: Request): Response {
 }
 
 function createWindow(): void {
+  // A capture can ask for a window of its own size, which is the only way to look at a
+  // layout that only goes wrong on a wide screen.
+  const size = (process.env['WHETSTONE_CAPTURE_SIZE'] ?? '').split('x').map(Number)
+  const wide = size.length === 2 && size.every((value) => Number.isFinite(value) && value > 0)
+
   const window = new BrowserWindow({
-    width: 1180,
-    height: 820,
+    width: wide ? (size[0] as number) : 1180,
+    height: wide ? (size[1] as number) : 820,
     minWidth: 720,
     show: false,
     title: 'Whetstone',
