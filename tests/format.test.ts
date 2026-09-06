@@ -139,10 +139,18 @@ describe('test 2 — depth and check are independent axes', () => {
   })
 
   it('accepts a transfer-depth task whose check is deterministic', () => {
-    const task = course.tasks['tsk-why-gradients-vanish']
+    // A Mini-app is how a hard question stays answerable offline. Free text is not: the
+    // fixture's one open-ended question is a model check, which is the point of rule 9c.
+    const task = course.tasks['tsk-place-the-factors']
     expect(task).toBeDefined()
     expect(task!.depth).toBe('transfer')
     expect(task!.check).toBe('deterministic')
+  })
+
+  it('sends an open-ended question to a model rather than to a list', () => {
+    const task = course.tasks['tsk-why-gradients-vanish']
+    expect(task!.check).toBe('model')
+    expect(task).toHaveProperty('answerGuide')
   })
 
   it('accepts a transfer-depth task whose check is a rubric, so the axes move freely in both directions', () => {

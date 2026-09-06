@@ -55,10 +55,17 @@ describe('test 6 — every deterministic kind answers with no network', () => {
   })
 
   it('accepted-answers, the Duolingo check', () => {
-    const t = task('tsk-why-gradients-vanish')
-    expect(answerDeterministic(t, 'The product of many small numbers shrinks toward zero.').outcome).toBe('pass')
-    expect(answerDeterministic(t, 'the  product of MANY small numbers shrinks toward zero').outcome).toBe('pass')
-    expect(answerDeterministic(t, 'because the weights are large').outcome).toBe('fail')
+    // Written here rather than taken from the fixture, because no Course should be asking
+    // an open-ended question this way and the fixture no longer does (rule 9c).
+    const t: Try = {
+      id: 'try-rule',
+      kind: 'accepted-answers',
+      prompt: 'Which rule differentiates a function of a function?',
+      accepted: ['the chain rule', 'chain rule'],
+    }
+    expect(answerDeterministic(t, 'The Chain Rule.').outcome).toBe('pass')
+    expect(answerDeterministic(t, 'the  CHAIN   rule').outcome).toBe('pass')
+    expect(answerDeterministic(t, 'the product rule').outcome).toBe('fail')
     expect(answerDeterministic(t, '').outcome).toBe('fail')
   })
 
@@ -111,10 +118,14 @@ describe('test 6 — every deterministic kind answers with no network', () => {
 
 describe('test 2 — a transfer-depth task is answered offline, at no cost', () => {
   it('answers the fixture\'s transfer-depth deterministic task without a grader', () => {
-    const t = task('tsk-why-gradients-vanish')
+    // A Mini-app carries the hard question, and the host compares what it reported. This is
+    // how a Task at the top of the Ladder stays free and works with the machine offline.
+    const t = task('tsk-place-the-factors')
     expect(t.depth).toBe('transfer')
     expect(isOffline(t)).toBe(true)
-    expect(answerDeterministic(t, 'the product of many small numbers shrinks toward zero').outcome).toBe('pass')
+    expect(
+      answerDeterministic(t, { placements: ['hidden', 'hidden', 'output', 'output'] }).outcome,
+    ).toBe('pass')
   })
 
   it('derives offline from check alone, never from depth', () => {

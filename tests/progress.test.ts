@@ -140,9 +140,10 @@ describe('the renderer never receives an answer', () => {
         expect(task).not.toHaveProperty('answerGuide')
       }
     }
-    // The accepted phrasings of tsk-why-gradients-vanish must not appear anywhere in
-    // what crosses the bridge, in any field.
-    expect(serialised).not.toContain('the product of many small numbers shrinks toward zero')
+    // The answer guide of tsk-why-gradients-vanish must not appear anywhere in what
+    // crosses the bridge, in any field. A guide is an answer with reasons attached.
+    expect(serialised).not.toContain('each layer contributes a factor to a product')
+    expect(serialised).not.toContain('Do not accept an answer that only names the symptom')
     expect(serialised).not.toContain('6x cos(3x^2)"]') // the try's answer array
 
     const lesson = view.lessons['les-the-chain-rule']

@@ -2,13 +2,9 @@
   "id": "tsk-why-gradients-vanish",
   "objective": "obj-chain-rule",
   "depth": "transfer",
-  "check": "deterministic",
-  "kind": "accepted-answers",
+  "check": "model",
+  "kind": "short-answer",
   "prompt": "In one phrase: why does a long chain of factors below one make the gradient vanish?",
-  "accepted": [
-    "the product of many small numbers shrinks toward zero",
-    "multiplying many values below one drives the product to zero",
-    "repeated multiplication by factors under one decays exponentially"
-  ],
+  "answerGuide": "The answer has to join two things: that each layer contributes a factor to a product, and that a product of factors below one falls toward zero as the chain grows. Any wording of that is right, and so is a numeric or exponential framing, such as 0.5 to the tenth power. Accept an answer that says the factors compound or decay, even without the word product. Do not accept an answer that only names the symptom, such as \"the gradient gets small\" or \"the early layers stop learning\", because that repeats the question. Do not accept an answer that blames the depth alone with no mention of the size of the factors.",
   "explanation": "Each layer contributes a factor. Factors below one compound downward, so the product collapses."
 }
