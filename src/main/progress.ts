@@ -34,7 +34,29 @@ export interface AttemptRecord {
   depth: Depth
   check: Check
   outcome: 'pass' | 'fail' | 'voided'
+  /** The Grader's whole answer, when there was one. Kept so a Verdict can be shown again. */
+  verdictJson?: string
 }
+
+/**
+ * One Tutor conversation, kept here and never in the Course folder.
+ *
+ * A conversation is about a Course but is not part of it, so it must not travel with a
+ * shared Course. `session` is the harness's own, so the next message continues the same
+ * conversation rather than starting another (PLAN 3.4).
+ */
+export interface Thread {
+  id: string
+  messages: { who: 'you' | 'tutor'; text: string }[]
+  session?: string
+}
+
+/**
+ * A claim that a Task itself is broken, on exactly three grounds. It is not a dispute about
+ * a Verdict, and upholding one never rescores anything (PLAN 3.15).
+ */
+export const GROUNDS = ['inaccurate', 'impossible', 'broke'] as const
+export type Ground = (typeof GROUNDS)[number]
 
 /** One execution of a Harness. Every Run is recorded, spend included (PLAN 3.4). */
 export interface RunRecord {
@@ -62,6 +84,12 @@ export interface Progress {
   endRun(id: string, usd: number, status: 'ok' | 'failed' | 'cancelled'): void
   /** What the last Run against this Course used, which is what a new one pre-fills from. */
   lastRun(courseSlug: string): { harness: string; model: string } | undefined
+  /** The conversation about one Page, if there has been one. */
+  thread(courseSlug: string, pageId: string): Thread | undefined
+  saveThread(courseSlug: string, pageId: string, thread: Thread): void
+  /** File a defect report. It records a claim; it never changes an outcome. */
+  fileDefect(report: { courseSlug: string; taskId: string; ground: Ground; note: string }): string
+  defectsFor(courseSlug: string): { taskId: string; ground: Ground; status: string }[]
   /** Everything the database holds about one Course. Deleting a Course deletes this. */
   forget(courseSlug: string): void
   close(): void
@@ -94,6 +122,25 @@ export function openProgress(file: string): Progress {
       submittedAt TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS attempts_by_course ON attempts (courseSlug, taskId);
+    CREATE TABLE IF NOT EXISTS tutor_threads (
+      id          TEXT PRIMARY KEY,
+      courseSlug  TEXT NOT NULL,
+      pageId      TEXT NOT NULL,
+      messagesJson TEXT NOT NULL,
+      session     TEXT,
+      updatedAt   TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS thread_per_page ON tutor_threads (courseSlug, pageId);
+    CREATE TABLE IF NOT EXISTS defect_reports (
+      id         TEXT PRIMARY KEY,
+      courseSlug TEXT NOT NULL,
+      taskId     TEXT NOT NULL,
+      attemptId  TEXT,
+      ground     TEXT NOT NULL,
+      note       TEXT NOT NULL,
+      status     TEXT NOT NULL,
+      filedAt    TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS runs (
       id         TEXT PRIMARY KEY,
       kind       TEXT NOT NULL,
@@ -121,8 +168,8 @@ export function openProgress(file: string): Progress {
     ON CONFLICT (courseSlug, pageId) DO NOTHING
   `)
   const insertAttempt = db.prepare(`
-    INSERT INTO attempts (id, courseSlug, taskId, objectiveId, depth, "check", outcome, submittedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO attempts (id, courseSlug, taskId, objectiveId, depth, "check", outcome, verdictJson, submittedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   const selectAttempted = db.prepare('SELECT DISTINCT taskId FROM attempts WHERE courseSlug = ?')
   const openRun = db.prepare(`
@@ -135,6 +182,22 @@ export function openProgress(file: string): Progress {
   )
   const dropTicks = db.prepare('DELETE FROM page_ticks WHERE courseSlug = ?')
   const dropAttempts = db.prepare('DELETE FROM attempts WHERE courseSlug = ?')
+  const dropThreads = db.prepare('DELETE FROM tutor_threads WHERE courseSlug = ?')
+  const dropDefects = db.prepare('DELETE FROM defect_reports WHERE courseSlug = ?')
+  const selectThread = db.prepare(
+    'SELECT id, messagesJson, session FROM tutor_threads WHERE courseSlug = ? AND pageId = ?',
+  )
+  const upsertThread = db.prepare(`
+    INSERT INTO tutor_threads (id, courseSlug, pageId, messagesJson, session, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (courseSlug, pageId)
+    DO UPDATE SET messagesJson = excluded.messagesJson, session = excluded.session, updatedAt = excluded.updatedAt
+  `)
+  const insertDefect = db.prepare(`
+    INSERT INTO defect_reports (id, courseSlug, taskId, ground, note, status, filedAt)
+    VALUES (?, ?, ?, ?, ?, 'open', ?)
+  `)
+  const selectDefects = db.prepare('SELECT taskId, ground, status FROM defect_reports WHERE courseSlug = ?')
 
   return {
     ticks(courseSlug) {
@@ -164,6 +227,7 @@ export function openProgress(file: string): Progress {
         attempt.depth,
         attempt.check,
         attempt.outcome,
+        attempt.verdictJson ?? null,
         new Date().toISOString(),
       )
       return id
@@ -183,10 +247,41 @@ export function openProgress(file: string): Progress {
     lastRun(courseSlug) {
       return latestRun.get(courseSlug) as { harness: string; model: string } | undefined
     },
+    thread(courseSlug, pageId) {
+      const row = selectThread.get(courseSlug, pageId) as
+        | { id: string; messagesJson: string; session: string | null }
+        | undefined
+      if (!row) return undefined
+      return {
+        id: row.id,
+        messages: JSON.parse(row.messagesJson) as Thread['messages'],
+        ...(row.session === null ? {} : { session: row.session }),
+      }
+    },
+    saveThread(courseSlug, pageId, thread) {
+      upsertThread.run(
+        thread.id,
+        courseSlug,
+        pageId,
+        JSON.stringify(thread.messages),
+        thread.session ?? null,
+        new Date().toISOString(),
+      )
+    },
+    fileDefect(report) {
+      const id = randomUUID()
+      insertDefect.run(id, report.courseSlug, report.taskId, report.ground, report.note, new Date().toISOString())
+      return id
+    },
+    defectsFor(courseSlug) {
+      return selectDefects.all(courseSlug) as { taskId: string; ground: Ground; status: string }[]
+    },
     forget(courseSlug) {
       // A Run is the spend ledger and outlives the Course it built, so it stays.
       dropTicks.run(courseSlug)
       dropAttempts.run(courseSlug)
+      dropThreads.run(courseSlug)
+      dropDefects.run(courseSlug)
     },
     close() {
       db.close()

@@ -34,7 +34,7 @@ import {
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..')
 const SAMPLE = join(ROOT, 'fixtures', 'courses', 'gradients-by-hand')
 const TOOLKIT = join(ROOT, 'toolkit')
-const SKILLS = join(ROOT, 'agent', 'skills')
+const SKILLS = join(ROOT, 'agent', 'skills', 'authoring')
 
 let box = ''
 beforeAll(() => {

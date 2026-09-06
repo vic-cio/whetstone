@@ -243,7 +243,7 @@ export async function build(
 
 /** Lay out staging and say what the Run is for. The brief is the conversation so far. */
 export function open(folder: string, tray: Tray): void {
-  prepare(folder, toolkitDir(), join(agentDir(), 'skills'), tray)
+  prepare(folder, toolkitDir(), join(agentDir(), 'skills', 'authoring'), tray)
 }
 
 function firstPrompt(folder: string, brief: string): string {

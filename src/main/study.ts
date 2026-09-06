@@ -9,6 +9,7 @@ import type {
   PublicTask,
   PublicTry,
   Resource,
+  Task,
 } from '../shared/format'
 import type { Outcome } from '../shared/grade'
 import type { Progress } from './progress'
@@ -177,13 +178,40 @@ export function answerTask(
   taskId: string,
   given: unknown,
 ): { outcome: Outcome; ticked: boolean } {
+  const task = taskIn(course, testId, taskId, slug)
+  return recordTask(slug, course, progress, testId, taskId, answerDeterministic(task, given))
+}
+
+/** The Task, checked against the Test that claims it. Both roles ask for it the same way. */
+export function taskIn(course: Course, testId: string, taskId: string, slug: string): Task {
   const test = course.tests[testId]
   if (!test) throw new Error(`no test "${testId}" in course "${slug}"`)
   if (!test.tasks.includes(taskId)) throw new Error(`task "${taskId}" is not in test "${testId}"`)
   const task = course.tasks[taskId]
   if (!task) throw new Error(`no task "${taskId}" in course "${slug}"`)
+  return task
+}
 
-  const outcome = answerDeterministic(task, given)
+/**
+ * Write down what happened.
+ *
+ * Separate from working out what happened, because a `model` or `rubric` Task is judged
+ * somewhere else and asynchronously, and both paths must record an Attempt the same way.
+ * Nothing reaches here without an outcome: a Grader that could not judge produces trouble,
+ * and trouble is not an outcome (PLAN 3.15).
+ */
+export function recordTask(
+  slug: string,
+  course: Course,
+  progress: Progress,
+  testId: string,
+  taskId: string,
+  outcome: Outcome,
+  verdictJson?: string,
+): { outcome: Outcome; ticked: boolean } {
+  const test = course.tests[testId]
+  const task = taskIn(course, testId, taskId, slug)
+
   progress.recordAttempt({
     courseSlug: slug,
     taskId,
@@ -191,10 +219,11 @@ export function answerTask(
     depth: task.depth,
     check: task.check,
     outcome: outcome.outcome,
+    ...(verdictJson === undefined ? {} : { verdictJson }),
   })
 
   const attempted = progress.attemptedTaskIds(slug)
-  if (test.tasks.every((id) => attempted.has(id))) progress.earnTick(slug, testId, 'test')
+  if (test && test.tasks.every((id) => attempted.has(id))) progress.earnTick(slug, testId, 'test')
 
   return { outcome, ticked: progress.ticks(slug)[testId]?.ticked === true }
 }

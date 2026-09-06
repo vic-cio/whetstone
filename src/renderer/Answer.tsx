@@ -24,11 +24,16 @@ export function Answer({
   slug,
 }: {
   question: Asked
-  send: (given: unknown) => Promise<Outcome>
+  /**
+   * What the host did with the answer. `trouble` is a Grader that could not judge: it is
+   * not an outcome, nothing was recorded, and the question stays open (PLAN 3.15).
+   */
+  send: (given: unknown) => Promise<Outcome | { trouble: string }>
   /** Needed only by the kinds a Mini-app answers, which read one from the Course folder. */
   slug?: string
 }): React.JSX.Element {
   const [outcome, setOutcome] = useState<Outcome | undefined>(undefined)
+  const [trouble, setTrouble] = useState('')
   const [busy, setBusy] = useState(false)
   const [picked, setPicked] = useState<number[]>([])
   const [typed, setTyped] = useState('')
@@ -39,14 +44,20 @@ export function Answer({
 
   const submit = async (given: unknown): Promise<void> => {
     setBusy(true)
+    setTrouble('')
     try {
-      setOutcome(await send(given))
+      const back = await send(given)
+      if ('trouble' in back) setTrouble(back.trouble)
+      else setOutcome(back)
     } finally {
       setBusy(false)
     }
   }
 
-  const again = (): void => setOutcome(undefined)
+  const again = (): void => {
+    setOutcome(undefined)
+    setTrouble('')
+  }
 
   switch (question.kind) {
     case 'multiple-choice':
@@ -67,7 +78,7 @@ export function Answer({
               <span>{option}</span>
             </button>
           ))}
-          <Verdict outcome={outcome} onAgain={again} />
+          <Verdict outcome={outcome} trouble={trouble} onAgain={again} />
         </>
       )
 
@@ -95,7 +106,7 @@ export function Answer({
               Answer
             </button>
           </form>
-          <Verdict outcome={outcome} onAgain={again} />
+          <Verdict outcome={outcome} trouble={trouble} onAgain={again} />
         </>
       )
 
@@ -175,7 +186,7 @@ export function Answer({
           >
             Answer
           </button>
-          <Verdict outcome={outcome} onAgain={again} />
+          <Verdict outcome={outcome} trouble={trouble} onAgain={again} />
         </>
       )
     }
@@ -199,7 +210,7 @@ export function Answer({
               if (outcome === undefined && !busy) void submit(value)
             }}
           />
-          <Verdict outcome={outcome} onAgain={again} />
+          <Verdict outcome={outcome} trouble={trouble} onAgain={again} />
         </>
       )
     }
@@ -241,11 +252,26 @@ function move(order: number[], position: number, delta: number): number[] {
 
 function Verdict({
   outcome,
+  trouble,
   onAgain,
 }: {
   outcome: Outcome | undefined
+  trouble: string
   onAgain: () => void
 }): React.JSX.Element | null {
+  // Trouble is not a wrong answer. Nothing was recorded, so this says so and offers the
+  // question back rather than a result (PLAN 3.15).
+  if (trouble !== '') {
+    return (
+      <div className="vd" style={{ ['--vdc' as string]: 'var(--muted)' }}>
+        <b>Not judged</b>
+        <span>{trouble}</span>
+        <button type="button" className="again" onClick={onAgain}>
+          Try again
+        </button>
+      </div>
+    )
+  }
   if (!outcome) return null
   const failed = outcome.outcome === 'fail'
   return (

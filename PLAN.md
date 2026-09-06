@@ -224,7 +224,7 @@ SQLite at `~/Library/Application Support/Whetstone/progress.db`, through Node's 
 | `defect_reports` | id, courseSlug, taskId, attemptId, ground, note, status, filedAt | `ground` is one of three. `status` is `open`, `upheld`, `rejected` |
 | `missed` | courseSlug, taskId, lastFailedAt, clearedAt | Tasks the user got wrong and has not since got right. A list, not a schedule |
 | `tutor_threads` | id, courseSlug, lessonId, messagesJson, updatedAt | Tutor chats live here, never in the folder |
-| `runs` | id, kind, courseSlug, harness, model, usd, status, startedAt, endedAt | Spend ledger for every Constructor and Grader call |
+| `runs` | id, kind, courseSlug, harness, model, usd, status, startedAt, endedAt | Spend ledger for every spawn, Tutor turns included. A row is written before the process starts, which is also what test 15 reads to prove nothing ran |
 | `settings` | key, value | Never a secret |
 
 Progress is one bit per Page. A Lesson ticks when the user reaches the end of it, a Test ticks when they have attempted every Task in it, and the user can tick or untick either by hand from the course page, which is how they say they already know the material. That single control replaces both the completion marker and the old "I know this" button, because they were the same idea wearing two hats.
@@ -733,8 +733,19 @@ Four things settled during the build, three of them by measurement rather than b
 
 Two decisions taken without asking. The technical log holds the normalised moments rather than the harness's raw stream, because the raw stream never crosses the bridge and adding a second channel to carry it would be a hole in the thing the first channel exists for. And the app picks a Course's folder name from its id, taking the first free one, so two Courses about one idea can both exist without a Run spending a turn on naming.
 
-**Phase 4. Tutor and Grader.**
-The Tutor and Grader profiles on the same spawn layer, the Tutor's attachment tray for files, images, and pasted screenshots, the tutoring and grading bundles, the Course-level `AGENTS.md` the Constructor writes, the live snapshot file, `model` and `rubric` checks, Submissions, the Verdict view, defect reports, the Tutor pane, and the Mini-app review path. Tests 4, 12, 13, 14. The "needs a model" marker on Tasks.
+**Phase 4. Tutor and Grader. Done.**
+The Tutor and Grader profiles on the same spawn layer, the Tutor's attachment tray, the tutoring and grading skill sets, the Course-level `AGENTS.md` the Constructor writes, the live snapshot file, `model` and `rubric` checks, Submissions, the Verdict view, defect reports, the Tutor pane, and the Mini-app review gate. Tests 4, 12, 13, 14 and 15 pass, 204 assertions in all.
+
+Four things settled during the build.
+
+- **Trouble is not an outcome.** A Grader that ran out of budget, returned half an object, skipped a criterion or invented one has not judged the work, and recording that as a fail is the worst thing this app could do to somebody. So `readVerdict` checks the criteria against the ones the Task declared rather than trusting them, and anything short of a whole Verdict leaves the Attempt open with a sentence saying so. That is test 4.
+- **The third layer is the only one that reports to the app.** The Course is copied before a Tutor spawn and put back after it. This was going to be a hash until the refusal recording in phase 3 showed that a refused write reaches the run and never reaches the result event; a hash says a Course changed and cannot undo it, and a Course is small. That is test 12.
+- **A Mini-app cannot spend anything, and the toolkit is not where that is enforced.** `Kit.bridge.action` needs a press, but a Mini-app can post the message itself and the hostile fixture now does exactly that. So the host holds a review and shows a line saying nothing happens until you press. Test 14 runs that in the real app, and `kit` in a message is data rather than a credential: what the host checks is the sending window.
+- **Nothing runs on navigation, and the ledger is what proves it.** A row is written to `runs` before a process starts, so an empty table after opening a Course, a Lesson, a Test, answering a Task, a review a Mini-app asked for, and opening the Tutor panel is the whole of test 15.
+
+Two decisions taken without asking. A Tutor turn is written to the `runs` ledger, which section 3.4 named for the Constructor and the Grader only; leaving it out would make the spend figure quietly wrong. And the Tutor column is 300px rather than the 210px in section 7.5, because 210 holds about thirty characters a line and a good answer is usually a worked example.
+
+One thing is left, and it is a format gap rather than an omission. **A reviewed Mini-app has no Task to be judged against.** Section 3.10's example is "mark the inflection point on this curve", with the Mini-app emitting a coordinate and a screenshot, but `check: model` is `short-answer` with an `answerGuide` and carries no `app`. So the host holds the review and there is nothing to send it to. Adding that kind is a change to the format and to the parser, and it belongs with the next change to either.
 
 **Phase 5. Non-linear study.**
 Review sessions. The missed list. `add-rung` and `remediate` runs. The remediation offer after repeated fails on one Objective.
@@ -809,7 +820,7 @@ All three are self-hosted, because the offline requirement means the app must re
 
 ### 7.5 Layout and screens
 
-Two or three columns, and both side columns collapse. A 186px rail, a reader, and a 210px Tutor column that is closed until the user opens it. Collapsed panels become a 34px stub in the rail colour so the window keeps its shape. The collapse state is remembered per Course. Prose sets at 60ch, or 66ch with both panels closed.
+Two or three columns, and both side columns collapse. A 186px rail, a reader, and a 300px Tutor column that is closed until the user opens it. The Tutor column was specified at 210px and built at 300: a good answer to "why was I wrong" is usually a worked example with real numbers in it, and 210px holds about thirty characters a line. Collapsed panels become a 34px stub in the rail colour so the window keeps its shape. The collapse state is remembered per Course. Prose sets at 60ch, or 66ch with both panels closed.
 
 The rail holds one level at a time, and there is no breadcrumb.
 

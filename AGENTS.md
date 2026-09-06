@@ -11,12 +11,16 @@ Harness, Toolkit and the rest all mean something specific here.
 
 ```
 src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts,
+               verdict.ts (what a Grader may come back with), guard.ts (a course put back),
+               snapshot.ts (what the reader is doing), prompts.ts (what each role is told),
                miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
                samples.ts (keeping the shipped Courses current in a library),
                harness.ts (what a Harness is, and the Moment union), claude.ts (the CLI
                adapter), staging.ts (the gate into the library), remove.ts (deleting)
 src/main/      Electron main process. Node lives here and nowhere else. harness.ts spawns,
-               build.ts runs a build, newCourse.ts holds one Brief
+               build.ts runs a build, newCourse.ts holds one Brief, tutor.ts and grader.ts
+               are the other two roles, answering.ts routes a Task to whichever judges it,
+               workspace.ts owns the folders a run is given
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
 toolkit/       the toolkit this build ships. See docs/toolkit.md
@@ -82,6 +86,20 @@ tests/         vitest, run against the fixtures
   and the adapter maps those to its own CLI's tool names. A tool name in a profile makes
   every role Claude-shaped, which is what a registry of harnesses exists to avoid. This was
   got wrong first time: the profiles carried `allowedTools: ['Read', 'Glob', ...]` directly.
+- **Trouble is not an outcome.** A Grader that ran out of budget, returned half an object, or
+  scored a criterion the Task never declared has not judged the work. `readVerdict` returns
+  trouble, nothing is recorded, and the Attempt stays open. Never widen a schema in
+  `verdict.ts` to make a partial answer usable: recording a guess as a fail is not
+  recoverable and the person will believe it. `PLAN.md` 3.15.
+- **A Course is copied before a Tutor spawn and put back after it.** That is the third layer
+  of 3.14 and the only one that reports to the app: a refused write reaches the run and never
+  reaches the result event. A hash alone would say a Course changed and be unable to undo it.
+- **Nothing spawns on navigation, and the `runs` table is the proof.** A row is written before
+  a process starts. `tests/sandbox.test.ts` opens a Course, a Lesson, a Test, answers a Task
+  and opens the Tutor panel in the real app, and asserts the table is empty.
+- **`kit` in a message from a frame is data, not a credential.** A Mini-app can post anything,
+  and the hostile fixture posts a review nobody pressed for. The host checks the sending
+  window, and holds a review until a person presses, because a review costs money.
 - **A skill is a file the prompt names.** The app copies a role's skills into
   `.whetstone/skills/` in the run's working folder and lists their paths in the first
   instruction, rather than loading a plugin. A plugin format belongs to one harness, and

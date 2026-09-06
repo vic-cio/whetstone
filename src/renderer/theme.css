@@ -1,5 +1,8 @@
 /* Whetstone tokens — direction 01 Press, dark rail. See docs/design-reference.html. */
 :root {
+  /* Wide enough for a worked example with real numbers in it, which is what a good answer
+     to "why was I wrong" usually is. The plan said 210 and 210 could not hold one. */
+  --tutor: 300px;
   --paper: #f5f4f1;
   --surface: #fffefb;
   --ink: #16150f;
@@ -37,7 +40,13 @@ body {
 /* Radius is zero everywhere. Structure comes from rules, not boxes. */
 button, input, textarea { border-radius: 0; font: inherit; color: inherit; }
 
-.app { display: grid; grid-template-columns: 186px minmax(0, 1fr); height: 100%; }
+/*
+ * Three columns, and both side ones collapse to a stub in the rail colour so the window
+ * keeps its shape (PLAN 7.5). The tutor column exists only on a Page, so the shell has
+ * four widths rather than one rule with holes in it.
+ */
+.app { display: grid; grid-template-columns: 186px minmax(0, 1fr) 34px; height: 100%; }
+.app.asking { grid-template-columns: 186px minmax(0, 1fr) var(--tutor); }
 
 /*
  * The window's title bar is hidden so the rail can run to the top of the glass. macOS then
@@ -165,7 +174,8 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
 
 /* ---------------------------------------------------------------- rail, second level */
 
-.app.narrow { grid-template-columns: 34px minmax(0, 1fr); }
+.app.narrow { grid-template-columns: 34px minmax(0, 1fr) 34px; }
+.app.narrow.asking { grid-template-columns: 34px minmax(0, 1fr) var(--tutor); }
 
 .rail .back {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -493,3 +503,81 @@ pre.code {
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
 }
 .quiet:hover { border-color: var(--frame); color: var(--ink); }
+
+/* ---------------------------------------------------------------- the tutor panel
+ *
+ * A conversation about the page beside it. It is closed until the reader opens it, and
+ * opening it starts nothing: the first message does.
+ */
+.tutor {
+  background: var(--rail); color: var(--rail-ink);
+  padding: 34px 0 12px;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  overflow: hidden;
+}
+.tutor .collapse {
+  padding: 0 12px 10px; margin-bottom: 11px;
+  border: 0; border-bottom: 1px solid var(--rail-line); background: none;
+  color: var(--rail-muted); text-align: left; cursor: pointer;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+.tutor .collapse:hover { color: #fff; }
+
+.tsaid { overflow-y: auto; padding: 0 12px; display: grid; gap: 12px; align-content: start; }
+.tsaid p { margin: 0; font-size: 12.5px; line-height: 1.55; }
+.tsaid .mine { color: var(--rail-muted); padding-left: 9px; border-left: 2px solid var(--rail-line); }
+.tsaid .theirs { color: var(--rail-ink); }
+.tsaid .waiting { color: var(--rail-muted); font-style: italic; }
+.tempty { color: var(--rail-muted); font-size: 12px; }
+
+.tutor .trouble {
+  margin: 10px 12px 0; padding: 8px 0 8px 10px; font-size: 11.5px;
+  border-left: 2px solid var(--fail); color: var(--rail-ink);
+}
+.tutor .tray { margin: 10px 12px 0; }
+.tutor .tray li { color: var(--rail-muted); border-color: var(--rail-line); }
+
+.tcompose { padding: 12px 12px 0; margin-top: 12px; border-top: 1px solid var(--rail-line); }
+.tcompose textarea {
+  width: 100%; padding: 8px; font-size: 12.5px;
+  background: #ffffff0a; color: var(--rail-ink); border: 1px solid var(--rail-line); resize: vertical;
+}
+.tcompose textarea::placeholder { color: var(--rail-muted); }
+.tcompose textarea:focus { outline: 1px solid var(--amber); outline-offset: -1px; }
+.tcompose .acts { margin-top: 8px; }
+.tcompose .quiet { border-color: var(--rail-line); color: var(--rail-muted); padding: 5px 9px; }
+.tcompose .quiet:hover:enabled { border-color: var(--rail-muted); color: var(--rail-ink); }
+/* The panel is dark in both themes, so a disabled button cannot borrow the page's grey:
+   in light mode `--line` is a pale stone and lands as a bright box on a near-black ground. */
+.tcompose .btn { padding: 6px 14px; }
+.tcompose .btn:disabled, .tcompose .quiet:disabled {
+  background: none; border-color: var(--rail-line); color: var(--rail-muted);
+}
+
+/* ---------------------------------------------------------------- a scored rubric */
+
+.scored { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 11px; }
+.scored li { padding-left: 13px; border-left: 2px solid var(--line); display: grid; gap: 3px; }
+.scored li.met { border-left-color: var(--pass); }
+.scored li.unmet { border-left-color: var(--fail); }
+.scored b { font-weight: 600; }
+.scored .ev, .scored .ms {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
+}
+.scored .ms { color: var(--fail); }
+
+/* Reporting a broken task. Three grounds, and never an appeal. */
+.link.small { font-size: 11px; margin-top: 12px; display: inline-block; }
+.report { margin-top: 12px; display: grid; gap: 7px; max-width: 52ch; }
+.report label { display: flex; gap: 7px; align-items: center; font-size: 12px; }
+.report textarea {
+  padding: 7px 9px; background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+}
+.filed { color: var(--muted); font-size: 12px; margin-top: 12px; }
+
+/* A review a Mini-app asked for, waiting on a person. Nothing has been spent yet. */
+.kreview {
+  margin: 9px 0 0; padding: 9px 12px; border: 1px solid var(--line);
+  color: var(--muted); font-size: 12px; display: flex; gap: 12px; align-items: center;
+}

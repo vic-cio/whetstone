@@ -165,8 +165,12 @@ One thing the app understood a [[harness]] to have done, in the app's own words:
 _Avoid_: Event, message, update, chunk
 
 **Live snapshot**:
-The file the app rewrites continuously with the current study state, so a Harness can see what the student is doing without an API. Read fresh, never cached.
+The file the app writes with the current study state, immediately before a spawn and never otherwise, so a [[harness]] can see what the student is doing without an API. It is written into the folder the run was given, never into the Course, because a Tutor may not change a byte of a Course.
 _Avoid_: State file, status, telemetry
+
+**Trouble**:
+What comes back when a [[grader]] could not judge an Attempt: a run that failed, a budget that ran out, or an incomplete [[verdict]]. It carries a sentence and never an outcome, nothing is recorded, and the Attempt stays open. It is not a fail.
+_Avoid_: Error, failure, invalid
 
 **Review**:
 The action a student takes to send a Mini-app's output to the Grader for judgement. It always starts from the student, never from the Mini-app.

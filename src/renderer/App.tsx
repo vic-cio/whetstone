@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { Course } from './Course'
 import { NewCourse } from './NewCourse'
+import { Tutor } from './Tutor'
 import { Lesson } from './Lesson'
 import { Test } from './Test'
 import type { BrokenCourse, CourseSummary } from '../main/courseStore'
@@ -30,6 +31,23 @@ export function App(): React.JSX.Element {
   const [course, setCourse] = useState<CourseView | undefined>(undefined)
   const [failed, setFailed] = useState<CourseError[]>([])
   const [railOpen, setRailOpen] = useState(true)
+  const [tutorOpen, setTutorOpen] = useState(false)
+
+  /**
+   * Which harness answers the questions the host cannot. One choice for the Tutor and the
+   * Grader, taken from the registry, until Settings gives each role a row of its own
+   * (PLAN 3.12). Reading the registry starts no process and costs nothing.
+   */
+  const [agent, setAgent] = useState({ harnessId: '', model: '' })
+  useEffect(() => {
+    void window.whetstone.brief.harnesses().then((found) => {
+      const first = found.harnesses.find((entry) => entry.installed) ?? found.harnesses[0]
+      if (!first) return
+      // A mid-tier model, which is what a turn of explaining is worth (PLAN 3.12).
+      const model = first.models.find((name) => name.includes('sonnet')) ?? first.models[0] ?? ''
+      setAgent({ harnessId: first.id, model })
+    })
+  }, [])
 
   const refreshLibrary = useCallback(() => {
     void window.whetstone.courses.list().then((result) => {
@@ -84,7 +102,7 @@ export function App(): React.JSX.Element {
   const next = here >= 0 ? order[here + 1] : undefined
 
   return (
-    <div className={`app${railOpen ? '' : ' narrow'}`}>
+    <div className={`app${railOpen ? '' : ' narrow'}${tutorOpen ? ' asking' : ''}`}>
       {/*
         The window has no title bar of its own, so the page has to say which part of it is
         one. Without this strip there is nowhere to take hold of the window and it cannot
@@ -212,6 +230,7 @@ export function App(): React.JSX.Element {
                 if (result.ok) setCourse(result.course)
               })
             }}
+            grading={agent}
           />
         )}
 
@@ -239,6 +258,20 @@ export function App(): React.JSX.Element {
           </div>
         )}
       </main>
+
+      {/*
+        The Tutor. It exists only on a Page, because a conversation is about a Page, and it
+        is closed until the reader opens it. Opening it starts nothing (test 15).
+      */}
+      {route.at === 'page' &&
+        (tutorOpen ? (
+          <Tutor slug={route.slug} pageId={route.pageId} agent={agent} onHide={() => setTutorOpen(false)} />
+        ) : (
+          <button type="button" className="stub tstub" onClick={() => setTutorOpen(true)}>
+            <b>?</b>
+            <span>Tutor</span>
+          </button>
+        ))}
     </div>
   )
 }

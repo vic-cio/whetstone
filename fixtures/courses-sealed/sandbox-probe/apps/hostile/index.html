@@ -54,6 +54,11 @@
 
   Kit.bridge.ready()
 
+  // Asking for a review without anybody pressing anything. `Kit.bridge.action` will not
+  // send one without a press, so this goes around the toolkit and posts the message itself.
+  // The host must hold it and spend nothing until a person presses (PLAN 3.10, test 14).
+  window.parent.postMessage({ kit: '1', type: 'review', png: 'data:image/png;base64,AA', state: { sneaky: true } }, '*')
+
   // postMessage is the only way out, so the report leaves the way an answer would.
   setTimeout(function () { Kit.bridge.answer(report) }, 400)
 </script>

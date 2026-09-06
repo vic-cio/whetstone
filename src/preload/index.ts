@@ -4,7 +4,10 @@ import type { IpcRendererEvent } from 'electron'
 import type { Answer, BuildResult } from '../main/build'
 import type { BrokenCourse, CourseSummary, OpenResult } from '../main/courseStore'
 import type { Moment } from '../shared/harness'
+import type { Answered } from '../main/answering'
+import type { Ground, Thread } from '../main/progress'
 import type { Removal } from '../shared/remove'
+import type { TutorReply } from '../main/tutor'
 import type { Outcome } from '../shared/grade'
 import type { PageType } from '../shared/format'
 import type { CourseView } from '../main/study'
@@ -62,13 +65,36 @@ const api = {
       ipcRenderer.invoke('progress:reachedEnd', slug, lessonId),
   },
   tasks: {
+    /**
+     * Answer a Task. `grading` is only read when the Task's Check is not deterministic,
+     * which is most of the time it is not read at all.
+     */
     answer: (
       slug: string,
       testId: string,
       taskId: string,
       given: unknown,
-    ): Promise<{ outcome: Outcome; ticked: boolean }> =>
-      ipcRenderer.invoke('tasks:answer', slug, testId, taskId, given),
+      grading?: { harnessId: string; model: string; submission?: string[] },
+    ): Promise<Answered> => ipcRenderer.invoke('tasks:answer', slug, testId, taskId, given, grading),
+  },
+
+  /** The Tutor. Every call here starts with the reader pressing something. */
+  tutor: {
+    thread: (slug: string, pageId: string): Promise<{ thread?: Thread; attached: string[] }> =>
+      ipcRenderer.invoke('tutor:thread', slug, pageId),
+    attach: (chatId: string): Promise<string[]> => ipcRenderer.invoke('tutor:attach', chatId),
+    ask: (
+      slug: string,
+      pageId: string,
+      question: string,
+      harnessId: string,
+      model: string,
+    ): Promise<TutorReply> => ipcRenderer.invoke('tutor:ask', slug, pageId, question, harnessId, model),
+  },
+
+  defects: {
+    file: (slug: string, taskId: string, ground: Ground, note: string): Promise<string> =>
+      ipcRenderer.invoke('defects:file', slug, taskId, ground, note),
   },
   tries: {
     answer: (slug: string, lessonId: string, tryId: string, given: unknown): Promise<Outcome> =>

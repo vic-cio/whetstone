@@ -15,6 +15,8 @@ import { useEffect, useRef, useState } from 'react'
 
 interface Message {
   kit?: string
+  png?: string
+  state?: unknown
   type?: string
   value?: unknown
   height?: number
@@ -33,7 +35,16 @@ export function MiniApp({
   /** Absent on a Lesson's `app` block, which is a demonstration and answers nothing. */
   onAnswer?: (value: unknown) => void
 }): React.JSX.Element {
+  /**
+   * What the frame asked to have looked at, held here until a person presses.
+   *
+   * The toolkit will not send a review without `Kit.bridge.action`, so a well-behaved
+   * Mini-app already needs a press. This is the second lock, and it is the one that holds
+   * against a Mini-app that posts the message itself: a review costs money and reaches a
+   * model, so the host will not start one because a frame asked (PLAN 3.10, test 14).
+   */
   const frame = useRef<HTMLIFrameElement>(null)
+  const [staged, setStaged] = useState<unknown>(undefined)
   const [tall, setTall] = useState(height ?? 260)
   const [started, setStarted] = useState(false)
   const [stalled, setStalled] = useState(false)
@@ -59,8 +70,9 @@ export function MiniApp({
           if (onAnswer) onAnswer(message.value)
           break
         case 'review':
-          // The review path writes the payload outside the Course and spawns a Grader.
-          // It arrives with the tutor, in phase 4.
+          // Held, never acted on. Nothing is spawned and nothing is spent until the
+          // person presses the button below.
+          setStaged({ png: message.png, state: message.state })
           break
       }
     }
@@ -87,6 +99,16 @@ export function MiniApp({
         src={`whetstone-app://${encodeURIComponent(slug)}/${encodeURIComponent(appId)}`}
       />
       {stalled && !started && <p className="kstall">This activity did not start.</p>}
+
+      {staged !== undefined && (
+        <p className="kreview">
+          This activity has something to be looked at. Sending it asks a model, which costs
+          money, so nothing happens until you press.
+          <button type="button" className="quiet" onClick={() => setStaged(undefined)}>
+            Not now
+          </button>
+        </p>
+      )}
     </div>
   )
 }

@@ -16,7 +16,7 @@ import { readRegistry } from '../src/shared/harness'
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..')
 const AGENT = join(ROOT, 'agent')
-const SKILLS = join(AGENT, 'skills')
+const SKILLS = join(AGENT, 'skills', 'authoring')
 
 describe('what the app hands a harness', () => {
   it('ships a registry the app can read', () => {

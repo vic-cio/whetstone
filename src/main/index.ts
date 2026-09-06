@@ -16,9 +16,12 @@ import {
   startBrief,
 } from './newCourse'
 import { removeCourse } from '../shared/remove'
+import { answer } from './answering'
+import { ask, attach, attached, newChat } from './tutor'
+import type { Ground } from './progress'
 import { fileInCourse } from '../shared/courseFile'
 import { POLICY } from '../shared/miniapp'
-import { answerTask, answerTry, reachedEndOfLesson } from './study'
+import { answerTry, reachedEndOfLesson } from './study'
 import type { PageType } from '../shared/format'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
@@ -155,6 +158,11 @@ app.whenReady().then(() => {
   protocol.handle('whetstone-course', serveCourseFile)
   protocol.handle('whetstone-app', (request) => serveMiniApp(request))
 
+  // A Run reports as it goes, so the window draws an answer as it is typed. What crosses
+  // is a `Moment`: the app's own words, never a raw event (PLAN 3.6).
+  const report = (event: Electron.IpcMainInvokeEvent) => (moment: unknown) =>
+    event.sender.send('run:moment', moment)
+
   // One handler per thing the reader can do. Answering happens here rather than in the
   // renderer, so an answer never crosses the bridge and an Attempt cannot be skipped.
   ipcMain.handle('courses:list', () => listCourses())
@@ -171,12 +179,105 @@ app.whenReady().then(() => {
     return openCourse(slug)
   })
 
+  // Answering. The renderer asks the same thing whichever way a Task is checked; most
+  // never reach a model, and the ones that do cost money and were asked for by a press.
   ipcMain.handle(
     'tasks:answer',
-    (_event, slug: string, testId: string, taskId: string, given: unknown) => {
+    (
+      event,
+      slug: string,
+      testId: string,
+      taskId: string,
+      given: unknown,
+      grading?: { harnessId: string; model: string; submission?: string[] },
+    ) =>
+      answer(
+        {
+          slug,
+          testId,
+          taskId,
+          given,
+          harnessId: grading?.harnessId ?? '',
+          model: grading?.model ?? '',
+          ...(grading?.submission === undefined ? {} : { submission: grading.submission }),
+        },
+        report(event),
+      ),
+  )
+
+  // ---------------------------------------------------------------- the tutor
+  //
+  // Nothing here runs on its own. A conversation starts cold when the reader sends the
+  // first message and ends when they close it (PLAN 3.5).
+  ipcMain.handle('tutor:thread', (_event, slug: string, pageId: string) => ({
+    thread: progress().thread(slug, pageId),
+    attached: [] as string[],
+  }))
+
+  ipcMain.handle('tutor:attach', async (_event, chatId: string) => {
+    const picked = await dialog.showOpenDialog({
+      title: 'Show the tutor',
+      properties: ['openFile', 'multiSelections'],
+    })
+    return picked.canceled ? attached(chatId) : attach(chatId, picked.filePaths)
+  })
+
+  ipcMain.handle(
+    'tutor:ask',
+    async (
+      event,
+      slug: string,
+      pageId: string,
+      question: string,
+      harnessId: string,
+      model: string,
+    ) => {
+      const store = progress()
+      const held = store.thread(slug, pageId)
+      const thread = held ?? { id: newChat(), messages: [] }
       const course = loadCourse(slug)
-      return answerTask(slug, course, progress(), testId, taskId, given)
+      const pages = course.modules.flatMap((module) => module.pages)
+
+      // A Tutor turn costs money, so it goes in the ledger. PLAN 3.4 names the Constructor
+      // and the Grader only, which would leave the spend figure quietly wrong.
+      const run = store.startRun({ kind: 'tutor', courseSlug: slug, harness: harnessId, model })
+      const reply = await ask(
+        {
+          chatId: thread.id,
+          courseDir: course.path,
+          slug,
+          harnessId,
+          model,
+          question,
+          ...(thread.session === undefined ? {} : { resume: thread.session }),
+          live: {
+            ...(pages.some((page) => page.type === 'lesson' && page.id === pageId)
+              ? { openLesson: pageId }
+              : { openTest: pageId }),
+            pagesDone: store.pagesDone(slug),
+            pageCount: pages.length,
+          },
+        },
+        report(event),
+      )
+
+      store.endRun(run, reply.usd, reply.ok ? 'ok' : 'failed')
+
+      if (reply.ok && reply.text !== '') {
+        thread.messages.push({ who: 'you', text: question }, { who: 'tutor', text: reply.text })
+        if (reply.session !== '') thread.session = reply.session
+        store.saveThread(slug, pageId, thread)
+      }
+      return reply
     },
+  )
+
+  // A claim that a Task is broken, on three grounds. It records a claim and never changes
+  // an outcome, which is the whole difference between this and an appeal (PLAN 3.15).
+  ipcMain.handle(
+    'defects:file',
+    (_event, slug: string, taskId: string, ground: Ground, note: string) =>
+      progress().fileDefect({ courseSlug: slug, taskId, ground, note }),
   )
   ipcMain.handle(
     'tries:answer',
@@ -185,11 +286,6 @@ app.whenReady().then(() => {
   )
 
   // ---------------------------------------------------------------- building a course
-  //
-  // A Run reports as it goes, so the window draws a conversation as it is typed and a build
-  // as it happens. What crosses is a `Moment`: the app's own words, never a raw event.
-  const report = (event: Electron.IpcMainInvokeEvent) => (moment: unknown) =>
-    event.sender.send('run:moment', moment)
 
   ipcMain.handle('harnesses:list', () => harnesses())
   ipcMain.handle('brief:start', () => startBrief())

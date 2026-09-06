@@ -38,6 +38,7 @@ interface Message {
 let messages: Message[] = []
 let page = ''
 let attempts: { taskId: string; outcome: string }[] = []
+let runs = -1
 let ran = false
 
 beforeAll(() => {
@@ -63,9 +64,16 @@ beforeAll(() => {
         'window.__probe = []; window.addEventListener("message", function (e) { window.__probe.push(e.data) })',
         open('Sandbox probe'),
         'document.querySelectorAll(".lname")[0].click()',
+        // While the lesson is open, note whether the host held the review the hostile
+        // mini-app asked for. The shot at the end is of a different page.
+        'window.__probe.push({ type: "sawReview", value: document.body.innerText.indexOf("nothing happens until you press") >= 0 })',
         // Then the Test, from the rail, whose mini-app reports on its own. One run then
         // follows a report from inside the frame all the way to a recorded Attempt.
         'Array.from(document.querySelectorAll(".rail button")).filter(function (b) { return b.textContent.indexOf("The report arrives") === 0 })[0].click()',
+        // Opening the tutor is not asking it anything. The panel draws, a thread is read
+        // from the database, and nothing is spawned (test 15).
+        'document.querySelector(".tstub").click()',
+        'window.__probe.push({ type: "sawTutor", value: document.querySelectorAll(".tcompose textarea").length })',
       ]),
     },
   })
@@ -75,6 +83,7 @@ beforeAll(() => {
 
   const store = new DatabaseSync(db, { readOnly: true })
   attempts = store.prepare('SELECT taskId, outcome FROM attempts').all() as typeof attempts
+  runs = (store.prepare('SELECT COUNT(*) AS n FROM runs').get() as { n: number }).n
   store.close()
   ran = true
 }, 180_000)
@@ -122,12 +131,18 @@ describe.runIf(existsSync(ELECTRON))('test 7 — a sealed mini-app reaches nothi
   })
 
   it('leaves only by postMessage, and only what it chose to send', () => {
-    // Three kinds of message, all from the toolkit: the frame's height, that it had drawn,
-    // and what it chose to report. Nothing else crossed.
-    expect(messages.every((message) => message.kit === TOOLKIT_VERSION)).toBe(true)
+    // Four kinds of message and nothing else crossed: the frame's height, that it had
+    // drawn, what it chose to report, and a review it asked for without being pressed.
     expect(new Set(messages.map((message) => message.type))).toEqual(
-      new Set(['resize', 'ready', 'answer']),
+      new Set(['resize', 'ready', 'answer', 'review', 'sawReview', 'sawTutor']),
     )
+    // The toolkit's own messages carry its version. The hostile one does not, because it
+    // went around the toolkit, and that is the point: `kit` is not a credential. What the
+    // host actually checks is that the message came from this frame's own window.
+    const mine = new Set(['review', 'sawReview', 'sawTutor'])
+    const toolkit = messages.filter((message) => !mine.has(message.type ?? ''))
+    expect(toolkit.every((message) => message.kit === TOOLKIT_VERSION)).toBe(true)
+    expect(messages.find((message) => message.type === 'review')?.kit).toBe('1')
   })
 })
 
@@ -141,5 +156,38 @@ describe.runIf(existsSync(ELECTRON))('a report reaches the host and is recorded'
 
   it('records the attempt, because a Test task always records', () => {
     expect(attempts).toEqual([{ taskId: 'tsk-report', outcome: 'pass' }])
+  })
+})
+
+/**
+ * Test 14: a Mini-app cannot cause a spawn. A review starts only from the user's button.
+ *
+ * The hostile Mini-app asks for a review by posting the message itself, going around
+ * `Kit.bridge.action`, which will not send one without a press. So this is the case the
+ * toolkit cannot cover, and the host has to.
+ */
+describe('tests 14 and 15 — nothing spends the user’s money on its own', () => {
+  it('ran', () => {
+    expect(ran, 'the app did not run').toBe(true)
+  })
+
+  it('holds a review a mini-app asked for, rather than acting on it', () => {
+    const noted = messages.find((message) => message.type === 'sawReview')
+    expect(noted, 'the probe did not run').toBeDefined()
+    expect(noted?.value).toBe(true)
+  })
+
+  it('opens the tutor without asking it anything', () => {
+    // Test 15's second half. The panel is there and its composer is drawn, and no process
+    // has been started: a conversation begins with the first message, not with the panel.
+    expect(messages.find((message) => message.type === 'sawTutor')?.value).toBe(1)
+  })
+
+  it('starts nothing, through all of that, so nothing was spent', () => {
+    // Test 15. Every spawn writes a row here before the process starts, so an empty table
+    // is the whole claim: opening a course, a lesson, a test, answering a task, a review a
+    // mini-app asked for, and opening the tutor started no Constructor, Tutor or Grader.
+    expect(runs).toBe(0)
+    expect(attempts.length).toBeGreaterThan(0)
   })
 })
