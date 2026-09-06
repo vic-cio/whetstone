@@ -33,6 +33,9 @@ export function Answer({
   const [picked, setPicked] = useState<number[]>([])
   const [typed, setTyped] = useState('')
   const [order, setOrder] = useState<number[]>(() => (question.items ?? []).map((_, index) => index))
+  /** The row being dragged, and the row it is over, both as positions in the list. */
+  const [held, setHeld] = useState<number | undefined>(undefined)
+  const [over, setOver] = useState<number | undefined>(undefined)
 
   const submit = async (given: unknown): Promise<void> => {
     setBusy(true)
@@ -96,12 +99,51 @@ export function Answer({
         </>
       )
 
-    case 'ordering':
+    case 'ordering': {
+      const locked = outcome !== undefined
+      const drop = (event: React.DragEvent, to: number): void => {
+        // The row being carried is read back off the drag itself rather than out of state.
+        // State is a render behind while the drag is in flight, and the handler that runs
+        // on the drop closes over the value from before it started.
+        const from = Number(event.dataTransfer.getData('text/plain'))
+        if (Number.isInteger(from)) setOrder(lift(order, from, to))
+        setHeld(undefined)
+        setOver(undefined)
+      }
       return (
         <>
           <ol className="order">
             {order.map((item, position) => (
-              <li key={item}>
+              <li
+                key={item}
+                // Dragging is the direct way to put a list in order. The arrows stay for a
+                // keyboard, and because a two-item swap is quicker with them than with a drag.
+                draggable={!locked}
+                className={`${held === position ? 'held' : ''}${over === position && held !== position ? ' over' : ''}`}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = 'move'
+                  // Firefox and Chromium both refuse to start a drag with nothing on it.
+                  event.dataTransfer.setData('text/plain', String(position))
+                  setHeld(position)
+                }}
+                onDragOver={(event) => {
+                  if (locked) return
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                  setOver(position)
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  drop(event, position)
+                }}
+                onDragEnd={() => {
+                  setHeld(undefined)
+                  setOver(undefined)
+                }}
+              >
+                <span className="ogrip" aria-hidden="true">
+                  ⠿
+                </span>
                 <span className="onum">{position + 1}</span>
                 <span className="otext">{(question.items ?? [])[item]}</span>
                 <span className="omove">
@@ -136,6 +178,7 @@ export function Answer({
           <Verdict outcome={outcome} onAgain={again} />
         </>
       )
+    }
 
     /**
      * A Mini-app answers these. It reports what the user did and the main process decides,
@@ -173,6 +216,16 @@ export function Answer({
     default:
       return <div className="later">Unknown task kind “{question.kind}”.</div>
   }
+}
+
+/** Take a row out of the list and put it back at another place, closing the gap behind it. */
+function lift(order: number[], from: number, to: number): number[] {
+  if (from === to) return order
+  const next = [...order]
+  const [row] = next.splice(from, 1)
+  if (row === undefined) return order
+  next.splice(to, 0, row)
+  return next
 }
 
 function move(order: number[], position: number, delta: number): number[] {

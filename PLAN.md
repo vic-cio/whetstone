@@ -507,13 +507,17 @@ The strength of the offline path is the point, not a budget compromise. `check: 
 | kind | The user does | The host checks |
 |---|---|---|
 | `multiple-choice` | Picks one or more options | Set equality |
-| `accepted-answers` | Types a short answer | Matches any entry in an accepted set, after normalising case, spacing, and punctuation. This is the Duolingo check |
+| `accepted-answers` | Types a short answer | Matches any entry in an accepted set, plainly and again after normalising case, spacing, and punctuation. This is the Duolingo check, and it is only as good as the set |
 | `numeric` | Enters a number | Within a tolerance the Task declares |
 | `ordering` | Arranges steps | Sequence equality |
 | `assertions-pass` | Writes code or data inside a Mini-app | The Mini-app runs the Constructor's assertions and reports which passed. This is the coding-course check |
 | `app-result` | Interacts with a Mini-app: drags, marks a point, builds a circuit | The Mini-app emits a result and the host compares it to the expected value |
 
 `assertions-pass` and `app-result` are where difficulty and interest live. A Task at `transfer` depth can be fully verifiable, cost nothing, and work on a plane. The Mini-app never decides pass or fail on its own; it reports, and the host judges.
+
+**Free text is where this path ends.** `accepted-answers` compares a string against a list, and it is right only when the answer set is genuinely closed: a term, a name, a symbol. "In one word, what is the sign of the derivative" is not closed. `negative`, `-`, `below zero` and `less than zero` are all correct, and a Course that lists two of them marks a right answer wrong. There is no fixing that with better normalising, because the trouble is not spelling. A question whose answer set is open is a `model` check or a `multiple-choice`, and the Constructor is told so in rule 9c.
+
+**A `model` check does not have to say anything.** The Grader can return a verdict and nothing else. It is the cheapest useful thing a model does here, it is the only way an open-ended short answer gets judged fairly, and it keeps the app's posture: a model is asked a question the host cannot answer, not invited into the reading.
 
 ### 3.17 The toolkit
 
@@ -531,6 +535,7 @@ A Mini-app never writes its own buttons, colours, or message plumbing. The host 
 | `Kit.editor` | A small code editor with the Constructor's assertions beside it. This is what `assertions-pass` runs on |
 | `Kit.steps` | A walkthrough advanced one beat at a time, for a derivation or an algorithm trace |
 | `Kit.sim` | A stepped model with a play control. The Constructor supplies the rule, the toolkit supplies the loop and the transport |
+| `Kit.order` | A list put in order by dragging a row, with arrows beside it for a keyboard. Added in 1.1.0 |
 | `Kit.bridge` | `ready()`, `answer(value)`, `review(png, state)`, `resize()`, `action(label, produce)`. The only way out of the sandbox |
 
 `Kit.bridge` replaces raw `postMessage` in every Mini-app, so the protocol in section 3.10 is a library call rather than something each activity reimplements and gets subtly wrong. A Mini-app reports; it never decides whether an answer was right.
@@ -541,7 +546,7 @@ Built, it carries a fifth call: `Kit.bridge.action(label, produce)` draws the an
 
 **It is pinned per Course.** A copy lives at `toolkit/` inside the Course folder and `course.json` records `toolkitVersion`. The host injects the copy from the folder, never the app's current one. So a shared Course renders the same on another machine, and installing a newer Whetstone does not silently change how a built Course behaves. The app ships the current toolkit and writes it into a Course only at build time.
 
-**The set above is a starting set, not the finished toolkit.** Obvious gaps to fill as Courses ask for them: a multiple-choice and an accepted-answers control for use inside a Mini-app, numeric entry with units, a sortable list, a table, an audio and video player, and a drawing surface. Note that plain multiple choice is rendered by the host today, because a Task of that kind needs no Mini-app at all; the toolkit needs its own only when a question sits inside an activity. Filling a gap is a change to the toolkit and its version, never a one-off inside a Course.
+**The set above is a starting set, not the finished toolkit.** Obvious gaps to fill as Courses ask for them: a multiple-choice and an accepted-answers control for use inside a Mini-app, numeric entry with units, a table, an audio and video player, and a drawing surface. Note that plain multiple choice is rendered by the host today, because a Task of that kind needs no Mini-app at all; the toolkit needs its own only when a question sits inside an activity. Filling a gap is a change to the toolkit and its version, never a one-off inside a Course.
 
 **When it is missing something.** A Mini-app may still write its own widget. That is a signal the toolkit has a gap to fill, not a licence for one Course to look unlike the rest, and the Constructor is told to say so in its run so the gap surfaces.
 
@@ -584,6 +589,7 @@ The Constructor prompt is a file in the repo, versioned, and read by humans too.
 7. Every Task names one Objective. Every Objective has Tasks at every Rung the Course uses.
 8. Depth belongs to a Task, not to a Module. A late Module may hold `recall` Tasks. This is the condition Victor attached to the fixed scale.
 9. A Mini-app is one file with everything inline and no external references. Build it from the toolkit in section 3.17, and read `docs/toolkit.md`: use `Kit.bridge` rather than raw `postMessage`, a toolkit widget rather than a hand-rolled control, and a token rather than a colour. If the toolkit cannot express the activity, write it anyway and say in the run which widget was missing. Code the Course needs in more than one Mini-app goes in `lib/` and is listed under `library` in `course.json`, one name on `window` per file. A Course names a file inside itself and never a path to anything.
+9c. `accepted-answers` is for a closed answer set. List every reasonable form, symbols included, and remember that a symbol survives the check only because it is listed. If you cannot write the list down and believe it is complete, the Task is `multiple-choice` or `check: model`. Marking a right answer wrong is worse than asking a narrower question.
 9b. A diagram is a file, so the host cannot hand it the app's tokens. Write it as an SVG carrying both schemes in its own `<style>`, under `@media (prefers-color-scheme: dark)`, or it disappears in one of them.
 10. Rubrics are written with the Task and are strict. A criterion the user can satisfy by restating the prompt is a bad criterion.
 11. Resources are links with one line of why. Never copy content in.

@@ -1,4 +1,4 @@
-# The toolkit, version 1.0.0
+# The toolkit, version 1.1.0
 
 Everything a Mini-app is built from. The host inlines `kit.css` and `kit.js` into the frame
 ahead of the Mini-app's own markup, so `Kit` always exists and nothing has to be fetched.
@@ -125,6 +125,13 @@ for.
 A walkthrough advanced one beat at a time, for a derivation or an algorithm trace. Each step
 is `{ title, body }`. Returns `index()`, `go(n)`, `onStep(fn)`.
 
+**`Kit.order({ mount, items, label, enabled })`**
+A list the reader puts in order, by dragging a row or by pressing the arrows beside it.
+`items` is a list of strings. Returns `order()` as indexes into `items`, `items()` as the
+strings themselves, `set(list)`, `enable(on)`, and `onChange(fn)`. `onChange` gets
+`{ order, items }`. The widget never says whether the order is right; report it and let the
+host judge.
+
 **`Kit.sim({ mount, state, step, draw, fps, width, height, label })`**
 A stepped model with a play control. `step(state)` returns the next state and `draw(context,
 state, size)` paints it on a canvas. The toolkit supplies the loop and the transport.
@@ -134,7 +141,7 @@ state, size)` paints it on a canvas. The toolkit supplies the loop and the trans
 Write the widget anyway, and say in the run which one was missing. A gap is a defect in the
 toolkit, to be filled in the next version, and never a reason for one Course to look unlike
 the rest. Known gaps: a multiple-choice and an accepted-answers control for use inside an
-activity, numeric entry with units, a sortable list, a table, an audio and a video player,
+activity, numeric entry with units, a table, an audio and a video player,
 and a drawing surface. Plain multiple choice needs no Mini-app; the host draws it.
 
 This is about widgets every subject needs. Something only one subject needs is not a gap in

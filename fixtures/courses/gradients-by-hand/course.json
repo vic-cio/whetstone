@@ -4,7 +4,7 @@
   "title": "Gradients by hand",
   "subject": "Machine learning",
   "summary": "Work out gradients on paper before letting a framework do it, so that when training misbehaves you can tell what the numbers are doing.",
-  "toolkitVersion": "1.0.0",
+  "toolkitVersion": "1.1.0",
   "objectives": [
     { "id": "obj-derivative", "title": "Explain what a derivative measures" },
     { "id": "obj-chain-rule", "title": "Apply the chain rule to a composed function" },

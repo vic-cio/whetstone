@@ -4,7 +4,7 @@
   "title": "Sandbox probe",
   "subject": "Whetstone",
   "summary": "One mini-app that tries everything it is not allowed to do, and reports what it reached.",
-  "toolkitVersion": "1.0.0",
+  "toolkitVersion": "1.1.0",
   "objectives": [
     {
       "id": "obj-sealed",

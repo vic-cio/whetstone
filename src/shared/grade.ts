@@ -74,9 +74,21 @@ export function answerDeterministic(item: Task | Try, given: unknown): Outcome {
     }
 
     case 'accepted-answers': {
-      const typed = typeof given === 'string' ? normalise(given) : ''
-      const accepted = task.accepted.some((candidate) => normalise(candidate) === typed)
-      return { outcome: typed !== '' && accepted ? 'pass' : 'fail', ...explanation }
+      /*
+       * Two comparisons, because normalising folds away punctuation and some answers are
+       * punctuation. "-" is a right answer to "what is the sign", and normalising it leaves
+       * nothing at all, so a plain comparison runs beside the folded one. The Course still
+       * has to list "-" for it to be accepted; this only makes listing it possible.
+       */
+      const plain = (text: string): string => text.trim().toLowerCase()
+      const raw = typeof given === 'string' ? plain(given) : ''
+      if (raw === '') return { outcome: 'fail', ...explanation }
+      const folded = normalise(raw)
+      const accepted = task.accepted.some(
+        (candidate) =>
+          plain(candidate) === raw || (folded !== '' && normalise(candidate) === folded),
+      )
+      return { outcome: accepted ? 'pass' : 'fail', ...explanation }
     }
 
     case 'numeric': {

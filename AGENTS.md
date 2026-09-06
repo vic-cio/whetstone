@@ -48,6 +48,11 @@ tests/         vitest, run against the fixtures
 - **The toolkit is pinned per Course.** The host injects the copy in the Course folder, never
   the one this build ships, so a Course keeps behaving the way it was built. Change
   `toolkit/` and its version together, never a one-off inside a Course. `docs/adr/0014`.
+- **Free text is only as good as the list behind it.** `accepted-answers` compares a string
+  against a set, and normalising folds case, spacing and punctuation away, so an answer that
+  is punctuation ("-") survives only because the Course listed it. A question whose answer
+  set is not closed belongs in `multiple-choice` or `check: model`, not here. Do not try to
+  fix a marked-wrong right answer by loosening `normalise`; the trouble is not spelling.
 - **The toolkit carries no subject.** It is the same in every Course, so nothing in it may
   know about chess, or circuits, or music. What one Course is about goes in that Course's
   library: files under `lib/`, listed in `course.json`, inlined into that Course's Mini-apps

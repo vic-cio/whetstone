@@ -5,6 +5,7 @@ import { parseCourse } from '../src/shared/parseCourse'
 import { answerDeterministic, normalise } from '../src/shared/grade'
 import { isOffline } from '../src/shared/format'
 import type { Course, Task } from '../src/shared/format'
+import type { Try } from '../src/shared/format'
 
 const FIXTURE = join(import.meta.dirname, '..', 'fixtures', 'courses', 'gradients-by-hand')
 
@@ -59,6 +60,25 @@ describe('test 6 — every deterministic kind answers with no network', () => {
     expect(answerDeterministic(t, 'the  product of MANY small numbers shrinks toward zero').outcome).toBe('pass')
     expect(answerDeterministic(t, 'because the weights are large').outcome).toBe('fail')
     expect(answerDeterministic(t, '').outcome).toBe('fail')
+  })
+
+  it('accepts an answer that is punctuation, when the course listed it', () => {
+    /*
+     * "-" is a right answer to a question about a sign, and normalising folds punctuation
+     * away, so it used to arrive as an empty string and be marked wrong. The Course still
+     * has to list it. This is not the app guessing what a near miss meant.
+     */
+    const question: Try = {
+      id: 'try-sign',
+      kind: 'accepted-answers',
+      prompt: 'What is the sign of the derivative where the curve is falling?',
+      accepted: ['negative', '-', 'below zero'],
+    }
+    expect(answerDeterministic(question, '-').outcome).toBe('pass')
+    expect(answerDeterministic(question, ' - ').outcome).toBe('pass')
+    expect(answerDeterministic(question, 'Below Zero').outcome).toBe('pass')
+    expect(answerDeterministic(question, '+').outcome).toBe('fail')
+    expect(answerDeterministic(question, '   ').outcome).toBe('fail')
   })
 
   it('app-result, where the mini-app reports and the host decides', () => {

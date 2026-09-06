@@ -336,9 +336,17 @@ pre.code {
 
 .order { list-style: none; padding: 0; margin: 0 0 9px; }
 .order li {
-  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 9px;
+  display: grid; grid-template-columns: 13px 16px minmax(0, 1fr) auto; gap: 9px;
   align-items: center; padding: 6px 9px; border: 1px solid var(--line); margin-bottom: 4px;
+  background: var(--surface); user-select: none;
 }
+.order li[draggable="true"] { cursor: grab; }
+.order li[draggable="true"]:active { cursor: grabbing; }
+/* The row being carried, and the place it would land. */
+.order li.held { opacity: 0.4; }
+.order li.over { border-color: var(--amber); }
+.ogrip { color: var(--line); font-size: 12px; line-height: 1; letter-spacing: -1px; }
+.order li:hover .ogrip { color: var(--muted); }
 .onum { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; color: var(--muted); }
 .omove button {
   background: none; border: 1px solid var(--line); color: var(--muted);

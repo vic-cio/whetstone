@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { parseCourse } from '../src/shared/parseCourse'
 import { DEPTHS, CHECKS } from '../src/shared/format'
 import type { Course, Task } from '../src/shared/format'
+import { TOOLKIT_VERSION } from '../src/shared/miniapp'
 
 const FIXTURE = join(import.meta.dirname, '..', 'fixtures', 'courses', 'gradients-by-hand')
 
@@ -36,7 +37,9 @@ describe('test 1 — the fixture course parses', () => {
   it('reads the manifest', () => {
     expect(course.id).toBe('gradients-by-hand')
     expect(course.subject).toBe('Machine learning')
-    expect(course.toolkitVersion).toBe('1.0.0')
+    // Every fixture Course is pinned to the toolkit this build ships, so a version
+    // bump does not leave a Course behind and this line does not become churn.
+    expect(course.toolkitVersion).toBe(TOOLKIT_VERSION)
   })
 
   it('reads three modules, each a lesson then a test', () => {

@@ -5,6 +5,8 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { TOOLKIT_VERSION } from '../src/shared/miniapp'
+
 /**
  * Test 7. The sandbox boundary, checked in the real runtime.
  *
@@ -119,7 +121,7 @@ describe.runIf(existsSync(ELECTRON))('test 7 — a sealed mini-app reaches nothi
   it('leaves only by postMessage, and only what it chose to send', () => {
     // Three kinds of message, all from the toolkit: the frame's height, that it had drawn,
     // and what it chose to report. Nothing else crossed.
-    expect(messages.every((message) => message.kit === '1.0.0')).toBe(true)
+    expect(messages.every((message) => message.kit === TOOLKIT_VERSION)).toBe(true)
     expect(new Set(messages.map((message) => message.type))).toEqual(
       new Set(['resize', 'ready', 'answer']),
     )

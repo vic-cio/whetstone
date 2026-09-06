@@ -95,6 +95,15 @@ describe('test 18 — the host injects the course’s pinned toolkit, not the ap
     }
   })
 
+  it('carries the widgets every subject needs', () => {
+    // A widget in the toolkit is one that any Course could want. A list put in order by
+    // dragging is one of those, and it was a gap the toolkit carried for a version.
+    const toolkit = readToolkit(join(ROOT, 'toolkit'))
+    expect(toolkit?.js).toContain('function order(options)')
+    expect(toolkit?.js).toContain("order: order,")
+    expect(toolkit?.css).toContain('.k-order')
+  })
+
   it('carries no course’s subject in it', () => {
     // The toolkit is the same in every Course, so nothing about one subject may be in it.
     // A board and a set of chess rules belong to the Course that wanted them.
@@ -110,7 +119,9 @@ describe('test 18 — the host injects the course’s pinned toolkit, not the ap
     const result = parseCourse(dir)
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.errors.map((error) => error.message).join(' ')).toContain('but course.json says 1.0.0')
+    expect(result.errors.map((error) => error.message).join(' ')).toContain(
+      `but course.json says ${TOOLKIT_VERSION}`,
+    )
   })
 })
 
@@ -153,8 +164,8 @@ describe('test 17 — a mini-app built from the toolkit has no colour of its own
       // The frame follows the theme on its own, so the host sends it nothing.
       expect(toolkit?.js).not.toContain('prefers-color-scheme')
     }
-    expect(readToolkit(join(FIXTURE, 'toolkit'))?.version).toBe('1.0.0')
-    expect(readToolkit(join(CHESS, 'toolkit'))?.version).toBe('1.0.0')
+    expect(readToolkit(join(FIXTURE, 'toolkit'))?.version).toBe(TOOLKIT_VERSION)
+    expect(readToolkit(join(CHESS, 'toolkit'))?.version).toBe(TOOLKIT_VERSION)
   })
 })
 

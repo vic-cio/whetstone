@@ -24,7 +24,7 @@ flattens out, the slope approaches zero, and that is exactly where training stal
 {
   "kind": "accepted-answers",
   "prompt": "In one word: what is the sign of the derivative where the curve is falling?",
-  "accepted": ["negative", "minus"],
+  "accepted": ["negative", "minus", "-", "below zero", "less than zero"],
   "explanation": "A falling curve loses height as the input grows, so the slope is below zero."
 }
 :::

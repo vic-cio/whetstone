@@ -1,4 +1,4 @@
-/* whetstone-toolkit 1.0.0
+/* whetstone-toolkit 1.1.0
  *
  * The only library a Mini-app is given. The host inlines this file and kit.css into the
  * sandboxed frame ahead of the Mini-app's own markup, because the sandbox forbids
@@ -16,7 +16,7 @@
 window.Kit = (function () {
   'use strict'
 
-  var VERSION = '1.0.0'
+  var VERSION = '1.1.0'
 
   // ------------------------------------------------------------ small helpers
 
@@ -672,6 +672,136 @@ window.Kit = (function () {
     }
   }
 
+  // ------------------------------------------------------------ Kit.order
+
+  /**
+   * A list the reader puts in order, by dragging a row or by pressing the arrows.
+   *
+   * Dragging is the direct way to order a list and is what a reader reaches for. The arrows
+   * stay beside it because a keyboard has no drag, and because swapping two rows is quicker
+   * with them. Both move the same list, so a reader may use either at any point.
+   *
+   * `Kit.order({ mount, items, label })`, where `items` is a list of strings. It returns
+   * `order()` for the reader's arrangement as indexes into `items`, `items()` for the same
+   * thing as the strings themselves, `set(list)`, `enable(on)`, and `onChange(fn)`.
+   *
+   * The widget never says whether the order is right. It reports, and the host decides.
+   */
+  function order(options) {
+    var settings = options || {}
+    var labels = settings.items || []
+    var changed = callbacks()
+    var live = settings.enabled !== false
+
+    var at = []
+    for (var i = 0; i < labels.length; i += 1) at.push(i)
+
+    var wrap = el('div', 'k-order')
+    if (settings.label) wrap.appendChild(el('div', 'k-label', settings.label))
+    var list = el('ol', 'k-rows')
+    wrap.appendChild(list)
+    mount(settings.mount).appendChild(wrap)
+
+    var held = -1
+
+    /** Take a row out of the list and put it back at another place, closing the gap behind it. */
+    function lift(from, to) {
+      if (from === to || from < 0 || to < 0) return
+      var row = at.splice(from, 1)[0]
+      at.splice(to, 0, row)
+      draw()
+      changed.fire(value())
+    }
+
+    function swap(position, delta) {
+      var target = position + delta
+      if (target < 0 || target >= at.length) return
+      var keep = at[position]
+      at[position] = at[target]
+      at[target] = keep
+      draw()
+      changed.fire(value())
+    }
+
+    function value() {
+      return { order: at.slice(), items: at.map(function (index) { return labels[index] }) }
+    }
+
+    function row(position) {
+      var node = el('li', 'k-row' + (held === position ? ' k-held' : ''))
+      node.draggable = live
+      node.appendChild(el('span', 'k-grip', '\u283F'))
+      node.appendChild(el('span', 'k-num', String(position + 1)))
+      node.appendChild(el('span', 'k-what', labels[at[position]]))
+
+      var moves = el('span', 'k-moves')
+      moves.appendChild(arrow('\u2191', position, -1, position === 0))
+      moves.appendChild(arrow('\u2193', position, 1, position === at.length - 1))
+      node.appendChild(moves)
+
+      node.addEventListener('dragstart', function (event) {
+        if (!live) { event.preventDefault(); return }
+        held = position
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move'
+          // A drag with nothing on it does not start, so the position rides along.
+          event.dataTransfer.setData('text/plain', String(position))
+        }
+        node.classList.add('k-held')
+      })
+      node.addEventListener('dragover', function (event) {
+        if (held < 0) return
+        event.preventDefault()
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+        node.classList.add('k-over')
+      })
+      node.addEventListener('dragleave', function () { node.classList.remove('k-over') })
+      node.addEventListener('drop', function (event) {
+        event.preventDefault()
+        var from = held
+        held = -1
+        lift(from, position)
+      })
+      node.addEventListener('dragend', function () {
+        held = -1
+        draw()
+      })
+      return node
+    }
+
+    function arrow(glyph, position, delta, off) {
+      var button = el('button', 'k-step', glyph)
+      button.type = 'button'
+      button.disabled = off || !live
+      button.setAttribute('aria-label', delta < 0 ? 'Move up' : 'Move down')
+      button.addEventListener('click', function () { swap(position, delta) })
+      return button
+    }
+
+    function draw() {
+      while (list.firstChild) list.removeChild(list.firstChild)
+      for (var i = 0; i < at.length; i += 1) list.appendChild(row(i))
+      measure()
+    }
+
+    draw()
+
+    return {
+      order: function () { return at.slice() },
+      items: function () { return value().items },
+      set: function (next) {
+        if (!next || next.length !== labels.length) return
+        at = next.slice()
+        draw()
+      },
+      enable: function (on) {
+        live = on !== false
+        draw()
+      },
+      onChange: function (fn) { changed.add(fn) },
+    }
+  }
+
   return {
     version: VERSION,
     theme: theme,
@@ -682,6 +812,7 @@ window.Kit = (function () {
     editor: editor,
     steps: steps,
     sim: sim,
+    order: order,
     bridge: bridge,
   }
 })()

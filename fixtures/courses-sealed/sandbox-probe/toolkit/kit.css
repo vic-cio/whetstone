@@ -1,4 +1,4 @@
-/* whetstone-toolkit 1.0.0
+/* whetstone-toolkit 1.1.0
  *
  * Every colour, face and space a Mini-app is allowed to use. A Mini-app names a token and
  * never a colour, which is what keeps a joinery Course and a machine learning Course
@@ -188,3 +188,29 @@ button, input, textarea, select { border-radius: 0; font: inherit; color: inheri
 
 .k-action { margin: 12px 0 2px; display: flex; gap: 10px; align-items: center; }
 .k-action .k-said { font-family: var(--kit-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kit-muted); }
+
+/* ---------------------------------------------------------------- order */
+
+.k-order { margin: 10px 0; display: grid; gap: 6px; }
+.k-order .k-rows { list-style: none; padding: 0; margin: 0; }
+.k-order .k-row {
+  display: grid; grid-template-columns: 13px 16px minmax(0, 1fr) auto; gap: 9px;
+  align-items: center; padding: 6px 9px; margin-bottom: 4px;
+  border: 1px solid var(--kit-line); background: var(--kit-paper);
+  user-select: none;
+}
+.k-order .k-row[draggable="true"] { cursor: grab; }
+.k-order .k-row[draggable="true"]:active { cursor: grabbing; }
+/* The row being carried, and the place it would land. */
+.k-order .k-row.k-held { opacity: 0.4; }
+.k-order .k-row.k-over { border-color: var(--kit-amber); }
+.k-order .k-grip { color: var(--kit-line); font-size: 12px; line-height: 1; letter-spacing: -1px; }
+.k-order .k-row:hover .k-grip { color: var(--kit-muted); }
+.k-order .k-num { font-family: var(--kit-mono); font-size: 10px; color: var(--kit-muted); }
+.k-order .k-what { font-size: 13px; }
+.k-order .k-moves { display: flex; gap: 3px; }
+.k-order .k-step {
+  background: none; border: 1px solid var(--kit-line); color: var(--kit-muted);
+  width: 22px; height: 20px; cursor: pointer; line-height: 1;
+}
+.k-order .k-step:disabled { opacity: 0.35; cursor: default; }
