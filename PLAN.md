@@ -488,7 +488,7 @@ The Tutor runs inside the Course folder and reads every file there, which is the
 
 Three layers, strongest first.
 
-1. **The tool allowance.** The Tutor is spawned with `--allowedTools "Read,Glob,Grep"` and `--disallowedTools "Write,Edit,Bash"`. It has no instrument that writes.
+1. **The tool allowance.** The Tutor is spawned with `--allowedTools "Read,Glob,Grep"`, `--disallowedTools "Write,Edit,Bash"` and `--restricted`. Note what this does and does not do: in a recorded run, `--allowedTools` did **not** shorten the tool list, and `system/init` advertised 76 tools with `Write` and `Bash` among them. The allow list is a permission filter, not a tool filter, so the earlier claim that the Tutor "has no instrument that writes" is wrong. What denies a write is the disallow list and the permission mode below it, and phase 3 must prove that with a spawn that tries to write and is refused. See `fixtures/streams/README.md`.
 2. **The permission mode.** `--permission-mode dontAsk` with `--permission-prompts none` denies anything the allowance did not already cover, and reports the denial in the result rather than waiting for an answer nobody can give.
 3. **A content hash.** The host hashes the Course content before the spawn and after the process exits. Any difference is reverted and reported. This catches a harness whose flags are weaker than the Claude CLI's, which is the case phase 6 must verify for Codex and pi.
 
@@ -585,6 +585,22 @@ A Mini-app is one file with everything inline, which is right for a widget and w
 **A library is sealed with everything else.** It is inlined, so it has no network, no storage, an opaque origin, and `postMessage` as the only way out. One Course cannot see another's, which test 7 checks in the real runtime.
 
 The worked example is `fixtures/courses/forks-and-pins/lib/`: a chessboard, a set of rules, and an opponent that searches three moves ahead, none of which the app knows anything about. A stronger engine is a change to that Course, not to Whetstone. Decision record 0019, which replaces 0018.
+
+### 3.19 Building a Course
+
+Four stages, and the user is in charge at each of them. Settled with Victor on 6 September 2026.
+
+**The brief is a conversation, not a form.** New course opens a chat with an attachment tray. The user says what they want, the Constructor answers and asks back, and each exchange is one Constructor spawn that answers only and writes nothing. A form was offered and rejected: the four fields it would have carried are things a conversation gets anyway, and a form that guesses the wrong four fields is worse than no form. Files, links and screenshots go in the tray, are copied into staging, and the Constructor is told to cite them in `resources.json`. That is test 16.
+
+**The outline is a message in that conversation.** Pressing Build the course does not build a Course. It runs the Constructor to propose one: the Objectives, the Ladder, and the modules with their Pages, drawn as a page in the chat. The user accepts it, or keeps talking and gets another. The reason is cost and shape. Writing Lessons and Mini-apps is the slow, expensive part; what a Course covers, in what order, at what level, is the part most likely to be wrong. An outline is the cheapest place to be wrong, and it carries the Objectives and the Ladder, which is exactly what a person argues with.
+
+**The build writes into staging, never into the library.** One run, one Course, in a folder outside `courses/`. The Course being written is not listed and cannot be opened. That is test 8.
+
+**A refused Course goes back to the same session.** The parser names the file and the field, so the app hands those errors to the run that produced them and asks for a fix, at most three times. Each attempt is a line in the feed with what was wrong. The usual failure is a missing field or a bad id and it goes away in one turn, and the outcome this avoids is a ten-minute build dying on a typo. After three the build fails, the errors stand, and the staging folder is named so it can be opened. The cap is not a detail: without it a wrong Course spends until the budget stops it.
+
+Only then does staging move into `courses/`, in one step.
+
+**Decisions taken without asking, on the same day.** Staging lives in the app's data folder rather than the courses root, so a half-written Course is never listed even for a moment. A failed build's folder stays until the next build replaces it. Cancelling kills the process and bins staging, with no resume: a run costs minutes, not hours, and a resumable half-Course is state to get wrong for little gain. The build screen is the activity feed of section 3.6, with the spend against the cap and a closed technical log. Adding a Rung and asking for a remediation block are later runs against a Course that already exists, and they are not this flow.
 
 ## 4. Rules the Constructor prompt must state
 
@@ -689,7 +705,7 @@ Four things settled during the build.
 Test 7 grew a second half. One Course in `fixtures/courses-sealed/` declares chess and reports what came back, and the hostile one asks for chess without declaring it and reports the refusal. Both run in the real app, in one pass.
 
 **Phase 3. Constructor.**
-The harness registry and spawn layer, the Claude CLI adapter, event normalisation, the authoring plugin bundle, staging and validation, the brief conversation with its attachment tray, the build screen as an activity feed, Delete Course. Tests 5, 8, 10, 11.
+The harness registry and spawn layer, the Claude CLI adapter, event normalisation, the authoring plugin bundle, staging and validation with the repair loop, the brief conversation with its attachment tray and its outline, the build screen as an activity feed, Delete Course. The flow is section 3.19. Tests 5, 8, 10, 11, 16.
 
 **Phase 4. Tutor and Grader.**
 The Tutor and Grader profiles on the same spawn layer, the Tutor's attachment tray for files, images, and pasted screenshots, the tutoring and grading bundles, the Course-level `AGENTS.md` the Constructor writes, the live snapshot file, `model` and `rubric` checks, Submissions, the Verdict view, defect reports, the Tutor pane, and the Mini-app review path. Tests 4, 12, 13, 14. The "needs a model" marker on Tasks.
