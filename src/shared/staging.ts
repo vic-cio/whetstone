@@ -1,6 +1,8 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import matter from 'gray-matter'
+
 import { parseCourse } from './parseCourse'
 import type { Course, CourseError } from './format'
 
@@ -16,6 +18,62 @@ import type { Course, CourseError } from './format'
 
 /** The tray from the Brief. It is the Constructor's input, and it is not Course content. */
 export const BRIEF = '.brief'
+
+/**
+ * The app's own folder inside a working folder. Everything under it belongs to the app and
+ * none of it ships: it is removed before a Course goes into the library.
+ */
+export const HOUSE = '.whetstone'
+
+/**
+ * Put the skills for a role where the run can read them.
+ *
+ * Not a plugin. A plugin format belongs to one harness, and the skills carry the Course
+ * format itself, so a harness that could not load them would author against nothing and
+ * write a folder the parser refuses. Every harness can read a file in its own working
+ * folder, so that is the floor this stands on, and the run's prompt names the paths.
+ *
+ * They go under `.whetstone/` rather than `.claude/skills/`, because the Constructor is
+ * told to write the Course's own skills into that second place for the Tutor to read, and
+ * the app must not tidy away what it asked for.
+ */
+export function seedSkills(dir: string, from: string): void {
+  if (!existsSync(from)) return
+  const into = join(dir, HOUSE, 'skills')
+  rmSync(into, { recursive: true, force: true })
+  mkdirSync(into, { recursive: true })
+  cpSync(from, into, { recursive: true })
+}
+
+export interface Skill {
+  name: string
+  description: string
+  /** Where it is, relative to the working folder, which is what a prompt can name. */
+  path: string
+}
+
+/**
+ * The skills that are there, with the line each one uses to say what it is for.
+ *
+ * Read from the files rather than listed anywhere, so a skill that is added, renamed or
+ * removed cannot fall out of step with the prompt that offers it.
+ */
+export function skillsIn(dir: string): Skill[] {
+  const into = join(dir, HOUSE, 'skills')
+  if (!existsSync(into)) return []
+  const skills: Skill[] = []
+  for (const name of readdirSync(into).sort()) {
+    const file = join(into, name, 'SKILL.md')
+    if (!existsSync(file)) continue
+    const front = matter(readFileSync(file, 'utf8')).data as { name?: string; description?: string }
+    skills.push({
+      name: front.name ?? name,
+      description: front.description ?? '',
+      path: `${HOUSE}/skills/${name}/SKILL.md`,
+    })
+  }
+  return skills
+}
 
 /** A folder name from a Course's own id. Ids are the Constructor's; folder names are ours. */
 export function slugFrom(id: string): string {
@@ -57,6 +115,24 @@ export function stamp(staging: string, harness: string, model: string): void {
     // A course.json that is not JSON is the parser's to report, in its own words. Failing
     // to stamp one must not turn into a different error than the one that is really there.
   }
+}
+
+/**
+ * Hand the run its skills, by path.
+ *
+ * This is the whole delivery. It does not depend on a plugin format, a discovery folder, or
+ * anything else one harness has and another does not, and `course-format` is not optional:
+ * a run that never reads it writes a folder the parser refuses.
+ */
+export function offerSkills(dir: string): string[] {
+  const skills = skillsIn(dir)
+  if (skills.length === 0) return []
+  return [
+    'Read these before you start. They are files in this folder, and they are the format you',
+    'are writing to rather than advice about it.',
+    '',
+    ...skills.map((skill) => `- \`${skill.path}\` — ${skill.description}`),
+  ]
 }
 
 export type Gate = { ok: true; course: Course; slug: string } | { ok: false; errors: CourseError[] }
@@ -106,8 +182,10 @@ export function repairPrompt(errors: CourseError[]): string {
  * therefore never a thing the library can see, whatever happens in the middle.
  */
 export function moveIn(staging: string, root: string, slug: string): string {
-  // The tray is what the Constructor read, not what it wrote. It stays behind.
+  // What the Constructor read stays behind. The tray is the user's material and the house
+  // folder is the app's own instructions, and a Course is neither.
   rmSync(join(staging, BRIEF), { recursive: true, force: true })
+  rmSync(join(staging, HOUSE), { recursive: true, force: true })
 
   mkdirSync(root, { recursive: true })
   const target = join(root, slug)
@@ -133,10 +211,16 @@ export function moveIn(staging: string, root: string, slug: string): string {
  * copy it was built against (docs/adr/0014), and the one thing that would quietly break
  * that pin is an agent writing its own idea of the toolkit into the folder.
  */
-export function prepare(staging: string, toolkit: string, tray: { files: string[]; links: string[] }): void {
+export function prepare(
+  staging: string,
+  toolkit: string,
+  skills: string,
+  tray: { files: string[]; links: string[] },
+): void {
   rmSync(staging, { recursive: true, force: true })
   mkdirSync(staging, { recursive: true })
   cpSync(toolkit, join(staging, 'toolkit'), { recursive: true })
+  seedSkills(staging, skills)
 
   if (tray.files.length === 0 && tray.links.length === 0) return
   const brief = join(staging, BRIEF)

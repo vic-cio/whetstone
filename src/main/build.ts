@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { TOOLKIT_VERSION } from '../shared/miniapp'
-import { BRIEF, inspect, moveIn, prepare, repairPrompt, stamp, trayContents } from '../shared/staging'
-import { bundle, registry, roleFile, start } from './harness'
+import { BRIEF, inspect, moveIn, offerSkills, prepare, repairPrompt, stamp, trayContents } from '../shared/staging'
+import { agentDir, registry, roleFile, start } from './harness'
 import type { AgentProfile, Harness, Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
 
@@ -84,7 +84,9 @@ function answering(cwd: string, capUsd: number): AgentProfile {
   return {
     role: 'constructor',
     cwd,
-    plugins: [bundle('authoring')],
+    // No plugin bundle. The skills are files in the working folder and the prompt names
+    // them, which is the one delivery every harness can manage (PLAN 3.9).
+    plugins: [],
     can: ['read', 'web'],
     budgetUsd: capUsd,
     // `--restricted` would take the web away, and a Brief is the one place the web is the
@@ -100,7 +102,7 @@ function building(cwd: string, capUsd: number): AgentProfile {
   return {
     role: 'constructor',
     cwd,
-    plugins: [bundle('authoring')],
+    plugins: [],
     can: ['read', 'write', 'web'],
     budgetUsd: capUsd,
     restricted: false,
@@ -241,30 +243,32 @@ export async function build(
 
 /** Lay out staging and say what the Run is for. The brief is the conversation so far. */
 export function open(folder: string, tray: Tray): void {
-  prepare(folder, toolkitDir(), tray)
+  prepare(folder, toolkitDir(), join(agentDir(), 'skills'), tray)
 }
 
 function firstPrompt(folder: string, brief: string): string {
   const tray = trayContents(folder)
   const attached =
     tray.length === 0
-      ? ''
+      ? []
       : [
           '',
           `The user attached material. It is in \`${BRIEF}/\`: ${tray.join(', ')}.`,
           'Read all of it. Cite every link in resources.json with one line on why it is worth',
           `the reader's time. The \`${BRIEF}/\` folder is your input and is not part of the`,
           'course; the app removes it before the course is added to the library.',
-        ].join('\n')
+        ]
 
   return [
     'Write the course into this folder, which is empty apart from `toolkit/`.',
     `The toolkit is already there and is version ${TOOLKIT_VERSION}. Put exactly that string`,
     'in `toolkitVersion` in course.json, and do not write or change anything under `toolkit/`.',
     '',
+    ...offerSkills(folder),
+    '',
     'This is the brief, in the user’s own words:',
     '',
     brief,
-    attached,
+    ...attached,
   ].join('\n')
 }

@@ -7,8 +7,7 @@ import { DEPTHS } from '../src/shared/format'
 import { readRegistry } from '../src/shared/harness'
 
 /**
- * What the app hands a Harness: the registry, the role instruction files, and the authoring
- * plugin bundle.
+ * What the app hands a Harness: the registry, the role instruction files, and the skills.
  *
  * These are prose, so nothing here checks that they are good. What it checks is that they
  * are still true, because a skill describing a widget the toolkit no longer has is worse
@@ -17,7 +16,7 @@ import { readRegistry } from '../src/shared/harness'
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..')
 const AGENT = join(ROOT, 'agent')
-const BUNDLE = join(AGENT, 'bundles', 'authoring')
+const SKILLS = join(AGENT, 'skills')
 
 describe('what the app hands a harness', () => {
   it('ships a registry the app can read', () => {
@@ -61,9 +60,11 @@ describe('what the app hands a harness', () => {
     }
   })
 
-  it('is a plugin bundle, with the skills the plan lists', () => {
-    expect(existsSync(join(BUNDLE, '.claude-plugin', 'plugin.json'))).toBe(true)
-    const skills = readdirSync(join(BUNDLE, 'skills')).sort()
+  it('ships the skills the plan lists, as plain files rather than a plugin', () => {
+    // A plugin format belongs to one harness, and these carry the Course format itself, so
+    // a harness that could not load them would author against nothing (PLAN 3.9).
+    expect(existsSync(join(AGENT, 'bundles'))).toBe(false)
+    const skills = readdirSync(SKILLS).sort()
     expect(skills).toEqual([
       'course-format',
       'what-an-agent-can-judge',
@@ -72,7 +73,8 @@ describe('what the app hands a harness', () => {
       'writing-a-task',
     ])
     for (const skill of skills) {
-      const text = readFileSync(join(BUNDLE, 'skills', skill, 'SKILL.md'), 'utf8')
+      const text = readFileSync(join(SKILLS, skill, 'SKILL.md'), 'utf8')
+      // The description is what the run's prompt offers it by, so it has to be there.
       expect(text.startsWith('---\nname: ')).toBe(true)
       expect(text).toContain('\ndescription: ')
     }
@@ -80,7 +82,7 @@ describe('what the app hands a harness', () => {
 
   it('describes only widgets the toolkit actually has', () => {
     const kit = readFileSync(join(ROOT, 'toolkit', 'kit.js'), 'utf8')
-    const skill = readFileSync(join(BUNDLE, 'skills', 'writing-a-mini-app', 'SKILL.md'), 'utf8')
+    const skill = readFileSync(join(SKILLS, 'writing-a-mini-app', 'SKILL.md'), 'utf8')
     const named = new Set([...skill.matchAll(/Kit\.([a-z]+)/g)].map((match) => match[1]))
 
     expect(named.size).toBeGreaterThan(6)
@@ -91,8 +93,8 @@ describe('what the app hands a harness', () => {
   })
 
   it('names every Depth and every deterministic kind the format has', () => {
-    const format = readFileSync(join(BUNDLE, 'skills', 'course-format', 'SKILL.md'), 'utf8')
-    const task = readFileSync(join(BUNDLE, 'skills', 'writing-a-task', 'SKILL.md'), 'utf8')
+    const format = readFileSync(join(SKILLS, 'course-format', 'SKILL.md'), 'utf8')
+    const task = readFileSync(join(SKILLS, 'writing-a-task', 'SKILL.md'), 'utf8')
     for (const depth of DEPTHS) expect(task).toContain(depth)
     for (const kind of ['multiple-choice', 'accepted-answers', 'numeric', 'ordering', 'app-result', 'assertions-pass']) {
       expect(task).toContain(kind)

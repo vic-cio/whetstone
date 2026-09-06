@@ -218,6 +218,3 @@ function refuse(message: string, onMoment: (moment: Moment) => void): Running {
 
 /** The role instruction file the app ships, passed with `--append-system-prompt-file`. */
 export const roleFile = (role: string): string => join(agentDir(), 'roles', `${role}.md`)
-
-/** A plugin bundle the app ships, passed with `--plugin-dir`. The user never sees it. */
-export const bundle = (name: string): string => join(agentDir(), 'bundles', name)

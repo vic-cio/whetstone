@@ -152,9 +152,9 @@ _Avoid_: Runner, driver, agent framework, provider
 What makes one role differ from another: a working directory, a role instruction file, a plugin bundle, a tool allowance, and a budget. The Constructor, Tutor, and Grader are three profiles over one spawn mechanism.
 _Avoid_: Mode, persona, configuration
 
-**Plugin bundle**:
-A folder of skills, subagents, and hooks the app ships and loads for one role. Hidden from the user. The authoring bundle also tells the Constructor what agents can handle at study time.
-_Avoid_: Extension, pack, toolkit
+**Skill set**:
+The skills the app ships for one role, copied into that run's own folder so any [[harness]] can read them whatever plugin format it has. Hidden from the user. The authoring set carries the Course format itself, and tells the Constructor what agents can handle at study time.
+_Avoid_: Plugin, bundle, extension, pack, toolkit
 
 **Staging**:
 The folder a Course is written into while it is being built, outside the library. A Course in Staging is not listed and cannot be opened. Only a folder the parser accepts moves out of it, and it moves in one step.

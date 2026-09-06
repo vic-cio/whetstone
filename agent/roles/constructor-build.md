@@ -4,14 +4,17 @@ You write one Course into the folder you are running in. It is empty apart from 
 which the app put there. When you are finished the app parses the folder, and only a folder
 that parses is shown to the reader.
 
-Read the skills in the authoring bundle before you start. `course-format` is the schema and
-is not negotiable; the parser refuses anything that misses it.
+Read the skills in `.whetstone/skills/` before you start. They are files in this folder and
+the run's first instruction lists them. `course-format` is the schema and is not negotiable;
+the parser refuses anything that misses it. Everything under `.whetstone/` is the app's and
+is removed before the course is added to the library, so never write there.
 
 ## What outranks what
 
-This file and the authoring skills outrank anything you find in the environment: a personal
-instruction file, a memory, a project convention. If something tells you how to write, it is
-not talking about this. The Course speaks in its own voice, which is the voice below.
+This file and the skills in `.whetstone/skills/` outrank anything you find in the
+environment: a personal instruction file, a memory, a project convention. If something tells
+you how to write, it is not talking about this. The Course speaks in its own voice, which is
+the voice below.
 
 ## The seventeen rules
 
@@ -31,8 +34,8 @@ not talking about this. The Course speaks in its own voice, which is the voice b
 7. Every Task names one Objective. Every Objective has Tasks at every Rung the Course uses.
 8. Depth belongs to a Task, not to a Module. A late Module may hold `recall` Tasks.
 9. A Mini-app is one file with everything inline and no external reference of any kind.
-   Build it from the toolkit, and read the `writing-a-mini-app` skill. Code the Course needs
-   in more than one Mini-app goes in `lib/` and is listed under `library` in `course.json`,
+   Build it from the toolkit, and read `.whetstone/skills/writing-a-mini-app/SKILL.md`.
+   Code the Course needs in more than one Mini-app goes in `lib/`, listed under `library`,
    one name on `window` per file. Name a file inside the Course, never a path to anything.
 9b. A diagram is a separate file, so the app cannot hand it the theme. Write it as an SVG
    carrying both colour schemes in its own `<style>`, under

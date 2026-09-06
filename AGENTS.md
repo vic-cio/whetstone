@@ -21,7 +21,7 @@ src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
 toolkit/       the toolkit this build ships. See docs/toolkit.md
 agent/         what the app hands a Harness: harnesses.json, roles/ (the instruction file
-               per role), bundles/authoring/ (the Constructor's plugin bundle)
+               per role), skills/ (copied into the run's own folder, never a plugin)
 scripts/       things run by hand. prove-refusal.mjs spawns a real harness and spends money
 fixtures/courses/        hand-written Courses the tests run against, and the sample the
                          app seeds a fresh library with
@@ -82,6 +82,15 @@ tests/         vitest, run against the fixtures
   and the adapter maps those to its own CLI's tool names. A tool name in a profile makes
   every role Claude-shaped, which is what a registry of harnesses exists to avoid. This was
   got wrong first time: the profiles carried `allowedTools: ['Read', 'Glob', ...]` directly.
+- **A skill is a file the prompt names.** The app copies a role's skills into
+  `.whetstone/skills/` in the run's working folder and lists their paths in the first
+  instruction, rather than loading a plugin. A plugin format belongs to one harness, and
+  these skills carry the Course format itself, so a harness that could not load them would
+  author against nothing. Reading a file is the floor every harness has. `docs/adr/0021`.
+- **Everything under `.whetstone/` is the app's and never ships.** It is removed at the gate
+  with the Brief's tray. Do not seed into `.claude/skills/`: the Constructor is told to write
+  the Course's own skills there for the Tutor, and the app must not tidy away what it asked
+  for. `PLAN.md` 3.7.
 - **The app writes `builtBy`, not the Constructor.** The app knows the harness and the model,
   so it stamps `course.json` before the folder is checked rather than asking a Run to record
   something it might forget. `PLAN.md` 3.12.

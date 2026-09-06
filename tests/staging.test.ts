@@ -6,11 +6,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   BRIEF,
+  HOUSE,
   freeSlug,
   inspect,
   moveIn,
   prepare,
   repairPrompt,
+  offerSkills,
+  skillsIn,
   slugFrom,
   stamp,
   trayContents,
@@ -31,6 +34,7 @@ import {
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..')
 const SAMPLE = join(ROOT, 'fixtures', 'courses', 'gradients-by-hand')
 const TOOLKIT = join(ROOT, 'toolkit')
+const SKILLS = join(ROOT, 'agent', 'skills')
 
 let box = ''
 beforeAll(() => {
@@ -163,10 +167,72 @@ describe('handing the errors back to the run that made them', () => {
   })
 })
 
+describe('the skills a run is given', () => {
+  it('are files in the folder, so any harness can read them', () => {
+    // Not a plugin. A plugin format belongs to one harness, and these carry the Course
+    // format itself, so a harness that could not load them would author against nothing.
+    const staging = join(box, 'with-skills')
+    prepare(staging, TOOLKIT, SKILLS, { files: [], links: [] })
+
+    const found = skillsIn(staging)
+    expect(found.map((skill) => skill.name).sort()).toEqual([
+      'course-format',
+      'what-an-agent-can-judge',
+      'writing-a-lesson',
+      'writing-a-mini-app',
+      'writing-a-task',
+    ])
+    for (const skill of found) {
+      expect(skill.description).not.toBe('')
+      expect(existsSync(join(staging, skill.path))).toBe(true)
+      // A relative path, because the run is told to read it from its own folder.
+      expect(skill.path.startsWith(`${HOUSE}/skills/`)).toBe(true)
+    }
+  })
+
+  it('are offered to the run by path, which every harness can act on', () => {
+    const staging = join(box, 'offered')
+    prepare(staging, TOOLKIT, SKILLS, { files: [], links: [] })
+    const offer = offerSkills(staging).join('\n')
+
+    // Every skill that is there is named, so adding one cannot leave it undelivered.
+    for (const skill of skillsIn(staging)) {
+      expect(offer).toContain(skill.path)
+      expect(offer).toContain(skill.description.split('\n')[0] as string)
+    }
+    expect(offer).toContain('files in this folder')
+    expect(offerSkills(mkdtempSync(join(box, 'bare-')))).toEqual([])
+  })
+
+  it('are the app’s, and never ship inside the course', () => {
+    const { root, staging } = scene()
+    prepare(staging, TOOLKIT, SKILLS, { files: [], links: [] })
+    cpSync(SAMPLE, staging, { recursive: true })
+    expect(skillsIn(staging).length).toBe(5)
+
+    const target = moveIn(staging, root, 'gradients-by-hand')
+    expect(existsSync(join(target, HOUSE))).toBe(false)
+    expect(existsSync(join(target, 'course.json'))).toBe(true)
+  })
+
+  it('leaves the course’s own skills alone, which sit somewhere else', () => {
+    // The Constructor writes `.claude/skills/` for the Tutor to read (PLAN 3.8), so the
+    // app must not seed into that folder and tidy away what it asked for.
+    const { root, staging } = scene()
+    prepare(staging, TOOLKIT, SKILLS, { files: [], links: [] })
+    cpSync(SAMPLE, staging, { recursive: true })
+    mkdirSync(join(staging, '.claude', 'skills', 'the-notation'), { recursive: true })
+    writeFileSync(join(staging, '.claude', 'skills', 'the-notation', 'SKILL.md'), '---\nname: x\n---\n')
+
+    const target = moveIn(staging, root, 'gradients-by-hand')
+    expect(existsSync(join(target, '.claude', 'skills', 'the-notation', 'SKILL.md'))).toBe(true)
+  })
+})
+
 describe('the brief’s tray', () => {
   it('puts the toolkit in before the run, so the course cannot pin its own idea of it', () => {
     const staging = join(box, 'prepared')
-    prepare(staging, TOOLKIT, { files: [], links: [] })
+    prepare(staging, TOOLKIT, SKILLS, { files: [], links: [] })
     expect(existsSync(join(staging, 'toolkit', 'kit.js'))).toBe(true)
     expect(existsSync(join(staging, BRIEF))).toBe(false)
   })
@@ -177,7 +243,7 @@ describe('the brief’s tray', () => {
     const note = join(box, 'my notes.md')
     writeFileSync(note, '# what I already know\n')
 
-    prepare(staging, TOOLKIT, { files: [note], links: ['https://example.com/paper'] })
+    prepare(staging, TOOLKIT, SKILLS, { files: [note], links: ['https://example.com/paper'] })
     expect(trayContents(staging)).toEqual(['links.json', 'my notes.md'])
     expect(readFileSync(join(staging, BRIEF, 'my notes.md'), 'utf8')).toContain('what I already know')
     expect(readFileSync(join(staging, BRIEF, 'links.json'), 'utf8')).toContain('example.com/paper')

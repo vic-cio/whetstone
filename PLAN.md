@@ -352,7 +352,7 @@ Three files make a folder legible to any agent, and they are what the app seeds.
 
 **`AGENTS.md`** describes the folder, the contract, and what the agent may do. It is seeded once and never overwritten, because an entry that already exists belongs to the user.
 
-**Skills** are seeded into both `.claude/skills/` and `.agents/skills/`, the same set in two locations, because different harnesses look in different places. A skill is a folder holding one `SKILL.md`.
+**Skills** are folders holding one `SKILL.md`, and there are two sets in play that must not be confused. The **app's** skills for a role are seeded into `.whetstone/skills/` and the run's prompt names their paths; section 3.9 says why. The **Course's** own skills, which the Constructor writes for the Tutor, are the Course's content and go into both `.claude/skills/` and `.agents/skills/`, the same set in two locations, because different harnesses look in different places. Everything under `.whetstone/` is the app's and is removed before a Course reaches the library, so the two never meet.
 
 **Attachments.** Files, images, and pasted screenshots the user gives the Tutor are written to `.whetstone/chats/<id>/` outside the Course content, and that folder is added to the Tutor's working set as read-only. A photo of handwritten working or a drawn diagram is therefore an ordinary input the Tutor opens with its own tools, needing no separate vision path. Attachments are deleted with the conversation and are never written into the Course folder, so a shared Course carries none of them.
 
@@ -404,11 +404,15 @@ courses/<slug>/
   resources.json
 ```
 
-### 3.9 Plugin bundles, and why the Constructor knows about them
+### 3.9 The skills a role is given, and why the Constructor knows what agents can do
 
-The app ships plugin bundles in its resources. The user never sees or manages them; they are implementation, not a feature.
+The app ships a set of skills per role in its resources. The user never sees or manages them; they are implementation, not a feature.
 
-| Bundle | Loaded for | Holds |
+**They are files, and the prompt names their paths.** This was a plugin bundle first, loaded with `--plugin-dir`, and that was wrong for the same reason a Service was wrong in decision record 0019: it made the app depend on one program's way of doing things. A plugin format belongs to one harness, and these skills carry the Course format itself, so a harness that could not load them would author against nothing and write a folder the parser refuses. Reading a file in its own working folder is the floor every harness has, and it is already the floor the Course format stands on. So the app copies the role's skills into `.whetstone/skills/` and the run's first instruction lists each one with the line from its own frontmatter.
+
+The idea is Victor's, from firstmate, which drives nine harnesses and delivers a skill by writing its path into the prompt rather than through any loader. Decision record 0021.
+
+| Set | Given to | Holds |
 |---|---|---|
 | `authoring` | Constructor | The format specification, skills for writing a Lesson, a Task, a Rubric, and a Mini-app, and the capability catalogue below |
 | `tutoring` | Tutor | Skills for explaining a failed Attempt, walking a Lesson, and reviewing an outside project |
@@ -725,6 +729,7 @@ Four things settled during the build, three of them by measurement rather than b
 - **A refusal never reaches the app.** Told to write a file, a read-only run called `Write` anyway, was refused, went looking for `Edit`, and gave up, and the result event reported `success` with an empty `permission_denials`. So the app may not read an empty denial list as proof that nothing was refused, and the content hash of 3.14 is the only layer that reports one to the app. `scripts/prove-refusal.mjs` re-records this, and it is the phase's real spawn.
 - **Asking to write is not writing.** The first adapter reported a file the moment a run asked for it, which the refusal recording immediately proved wrong: it would have told the reader that two files appeared when neither did. A tool call and its result are two events, so the reader holds the file until the result says it worked, and reading a stream is a reader with memory rather than a pure function of a line.
 - **The app writes the toolkit into staging, not the Constructor.** A Course pins the toolkit it was built against, and the one thing that would quietly break that pin is an agent writing its own idea of the toolkit into the folder. Decision record 0020.
+- **A skill is a file the prompt names, not a plugin the harness loads.** The authoring skills shipped as a Claude Code plugin first, which made a claim about harness-agnostic output false in the one place it mattered: `course-format` is the schema, so a harness that could not load it would not write a Course at all. They are now copied into `.whetstone/skills/` and listed by path in the first instruction. Verified with a real spawn that read them and answered from them. Decision record 0021.
 
 Two decisions taken without asking. The technical log holds the normalised moments rather than the harness's raw stream, because the raw stream never crosses the bridge and adding a second channel to carry it would be a hole in the thing the first channel exists for. And the app picks a Course's folder name from its id, taking the first free one, so two Courses about one idea can both exist without a Run spending a turn on naming.
 
@@ -737,7 +742,7 @@ Review sessions. The missed list. `add-rung` and `remediate` runs. The remediati
 **Phase 6. More harnesses.**
 Codex and pi adapters. Settings shows every harness and the models it declares. Verify each CLI's headless output format, tool restriction flags, structured-output support, and cost reporting from its own documentation at this point, not before. Where a CLI cannot restrict tools, the content hash from 3.14 is the only guard, and that must be stated in its registry entry.
 
-One thing is known already and is the real work of this phase. **The authoring bundle is a Claude Code plugin**, loaded with `--plugin-dir`, and the format specification lives inside it. Another CLI would get the role instruction file and none of the five skills, so it would author against nothing and produce a folder the parser refuses. Section 3.7 already has the shape of the answer, which is that skills are seeded into both `.claude/skills/` and `.agents/skills/` because different harnesses look in different places. Applying that to the authoring bundle means writing the skills into the staging folder in both layouts rather than passing a plugin directory, and it should be done against a second harness rather than guessed at now.
+The skills a role is given already reach any harness, because they are files the prompt names rather than a plugin (section 3.9, decision record 0021). What is left for this phase is each CLI's own vocabulary: its tool names, which `denied()` in that CLI's adapter has to cover exhaustively, and its headless output, which its reader has to normalise into a `Moment`.
 
 **Phase 7. Finish.**
 Dark mode. Keyboard navigation in the reader. Spend dashboard from the `runs` table. Export a Course as a zip. App icon and signed build.
