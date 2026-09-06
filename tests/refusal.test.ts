@@ -3,8 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { claudeAdapter } from '../src/shared/claude'
-import { OUTWARD, READ_ONLY, RUNNERS, WRITERS } from '../src/shared/harness'
+import { OUTWARD, RUNNERS, WRITERS, claudeAdapter, denied } from '../src/shared/claude'
 import type { Moment } from '../src/shared/harness'
 
 /**
@@ -70,7 +69,7 @@ describe('a read-only role, told to write a file', () => {
 
   it('never saw the tools it was denied', () => {
     // The disallow list is a real tool filter, so the first layer is the one that worked.
-    for (const tool of READ_ONLY) expect(init.tools).not.toContain(tool)
+    for (const tool of denied(['read'])) expect(init.tools).not.toContain(tool)
     expect(WRITERS.every((tool) => !init.tools.includes(tool))).toBe(true)
     expect(RUNNERS.every((tool) => !init.tools.includes(tool))).toBe(true)
     expect(OUTWARD.every((tool) => !init.tools.includes(tool))).toBe(true)

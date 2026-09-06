@@ -305,12 +305,16 @@ interface AgentProfile {
   role: 'constructor' | 'tutor' | 'grader'
   cwd: string
   plugins: string[]
-  allowedTools: string[]
-  disallowedTools: string[]
+  /** What this role may do. Anything no ability grants is denied. */
+  can: ('read' | 'write' | 'web')[]
   budgetUsd: number
-  seed: { agentsMd: string; skills: Record<string, string> }
+  restricted: boolean
+  instructions: string
+  alsoRead: string[]
 }
 ```
+
+**A profile names an ability, never a tool.** A tool name belongs to one CLI, and the first version of this carried `allowedTools: ['Read', 'Glob', 'Grep']` straight into the profile, which quietly made every role Claude-shaped. The adapter maps an ability to whatever its own CLI calls those tools and denies everything no ability granted, so `WRITERS`, `RUNNERS` and `OUTWARD` live in `src/shared/claude.ts` and phase 6 writes its own for each new harness.
 
 The host resolves a profile plus a Harness plus a model into one spawn. Everything else is identical across roles: the same event normalisation, the same spend meter, the same cancel.
 
@@ -457,7 +461,7 @@ One registry, one shape, three roles.
 
 **The Tutor switches live from its pane header,** the way Strudel++ switches harness in its dock. Restarting the Tutor with a different harness is cheap, because its state lives in the folder and the snapshot rather than in the process.
 
-**Switching changes nothing that already exists.** Each Course records what built it. Asking a different harness to add a Rung to a Course another harness wrote is fine, because the contract between them is files on disk, not a shared runtime.
+**Switching changes nothing that already exists.** Each Course records what built it: the app writes `builtBy` into `course.json` before the folder is checked, because the app knows the harness and the model and a Run should not have to be asked for them. Asking a different harness to add a Rung to a Course another harness wrote is fine, because the contract between them is files on disk, not a shared runtime.
 
 ### 3.13 Credentials
 
@@ -604,6 +608,10 @@ Four stages, and the user is in charge at each of them. Settled with Victor on 6
 
 Only then does staging move into `courses/`, in one step.
 
+**What is the same twice, and what is not.** Two builds of one subject are not the same Course, and cannot be made so. `claude 2.1.263` exposes no temperature and no seed, so sampling is out of reach; a Run searches the web, and the web moves; the Brief is a conversation, so its transcript differs; and a repair adds turns. What is pinned is the contract rather than the content: the schema, which the parser enforces; the toolkit version, which the app writes in; the role instruction file and the authoring bundle, which are versioned in this repository; and the machine, which `--setting-sources project,local` removes as an input. So two builds are both valid, both built the same way, and both comparable, and neither is a rerun of the other.
+
+The place where that changes is the outline. It is the part worth pinning, it is small, and the user has already accepted it. Saving an accepted outline and building from that rather than from the Brief would fix the Objectives, the Ladder, the modules and the ids across a rebuild, which is most of what "the same course" means. It is not built. Note it here rather than in a phase, because it is a small change to section 3.19 and should be made the first time a rebuild is actually wanted.
+
 **Decisions taken without asking, on the same day.** Staging lives in the app's data folder rather than the courses root, so a half-written Course is never listed even for a moment. A failed build's folder stays until the next build replaces it. Cancelling kills the process and bins staging, with no resume: a run costs minutes, not hours, and a resumable half-Course is state to get wrong for little gain. The build screen is the activity feed of section 3.6, with the spend against the cap and a closed technical log. Adding a Rung and asking for a remediation block are later runs against a Course that already exists, and they are not this flow.
 
 ## 4. Rules the Constructor prompt must state
@@ -728,6 +736,8 @@ Review sessions. The missed list. `add-rung` and `remediate` runs. The remediati
 
 **Phase 6. More harnesses.**
 Codex and pi adapters. Settings shows every harness and the models it declares. Verify each CLI's headless output format, tool restriction flags, structured-output support, and cost reporting from its own documentation at this point, not before. Where a CLI cannot restrict tools, the content hash from 3.14 is the only guard, and that must be stated in its registry entry.
+
+One thing is known already and is the real work of this phase. **The authoring bundle is a Claude Code plugin**, loaded with `--plugin-dir`, and the format specification lives inside it. Another CLI would get the role instruction file and none of the five skills, so it would author against nothing and produce a folder the parser refuses. Section 3.7 already has the shape of the answer, which is that skills are seeded into both `.claude/skills/` and `.agents/skills/` because different harnesses look in different places. Applying that to the authoring bundle means writing the skills into the staging folder in both layouts rather than passing a plugin directory, and it should be done against a second harness rather than guessed at now.
 
 **Phase 7. Finish.**
 Dark mode. Keyboard navigation in the reader. Spend dashboard from the `runs` table. Export a Course as a zip. App icon and signed build.

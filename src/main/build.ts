@@ -4,8 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { TOOLKIT_VERSION } from '../shared/miniapp'
-import { READ_ONLY, WRITES_ONLY_FILES } from '../shared/harness'
-import { BRIEF, inspect, moveIn, prepare, repairPrompt, trayContents } from '../shared/staging'
+import { BRIEF, inspect, moveIn, prepare, repairPrompt, stamp, trayContents } from '../shared/staging'
 import { bundle, registry, roleFile, start } from './harness'
 import type { AgentProfile, Harness, Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
@@ -86,11 +85,10 @@ function answering(cwd: string, capUsd: number): AgentProfile {
     role: 'constructor',
     cwd,
     plugins: [bundle('authoring')],
-    allowedTools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'],
-    disallowedTools: READ_ONLY,
+    can: ['read', 'web'],
     budgetUsd: capUsd,
-    // `--restricted` takes WebFetch away, and a Brief is the one place the web is the
-    // point. The disallow list above is what keeps this run from writing.
+    // `--restricted` would take the web away, and a Brief is the one place the web is the
+    // point. What keeps this run from writing is that it was granted no ability to.
     restricted: false,
     instructions: roleFile('constructor-brief'),
     alsoRead: [],
@@ -103,8 +101,7 @@ function building(cwd: string, capUsd: number): AgentProfile {
     role: 'constructor',
     cwd,
     plugins: [bundle('authoring')],
-    allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'WebSearch', 'WebFetch'],
-    disallowedTools: WRITES_ONLY_FILES,
+    can: ['read', 'write', 'web'],
     budgetUsd: capUsd,
     restricted: false,
     instructions: roleFile('constructor-build'),
@@ -220,6 +217,8 @@ export async function build(
       }
     }
 
+    // Written before the check, so the folder the parser reads is the folder that moves in.
+    stamp(folder, harness.id, choice.model)
     const gate = inspect(folder, root)
     if (gate.ok) {
       moveIn(folder, root, gate.slug)

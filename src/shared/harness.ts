@@ -56,8 +56,19 @@ export const ROLES = ['constructor', 'tutor', 'grader'] as const
 export type Role = (typeof ROLES)[number]
 
 /**
+ * What a role may do, in the app's own terms.
+ *
+ * Not a tool name. A tool name belongs to one CLI, and a profile that carried one would
+ * make every role Claude-shaped, which is the opposite of what a registry of harnesses is
+ * for. The adapter maps an ability to whatever its own CLI calls those tools, and denies
+ * everything no ability granted.
+ */
+export const ABILITIES = ['read', 'write', 'web'] as const
+export type Ability = (typeof ABILITIES)[number]
+
+/**
  * What makes one role differ from another. A role has no code path of its own: it is a
- * working directory, an instruction file, a plugin bundle, a tool allowance and a budget
+ * working directory, an instruction file, a plugin bundle, an allowance and a budget
  * (PLAN 3.5). The host resolves a profile plus a Harness plus a model into one spawn.
  */
 export interface AgentProfile {
@@ -65,8 +76,8 @@ export interface AgentProfile {
   cwd: string
   /** Absolute paths to plugin bundles the app ships. The user never sees these. */
   plugins: string[]
-  allowedTools: string[]
-  disallowedTools: string[]
+  /** What this role may do. Anything no ability grants is denied. */
+  can: Ability[]
   budgetUsd: number
   /**
    * A second lock for a role that must run nothing: it takes away the built-in tools that
@@ -134,37 +145,3 @@ export const plain = (text: string): string => text.replace(ANSI, '')
 
 /** Just the file's name. A path from inside a run is the machine's business, not the reader's. */
 export const named = (path: string): string => path.split('/').filter(Boolean).pop() ?? ''
-
-/**
- * Tools by what they do, so a role's allowance is written once and read everywhere.
- *
- * Measured against a recorded run of `claude 2.1.263`, not assumed. `--allowedTools` is a
- * permission filter and not a tool filter: it named two tools and `system/init` still
- * advertised 76. `--disallowedTools` is a real tool filter: it named `Write`, `Edit` and
- * `Bash`, and none of the three was advertised. So a role is shaped by what it denies, and
- * the denial has to be exhaustive. That same run still advertised `NotebookEdit`, which
- * writes a file and was simply not named.
- *
- * These are one CLI's tool names. Phase 6 must read the list each new harness advertises
- * and check these against it, rather than carry them over.
- */
-export const WRITERS = ['Write', 'Edit', 'NotebookEdit']
-export const RUNNERS = ['Bash', 'BashOutput', 'KillShell']
-/** Tools that reach out of the machine. No role the app spawns has any use for one. */
-export const OUTWARD = [
-  'Artifact',
-  'SendMessage',
-  'PushNotification',
-  'RemoteTrigger',
-  'CronCreate',
-  'CronDelete',
-  'DesignSync',
-  'EnterWorktree',
-  'ExitWorktree',
-]
-
-/** A role that reads and answers: the Tutor, the Grader, and the Constructor in a Brief. */
-export const READ_ONLY = [...WRITERS, ...RUNNERS, ...OUTWARD]
-
-/** A role that writes files and nothing else: the Constructor building a Course. */
-export const WRITES_ONLY_FILES = [...RUNNERS, ...OUTWARD]

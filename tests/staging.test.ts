@@ -4,7 +4,17 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { BRIEF, freeSlug, inspect, moveIn, prepare, repairPrompt, slugFrom, trayContents } from '../src/shared/staging'
+import {
+  BRIEF,
+  freeSlug,
+  inspect,
+  moveIn,
+  prepare,
+  repairPrompt,
+  slugFrom,
+  stamp,
+  trayContents,
+} from '../src/shared/staging'
 
 /**
  * Test 8: a Harness that writes an invalid folder never touches `courses/`, and a valid
@@ -114,6 +124,30 @@ describe('the gate between staging and the library', () => {
     expect(slugFrom('crs-gradients-by-hand')).toBe('crs-gradients-by-hand')
     expect(slugFrom('Gradients, by hand!')).toBe('gradients-by-hand')
     expect(slugFrom('///')).toBe('course')
+  })
+})
+
+describe('what built this course', () => {
+  it('is written by the app, which knows, rather than asked of the run', () => {
+    const { root, staging } = scene()
+    stamp(staging, 'claude', 'claude-opus-5')
+
+    const manifest = JSON.parse(readFileSync(join(staging, 'course.json'), 'utf8'))
+    expect(manifest.builtBy.harness).toBe('claude')
+    expect(manifest.builtBy.model).toBe('claude-opus-5')
+    expect(Date.parse(manifest.builtBy.at)).toBeGreaterThan(0)
+    // And what was stamped is still a course, because it is stamped before it is checked.
+    expect(inspect(staging, root).ok).toBe(true)
+  })
+
+  it('leaves a broken manifest to the parser rather than failing over it', () => {
+    const { root, staging } = scene()
+    writeFileSync(join(staging, 'course.json'), '{ not json')
+    expect(() => stamp(staging, 'claude', 'claude-opus-5')).not.toThrow()
+
+    const gate = inspect(staging, root)
+    expect(gate.ok).toBe(false)
+    if (!gate.ok) expect(gate.errors[0]?.file).toBe('course.json')
   })
 })
 

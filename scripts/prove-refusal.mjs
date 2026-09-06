@@ -28,17 +28,14 @@ const OUT = join(ROOT, 'fixtures', 'streams', 'claude-refused-a-write.jsonl')
 const box = mkdtempSync(join(tmpdir(), 'whetstone-adapter-'))
 const entry = join(box, 'entry.ts')
 const shared = join(ROOT, 'src', 'shared')
-writeFileSync(
-  entry,
-  `export { claudeAdapter } from '${join(shared, 'claude')}'\nexport { READ_ONLY } from '${join(shared, 'harness')}'\n`,
-)
+writeFileSync(entry, `export { claudeAdapter } from '${join(shared, 'claude')}'\n`)
 const bundle = join(box, 'adapter.mjs')
 execFileSync(
   'npx',
   ['esbuild', entry, '--bundle', '--format=esm', `--outfile=${bundle}`],
   { cwd: ROOT, stdio: 'inherit' },
 )
-const { claudeAdapter, READ_ONLY } = await import(bundle)
+const { claudeAdapter } = await import(bundle)
 
 const work = mkdtempSync(join(tmpdir(), 'whetstone-refusal-'))
 mkdirSync(join(work, 'lessons'), { recursive: true })
@@ -54,8 +51,7 @@ const request = {
     role: 'tutor',
     cwd: work,
     plugins: [],
-    allowedTools: ['Read', 'Glob', 'Grep'],
-    disallowedTools: READ_ONLY,
+    can: ['read'],
     budgetUsd: 0.15,
     restricted: true,
     instructions,

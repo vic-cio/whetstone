@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { claudeAdapter } from '../src/shared/claude'
-import { READ_ONLY, readRegistry } from '../src/shared/harness'
+import { claudeAdapter, denied } from '../src/shared/claude'
+import { readRegistry } from '../src/shared/harness'
 import type { AgentProfile, Harness, Moment } from '../src/shared/harness'
 
 /**
@@ -43,8 +43,7 @@ const tutor: AgentProfile = {
   role: 'tutor',
   cwd: '/courses/gradients-by-hand',
   plugins: ['/app/bundles/tutoring'],
-  allowedTools: ['Read', 'Glob', 'Grep'],
-  disallowedTools: READ_ONLY,
+  can: ['read'],
   budgetUsd: 0.25,
   restricted: true,
   instructions: '/app/roles/tutor.md',
@@ -104,7 +103,7 @@ describe('reading a recorded harness stream', () => {
     for (const tool of ['Write', 'Edit', 'Bash']) expect(advertised).not.toContain(tool)
     // And a writer it did not name survived, which is why the list has to be exhaustive.
     expect(advertised).toContain('NotebookEdit')
-    expect(READ_ONLY).toContain('NotebookEdit')
+    expect(denied(['read'])).toContain('NotebookEdit')
   })
 
   it('lets no escape sequence, path or exit code reach the interface', () => {
@@ -240,20 +239,21 @@ describe('building the argument list', () => {
 
   it('locks a read-only role twice', () => {
     expect(after('--allowedTools')).toBe('Read,Glob,Grep')
-    expect(after('--disallowedTools')).toBe(READ_ONLY.join(','))
+    // Everything no ability granted, which is what shapes a role (PLAN 3.14).
+    expect(after('--disallowedTools')).toBe(denied(['read']).join(','))
+    expect(after('--disallowedTools')).toContain('NotebookEdit')
     expect(args).toContain('--restricted')
   })
 
-  it('leaves a role that has to write unlocked', () => {
-    const constructor: AgentProfile = {
-      ...tutor,
-      role: 'constructor',
-      disallowedTools: [],
-      restricted: false,
-    }
+  it('grants a role that has to write only what it needs', () => {
+    const constructor: AgentProfile = { ...tutor, role: 'constructor', can: ['read', 'write'], restricted: false }
     const built = claudeAdapter.argv({ harness, model: 'claude-opus-5', profile: constructor, prompt: 'build' })
+    const deny = built[built.indexOf('--disallowedTools') + 1] ?? ''
     expect(built).not.toContain('--restricted')
-    expect(built).not.toContain('--disallowedTools')
+    // It writes files. It still runs nothing and reaches nobody.
+    expect(deny).toContain('Bash')
+    expect(deny).toContain('SendMessage')
+    expect(deny).not.toContain('Write,')
   })
 
   it('continues one conversation rather than starting several', () => {

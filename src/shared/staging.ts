@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { parseCourse } from './parseCourse'
@@ -33,6 +33,30 @@ export function freeSlug(root: string, wanted: string): string {
     if (!existsSync(join(root, `${wanted}-${n}`))) return `${wanted}-${n}`
   }
   return `${wanted}-${Date.now()}`
+}
+
+/**
+ * Record what built this Course, in the Course.
+ *
+ * The app knows the harness and the model and the Run does not have to be asked, so this is
+ * the app's line to write rather than a field the Constructor might forget. It is written
+ * before the folder is checked, so what the parser reads is exactly what moves in.
+ *
+ * It matters because a Course outlives the thing that made it. Switching harness changes
+ * nothing that already exists (PLAN 3.12), and knowing which one wrote a Course is what
+ * makes an odd one traceable a month later.
+ */
+export function stamp(staging: string, harness: string, model: string): void {
+  const file = join(staging, 'course.json')
+  if (!existsSync(file)) return
+  try {
+    const manifest = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
+    manifest['builtBy'] = { harness, model, at: new Date().toISOString() }
+    writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`)
+  } catch {
+    // A course.json that is not JSON is the parser's to report, in its own words. Failing
+    // to stamp one must not turn into a different error than the one that is really there.
+  }
 }
 
 export type Gate = { ok: true; course: Course; slug: string } | { ok: false; errors: CourseError[] }

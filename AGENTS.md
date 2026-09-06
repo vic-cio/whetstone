@@ -75,9 +75,16 @@ tests/         vitest, run against the fixtures
   the Constructor wrote. An `assertions-pass` Task passes only on the assertions it declares.
 - **A role is shaped by what it denies, not by what it allows.** Measured, not assumed:
   `--allowedTools` changed nothing about the tool list in a recorded run, and
-  `--disallowedTools` removed exactly what it named. So `READ_ONLY` in `src/shared/harness.ts`
+  `--disallowedTools` removed exactly what it named. So `denied()` in `src/shared/claude.ts`
   has to name every writer and every outward-facing tool, and a writer it misses survives.
   `fixtures/streams/README.md` and `tests/refusal.test.ts` carry the evidence. `PLAN.md` 3.14.
+- **A profile names an ability, never a tool.** `AgentProfile.can` is `read`, `write`, `web`,
+  and the adapter maps those to its own CLI's tool names. A tool name in a profile makes
+  every role Claude-shaped, which is what a registry of harnesses exists to avoid. This was
+  got wrong first time: the profiles carried `allowedTools: ['Read', 'Glob', ...]` directly.
+- **The app writes `builtBy`, not the Constructor.** The app knows the harness and the model,
+  so it stamps `course.json` before the folder is checked rather than asking a Run to record
+  something it might forget. `PLAN.md` 3.12.
 - **An empty `permission_denials` proves nothing.** A read-only run told to write called
   `Write`, was refused, and the result event still said `success` with an empty denial list.
   The refusal reached the run and never reached the app. Do not write a check that reads that

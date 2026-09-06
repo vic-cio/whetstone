@@ -1,5 +1,5 @@
 import { plain, named } from './harness'
-import type { Adapter, Moment, Reader, SpawnRequest } from './harness'
+import type { Ability, Adapter, Moment, Reader, SpawnRequest } from './harness'
 
 /**
  * The Claude CLI adapter.
@@ -38,8 +38,45 @@ const SAYING: Record<string, (input: Record<string, unknown>) => string> = {
   WebFetch: () => 'Reading a page from the web',
 }
 
+/**
+ * Claude's names for the tools each ability grants, and for everything a role is denied
+ * unless an ability granted it.
+ *
+ * These names belong to one CLI and live in its adapter, never in a profile. Measured, not
+ * assumed: `--allowedTools` is a permission filter and changed nothing about the tool list,
+ * while `--disallowedTools` removed exactly what it named. So a role is shaped by what it
+ * denies, and the denial has to be exhaustive: a run that named `Write`, `Edit` and `Bash`
+ * still advertised `NotebookEdit`, which writes a file and was simply not named.
+ */
+const GRANTS: Record<Ability, string[]> = {
+  read: ['Read', 'Glob', 'Grep'],
+  write: ['Write', 'Edit'],
+  web: ['WebSearch', 'WebFetch'],
+}
+
+export const WRITERS = ['Write', 'Edit', 'NotebookEdit']
+export const RUNNERS = ['Bash', 'BashOutput', 'KillShell']
+/** Tools that reach out of the machine. No role the app spawns has any use for one. */
+export const OUTWARD = [
+  'Artifact',
+  'SendMessage',
+  'PushNotification',
+  'RemoteTrigger',
+  'CronCreate',
+  'CronDelete',
+  'DesignSync',
+  'EnterWorktree',
+  'ExitWorktree',
+]
+
+/** Everything this role may not touch. `NotebookEdit` writes, and no ability grants it. */
+export function denied(can: Ability[]): string[] {
+  const granted = new Set(can.flatMap((ability) => GRANTS[ability]))
+  return [...WRITERS, ...RUNNERS, ...OUTWARD].filter((tool) => !granted.has(tool))
+}
+
 /** The tools that put a file on disk, which the build feed reports as a file appearing. */
-const WRITES = new Set(['Write', 'Edit', 'NotebookEdit'])
+const WRITES = new Set(WRITERS)
 
 export const claudeAdapter: Adapter = {
   id: 'claude',
@@ -73,10 +110,10 @@ export const claudeAdapter: Adapter = {
       profile.instructions,
     ]
 
-    if (profile.allowedTools.length > 0) args.push('--allowedTools', profile.allowedTools.join(','))
-    if (profile.disallowedTools.length > 0) {
-      args.push('--disallowedTools', profile.disallowedTools.join(','))
-    }
+    const allowed = profile.can.flatMap((ability) => GRANTS[ability])
+    if (allowed.length > 0) args.push('--allowedTools', allowed.join(','))
+    const refuse = denied(profile.can)
+    if (refuse.length > 0) args.push('--disallowedTools', refuse.join(','))
     // The second lock of PLAN 3.14, for a role that must run nothing.
     if (profile.restricted) args.push('--restricted')
     for (const bundle of profile.plugins) args.push('--plugin-dir', bundle)
