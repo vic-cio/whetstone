@@ -45,13 +45,10 @@
   tag[attribute] = 'https://example.com/probe.js'
   document.head.appendChild(tag)
 
-  // A service the host has, that this course did not declare. The host must refuse it:
-  // declaring a capability is the whole of the permission (docs/adr/0018).
-  report.service = 'pending'
-  Kit.ask('chess', { op: 'status', fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' }).then(
-    function () { report.service = 'answered' },
-    function (error) { report.service = 'refused ' + error.message },
-  )
+  // Another Course's library. A library is inlined into the Mini-apps of the Course that
+  // lists it and nowhere else, so a name from the chess Course must not be in scope here
+  // (docs/adr/0019). This course lists no library at all.
+  report.library = typeof window.Chess + ' ' + typeof window.Board
 
   document.getElementById('app').textContent = 'Sandbox probe'
 

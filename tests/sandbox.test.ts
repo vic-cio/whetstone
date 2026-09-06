@@ -56,11 +56,6 @@ beforeAll(() => {
         // The listener has to be in the page, because a message posted out of the frame
         // is delivered to this window and nowhere else.
         'window.__probe = []; window.addEventListener("message", function (e) { window.__probe.push(e.data) })',
-        // The course that declares the chess service comes first, so the page text this
-        // run ends on is still the hostile course's verdict.
-        open('Chess service probe'),
-        'document.querySelectorAll(".lname")[0].click()',
-        'document.querySelector(".back").click()',
         open('Sandbox probe'),
         'document.querySelectorAll(".lname")[0].click()',
         // Then the Test, from the rail, whose mini-app reports on its own. One run then
@@ -115,38 +110,19 @@ describe.runIf(existsSync(ELECTRON))('test 7 — a sealed mini-app reaches nothi
     expect(report()['script']).toBe('blocked')
   })
 
-  it('cannot reach a service this course did not declare', () => {
-    // The host has a chess service and this course does not name it, so the answer is no.
-    expect(report()['service']).toMatch(/^refused .*does not declare the "chess" service/)
+  it('cannot see another course’s library', () => {
+    // The chess Course lists chess.js and board.js and gets them in its own frames. This
+    // course lists no library, so neither name exists here (docs/adr/0019).
+    expect(report()['library']).toBe('undefined undefined')
   })
 
   it('leaves only by postMessage, and only what it chose to send', () => {
-    // Four kinds of message, all from the toolkit: the frame's height, that it had drawn,
-    // what it chose to report, and one request the host refused. Nothing else crossed.
-    expect(messages.every((message) => message.kit === '1.1.0')).toBe(true)
+    // Three kinds of message, all from the toolkit: the frame's height, that it had drawn,
+    // and what it chose to report. Nothing else crossed.
+    expect(messages.every((message) => message.kit === '1.0.0')).toBe(true)
     expect(new Set(messages.map((message) => message.type))).toEqual(
-      new Set(['resize', 'ready', 'answer', 'ask']),
+      new Set(['resize', 'ready', 'answer']),
     )
-  })
-})
-
-/** The service probe's report, picked the same way: by what is in it. */
-const served = (): Record<string, string> => {
-  const answer = messages.find((message) => message.type === 'answer' && message.value?.['moves'] !== undefined)
-  if (!answer?.value) throw new Error('the service probe never reported')
-  return answer.value
-}
-
-describe.runIf(existsSync(ELECTRON))('a declared service answers, in the real runtime', () => {
-  it('answers a course that declared it', () => {
-    expect(ran).toBe(true)
-    // The rules ran in the main process and the result crossed back into the sealed frame.
-    expect(served()['moves']).toBe('e3 e4')
-    expect(served()['best']).toMatch(/^[A-Za-z][a-h1-8=+#x-]+$/)
-  })
-
-  it('still refuses a service this build does not have', () => {
-    expect(served()['unknown']).toMatch(/^refused .*there is no service named "shell"/)
   })
 })
 

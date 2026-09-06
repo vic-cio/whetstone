@@ -1,0 +1,155 @@
+/*
+ * The board's own look. This file belongs to the Course, so the Course decides what a
+ * board looks like and no other Course has to agree (docs/adr/0019).
+ *
+ * The pieces are the solid Unicode chess glyphs, filled and outlined by CSS. A sealed
+ * frame fetches nothing, so an image set or a piece font is not available to it, and this
+ * is what draws a readable piece out of what is already in the page.
+ *
+ * The board keeps its colours in both themes. A chessboard is a board before it is part of
+ * a page, and a reader who has seen one anywhere else should recognise this one. Only the
+ * frame around it and the line under it follow the page.
+ */
+
+.b-board {
+  --b-light: #f0d9b5;
+  --b-dark: #b58863;
+  --b-white: #fffffd;
+  --b-black: #201e1b;
+  /* Both colours are outlined dark, the way a real piece set is. An outline that changes
+     colour with the piece looks like a different set for each side, and on a glyph with
+     thin strokes a light outline eats the fill and a black king reads as a white one. */
+  --b-edge: #14120f;
+  /* One highlight colour does the picked square and the last move, because they are the
+     same idea: this is the square the board is talking about. */
+  --b-lit: rgba(155, 199, 0, 0.45);
+  --b-hint: rgba(30, 26, 20, 0.16);
+  --b-check: rgba(190, 30, 30, 0.55);
+
+  margin: 10px 0;
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+}
+
+.b-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  /* Rows are named as well as columns. Auto rows take their height from the glyph in
+     them, which is not the width of a square, and the board comes out oblong. */
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1;
+  border: 1px solid var(--kit-frame);
+  /* The square is the unit. Every size below is a share of the board's width, so the
+     board scales whole instead of a glyph outgrowing the square it sits in. */
+  container-type: inline-size;
+  user-select: none;
+}
+
+.b-sq {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+.b-sq.b-light { background: var(--b-light); }
+.b-sq.b-dark { background: var(--b-dark); }
+
+/* A wash over the square, not a ring around it. A ring reads as a border between two
+   squares, and on a board every square already has four of those. */
+.b-sq.b-last::after,
+.b-sq.b-pick::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--b-lit);
+}
+
+/* The square the Lesson is pointing at. This one is a ring, because it is the Course
+   talking rather than the game. */
+.b-sq.b-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 max(2px, 0.6cqw) var(--kit-amber);
+}
+
+/* Where the picked piece may go. A dot on an empty square, a ring around a piece it can
+   take, so the two answers do not look alike. */
+.b-sq.b-target::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3.6cqw;
+  height: 3.6cqw;
+  margin: -1.8cqw 0 0 -1.8cqw;
+  border-radius: 50%;
+  background: var(--b-hint);
+}
+.b-sq.b-target.b-take::before {
+  width: 11cqw;
+  height: 11cqw;
+  margin: -5.5cqw 0 0 -5.5cqw;
+  background: none;
+  border: 0.9cqw solid var(--b-hint);
+}
+
+/* The king that is in check. */
+.b-sq.b-check::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, var(--b-check) 12%, transparent 72%);
+}
+
+.b-man {
+  font-size: 10.4cqw;
+  line-height: 1;
+  position: relative;
+  pointer-events: auto;
+  /* A hairline, and in pixels. The stroke is drawn along the middle of the glyph's own
+     edge, so a wide one closes up the thin parts of a king or a queen from both sides. */
+  -webkit-text-stroke: 0.6px var(--b-edge);
+}
+.b-man[draggable="true"] { cursor: grab; }
+.b-man[draggable="true"]:active { cursor: grabbing; }
+.b-man.b-white { color: var(--b-white); }
+.b-man.b-black { color: var(--b-black); }
+
+/* Coordinates sit in the square's own corner, in the colour of the square next door, which
+   is how they stay legible on both shades without a third colour. */
+.b-sq .b-file,
+.b-sq .b-rank {
+  position: absolute;
+  font-family: var(--kit-mono);
+  font-size: 2cqw;
+  font-weight: 600;
+  pointer-events: none;
+}
+.b-sq.b-light .b-file, .b-sq.b-light .b-rank { color: var(--b-dark); }
+.b-sq.b-dark .b-file, .b-sq.b-dark .b-rank { color: var(--b-light); }
+.b-sq .b-file { right: 4%; bottom: 2%; }
+.b-sq .b-rank { left: 4%; top: 2%; }
+
+.b-label {
+  font-family: var(--kit-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--kit-muted);
+}
+.b-say {
+  font-family: var(--kit-mono);
+  font-size: 11px;
+  color: var(--kit-muted);
+  min-height: 16px;
+}
+.b-say.b-bad { color: var(--kit-fail); }
+
+.b-promote { display: flex; gap: 6px; }
+.b-promote .k-btn { font-size: 17px; line-height: 1; padding: 4px 11px; }

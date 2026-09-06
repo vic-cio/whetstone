@@ -1,4 +1,4 @@
-/* whetstone-toolkit 1.1.0
+/* whetstone-toolkit 1.0.0
  *
  * Every colour, face and space a Mini-app is allowed to use. A Mini-app names a token and
  * never a colour, which is what keeps a joinery Course and a machine learning Course
@@ -26,14 +26,6 @@
   --kit-pass: #15803d;
   --kit-fail: #b91c1c;
 
-  --kit-board-light: #efece3;
-  --kit-board-dark: #b6a98d;
-  --kit-board-coord: #4d493f;
-  --kit-man-white: #fffefb;
-  --kit-man-white-edge: #16150f;
-  --kit-man-black: #16150f;
-  --kit-man-black-edge: #fffefb;
-
   --kit-sans: "Inter Tight", -apple-system, system-ui, sans-serif;
   --kit-display: Archivo, "Inter Tight", sans-serif;
   --kit-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -47,16 +39,6 @@
     --kit-line: #2c2a25;
     --kit-frame: #3a372f;
     --kit-said: #201f1b;
-
-    /* Lighter than the page. A dark piece is nearly the colour of the paper, so the
-       board has to sit above both pieces rather than beside one of them. */
-    --kit-board-light: #56514a;
-    --kit-board-dark: #38342d;
-    --kit-board-coord: #c6c0b3;
-    --kit-man-white: #f2efe7;
-    --kit-man-white-edge: #16150f;
-    --kit-man-black: #100f0d;
-    --kit-man-black-edge: #a8a294;
   }
 }
 
@@ -206,67 +188,3 @@ button, input, textarea, select { border-radius: 0; font: inherit; color: inheri
 
 .k-action { margin: 12px 0 2px; display: flex; gap: 10px; align-items: center; }
 .k-action .k-said { font-family: var(--kit-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kit-muted); }
-
-/* board ----------------------------------------------------------------- */
-
-.k-board { margin: 10px 0; display: grid; gap: 7px; justify-items: start; }
-.k-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  /* Rows are named as well as columns. Auto rows take their height from the glyph in
-     them, which is not the width of a square, and the board comes out oblong. */
-  grid-template-rows: repeat(8, 1fr);
-  width: 100%;
-  max-width: 360px;
-  aspect-ratio: 1;
-  border: 1px solid var(--kit-frame);
-  container-type: inline-size;
-  user-select: none;
-}
-.k-sq { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
-.k-sq.k-light { background: var(--kit-board-light); }
-.k-sq.k-dark { background: var(--kit-board-dark); }
-
-/* One ring per square, so the order here is the order of precedence. */
-.k-sq.k-last::after,
-.k-sq.k-mark::after,
-.k-sq.k-pick::after { content: ""; position: absolute; inset: 0; }
-.k-sq.k-last::after { box-shadow: inset 0 0 0 2px var(--kit-d2); }
-.k-sq.k-mark::after { box-shadow: inset 0 0 0 2px var(--kit-d4); }
-.k-sq.k-pick::after { box-shadow: inset 0 0 0 2px var(--kit-amber); }
-
-.k-sq.k-target::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 3cqw;
-  height: 3cqw;
-  margin: -1.5cqw 0 0 -1.5cqw;
-  background: var(--kit-amber);
-  opacity: 0.6;
-}
-
-.k-man {
-  font-size: 9cqw;
-  line-height: 1;
-  pointer-events: auto;
-}
-.k-man[draggable="true"] { cursor: grab; }
-.k-man.k-white { color: var(--kit-man-white); -webkit-text-stroke: 0.6px var(--kit-man-white-edge); }
-.k-man.k-black { color: var(--kit-man-black); -webkit-text-stroke: 0.6px var(--kit-man-black-edge); }
-
-.k-sq .k-file, .k-sq .k-rank {
-  position: absolute;
-  font-family: var(--kit-mono);
-  font-size: 1.7cqw;
-  color: var(--kit-board-coord);
-  pointer-events: none;
-}
-.k-sq .k-file { right: 3%; bottom: 2%; }
-.k-sq .k-rank { left: 3%; top: 2%; }
-
-.k-boardsay { font-family: var(--kit-mono); font-size: 11px; color: var(--kit-muted); min-height: 16px; }
-.k-boardsay.k-bad { color: var(--kit-fail); }
-.k-promote { display: flex; gap: 6px; }
-.k-promote .k-btn { font-size: 17px; line-height: 1; padding: 4px 11px; }

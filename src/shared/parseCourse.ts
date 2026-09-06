@@ -4,7 +4,6 @@ import matter from 'gray-matter'
 import type { ZodType } from 'zod'
 
 import { EXTERNAL, readToolkit } from './miniapp'
-import { serviceProblem } from './services'
 import {
   ManifestSchema,
   TaskSchema,
@@ -116,14 +115,20 @@ export function parseCourse(dir: string): ParseResult {
     }
   }
 
-  // ---------------------------------------------------------------- services
+  // ---------------------------------------------------------------- the course's library
 
-  // A Service is a capability the host answers for, named and versioned the way the
-  // toolkit is (docs/adr/0018). One this build does not have would fail at the moment a
-  // learner pressed something, so it is refused here instead.
-  for (const [index, use] of manifest.services.entries()) {
-    const problem = serviceProblem(use)
-    if (problem) fail('course.json', problem, `services[${index}]`)
+  // Every file the manifest lists goes into every Mini-app in the Course, so a name that
+  // is wrong here breaks every activity at once rather than one of them (docs/adr/0019).
+  // The list is also the order they are inlined in, which is the Course's to get right.
+  for (const [index, name] of manifest.library.entries()) {
+    const where = `library[${index}]`
+    if (name.includes('/') || name.includes('\\') || name.startsWith('.')) {
+      fail('course.json', `"${name}" must be a file directly inside lib/`, where)
+    } else if (!name.endsWith('.js') && !name.endsWith('.css')) {
+      fail('course.json', `"${name}" is neither a .js nor a .css file`, where)
+    } else if (!existsSync(join(dir, 'lib', name))) {
+      fail('course.json', `names lib/${name}, which is not there`, where)
+    }
   }
 
   // ---------------------------------------------------------------- cross-references

@@ -11,16 +11,14 @@ Harness, Toolkit and the rest all mean something specific here.
 
 ```
 src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts,
-               miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
-               services.ts (what the host answers for a Mini-app), chess.ts (the first one)
+               miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at)
 src/main/      Electron main process. Node lives here and nowhere else
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
 toolkit/       the toolkit this build ships. See docs/toolkit.md
 fixtures/courses/        hand-written Courses the tests run against, and the sample the
                          app seeds a fresh library with
-fixtures/courses-sealed/ the Courses test 7 runs: one hostile, one that uses a Service.
-                         Never shipped
+fixtures/courses-sealed/ the hostile Course test 7 runs. Never shipped
 tests/         vitest, run against the fixtures
 ```
 
@@ -49,13 +47,15 @@ tests/         vitest, run against the fixtures
 - **The toolkit is pinned per Course.** The host injects the copy in the Course folder, never
   the one this build ships, so a Course keeps behaving the way it was built. Change
   `toolkit/` and its version together, never a one-off inside a Course. `docs/adr/0014`.
-- **A Course declares the Services it uses.** `Kit.ask` reaches the host, and the host
-  answers only for a Service named in `course.json`. A Course names a capability and a
-  version, never a path: nothing in a Course folder may point at the rest of the machine.
-  A Service is offline, pure, and holds no state. `docs/adr/0018`.
-- **A Service runs in the main process, so a slow one freezes the window.** The chess
-  opponent's search depth is capped for that reason. Anything added beside it carries the
-  same obligation.
+- **The toolkit carries no subject.** It is the same in every Course, so nothing in it may
+  know about chess, or circuits, or music. What one Course is about goes in that Course's
+  library: files under `lib/`, listed in `course.json`, inlined into that Course's Mini-apps
+  after the toolkit and before the app. `fixtures/courses/forks-and-pins/lib/` is the worked
+  example. `docs/adr/0019`.
+- **The host answers a Mini-app nothing.** A frame reports an answer and that is all. Do not
+  add a channel for a Mini-app to ask the main process for something; that was tried in
+  `docs/adr/0018` and removed, because a sealed frame can carry the code itself and running
+  it in the frame freezes one widget rather than the whole window.
 - **A path from a Course is checked against the disk, not against a string.** `resolve` and
   `relative` never touch the filesystem, so a symlink inside a Course passes a check written
   that way. `fileInCourse` calls `realpathSync` first.

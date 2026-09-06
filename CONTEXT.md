@@ -51,16 +51,16 @@ An interactive artifact the Constructor wrote as code and stored inside the Cour
 _Avoid_: Widget, applet, component, embed
 
 **Toolkit**:
-The widget set and host bridge the app injects into every Mini-app, pinned per Course so a shared Course behaves the same everywhere. It is what makes activities across different Courses look and work alike.
-_Avoid_: Library, framework, SDK, components
+The widget set and host bridge the app injects into every Mini-app, pinned per Course so a shared Course behaves the same everywhere. It is what makes activities across different Courses look and work alike. It carries no subject: what one Course is about goes in that Course's [[library]].
+_Avoid_: Library (that is a different thing here), framework, SDK, components
 
 **Bridge**:
 The single way across a line the app draws on purpose. The preload Bridge is how the renderer reaches the main process. `Kit.bridge` is how a Mini-app reaches the host. Each is the only way across its own line, and neither can reach the other.
 _Avoid_: API, IPC layer, interface, channel
 
-**Service**:
-A question the host answers for a Mini-app, such as the rules of chess. A Course declares the Services it uses in its manifest, and the host answers nothing it did not declare. A Service is offline, holds no state, and is named by capability and version, never by a path.
-_Avoid_: Plugin, backend, API, engine, native module
+**Library**:
+The code one Course carries for itself, listed in its manifest and inlined into every one of its Mini-apps. A Library is what a Course is about, such as the rules of chess and a board to play them on. The [[toolkit]] is the same in every Course; a Library belongs to one and no other Course can see it.
+_Avoid_: Package, module, dependency, plugin, service
 
 ### Assessment
 

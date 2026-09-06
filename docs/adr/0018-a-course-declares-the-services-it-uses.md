@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0019
 ---
 
 # A Course declares the Services it uses, and the host answers nothing else

@@ -222,12 +222,12 @@ export const ManifestSchema = z.object({
   summary: z.string().min(1),
   toolkitVersion: z.string().min(1),
   /**
-   * The Services this Course asks the host for. A Course names a capability and a version,
-   * never a path, and the host answers nothing that is not listed here (docs/adr/0018).
+   * The Course's own library: files under `lib/` that the host inlines into every one of
+   * its Mini-apps, in this order (docs/adr/0019). This is how a Course carries a feature
+   * the toolkit does not have, without pasting it into each app and without the app
+   * learning anything about the subject.
    */
-  services: z
-    .array(z.object({ id: z.string().min(1), version: z.string().min(1) }))
-    .default([]),
+  library: z.array(z.string().min(1)).default([]),
   objectives: z.array(ObjectiveSchema).min(1),
   /** The Rungs this Course actually uses, drawn from the fixed scale. */
   ladder: z.array(z.enum(DEPTHS)).min(1),

@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url'
 import { appFrame, coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
 import { fileInCourse } from '../shared/courseFile'
 import { POLICY } from '../shared/miniapp'
-import { askService } from './services'
 import { answerTask, answerTry, reachedEndOfLesson } from './study'
 import type { PageType } from '../shared/format'
 
@@ -161,11 +160,6 @@ app.whenReady().then(() => {
       return answerTask(slug, course, progress(), testId, taskId, given)
     },
   )
-  // A Mini-app asking the host for something it cannot carry itself (docs/adr/0018).
-  ipcMain.handle('services:ask', (_event, slug: string, service: string, request: unknown) =>
-    askService(slug, service, request),
-  )
-
   ipcMain.handle(
     'tries:answer',
     (_event, slug: string, lessonId: string, tryId: string, given: unknown) =>

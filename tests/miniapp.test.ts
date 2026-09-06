@@ -83,28 +83,25 @@ describe('test 18 — the host injects the course’s pinned toolkit, not the ap
     expect(frame).not.toContain('whetstone-toolkit 1.0.0')
   })
 
-  it('gives each course the toolkit it was built with', () => {
-    // Two courses in the fixture sit on different toolkits on purpose. The older one was
-    // built before `Kit.board` existed and must keep behaving the way it was built.
-    const older = frameSource(FIXTURE, 'slope-explorer')
-    expect(older).toContain('whetstone-toolkit 1.0.0')
-    expect(older).not.toContain('function board(options)')
-    expect(older).not.toContain('function ask(service, request)')
-
-    const newer = frameSource(CHESS, 'find-the-fork')
-    expect(newer).toContain(`whetstone-toolkit ${TOOLKIT_VERSION}`)
-    expect(newer).toContain('function board(options)')
-    expect(newer).toContain('function ask(service, request)')
-  })
-
-  it('keeps the newest course in step with the toolkit this build ships', () => {
+  it('keeps every pinned copy in step with the toolkit this build ships', () => {
     // The pinned copy is a copy. One that drifted from the build would make every check
     // against it meaningless, and nothing else would notice.
     const shipped = readToolkit(join(ROOT, 'toolkit'))
-    const pinned = readToolkit(join(CHESS, 'toolkit'))
     expect(shipped?.version).toBe(TOOLKIT_VERSION)
-    expect(pinned?.js).toBe(shipped?.js)
-    expect(pinned?.css).toBe(shipped?.css)
+    for (const dir of [FIXTURE, CHESS]) {
+      const pinned = readToolkit(join(dir, 'toolkit'))
+      expect(pinned?.js).toBe(shipped?.js)
+      expect(pinned?.css).toBe(shipped?.css)
+    }
+  })
+
+  it('carries no course’s subject in it', () => {
+    // The toolkit is the same in every Course, so nothing about one subject may be in it.
+    // A board and a set of chess rules belong to the Course that wanted them.
+    const toolkit = readToolkit(join(ROOT, 'toolkit'))
+    expect(toolkit?.js).not.toContain('function board(')
+    expect(toolkit?.js).not.toContain('rnbqkbnr')
+    expect(toolkit?.js).not.toContain('Chess')
   })
 
   it('refuses a pinned copy that disagrees with the manifest', () => {
@@ -157,7 +154,7 @@ describe('test 17 — a mini-app built from the toolkit has no colour of its own
       expect(toolkit?.js).not.toContain('prefers-color-scheme')
     }
     expect(readToolkit(join(FIXTURE, 'toolkit'))?.version).toBe('1.0.0')
-    expect(readToolkit(join(CHESS, 'toolkit'))?.version).toBe('1.1.0')
+    expect(readToolkit(join(CHESS, 'toolkit'))?.version).toBe('1.0.0')
   })
 })
 
@@ -193,5 +190,67 @@ describe('the probe course', () => {
   it('parses, so the sandbox is the only thing standing in its way', () => {
     const result = parseCourse(PROBE)
     expect(result.ok).toBe(true)
+  })
+})
+
+describe('a course’s own library', () => {
+  /**
+   * A Course carries the code the toolkit does not have (docs/adr/0019). The host inlines
+   * what `course.json` lists under `library`, in that order, into every Mini-app in that
+   * Course and into no other.
+   */
+  it('inlines what the course listed, in the order it listed it', () => {
+    const frame = frameSource(CHESS, 'find-the-fork')
+    const chess = frame.indexOf('window.Chess = ')
+    const css = frame.indexOf('.b-grid {')
+    const board = frame.indexOf('window.Board = ')
+    const app = frame.indexOf('Board({ mount:')
+    expect(chess).toBeGreaterThan(0)
+    expect(css).toBeGreaterThan(0)
+    // The toolkit comes first, then the library in the course's order, then the app.
+    expect(frame.indexOf('whetstone-toolkit')).toBeLessThan(chess)
+    expect(chess).toBeLessThan(board)
+    expect(board).toBeLessThan(app)
+  })
+
+  it('gives a course nothing another course listed', () => {
+    const other = frameSource(FIXTURE, 'slope-explorer')
+    expect(other).not.toContain('window.Chess = ')
+    expect(other).not.toContain('window.Board = ')
+  })
+
+  it('refuses a library file that is not there', () => {
+    const dir = copyFixture()
+    const manifest = JSON.parse(readFileSync(join(dir, 'course.json'), 'utf8')) as Record<string, unknown>
+    manifest['library'] = ['nowhere.js']
+    writeFileSync(join(dir, 'course.json'), JSON.stringify(manifest, null, 2))
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.errors).toContainEqual({
+      file: 'course.json',
+      field: 'library[0]',
+      message: 'names lib/nowhere.js, which is not there',
+    })
+  })
+
+  it('refuses a library entry that is a path, or is neither js nor css', () => {
+    const dir = copyFixture()
+    const manifest = JSON.parse(readFileSync(join(dir, 'course.json'), 'utf8')) as Record<string, unknown>
+    manifest['library'] = ['../../etc/passwd', 'notes.txt']
+    writeFileSync(join(dir, 'course.json'), JSON.stringify(manifest, null, 2))
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    const said = result.errors.map((error) => error.message).join(' ')
+    expect(said).toContain('must be a file directly inside lib/')
+    expect(said).toContain('is neither a .js nor a .css file')
+  })
+
+  it('leaves a course with no library alone', () => {
+    const result = parseCourse(FIXTURE)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.course.library).toEqual([])
   })
 })

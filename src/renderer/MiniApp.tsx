@@ -18,10 +18,6 @@ interface Message {
   type?: string
   value?: unknown
   height?: number
-  /** The number the frame gave this question, so the answer can be matched to it. */
-  ask?: number
-  service?: string
-  request?: unknown
 }
 
 export function MiniApp({
@@ -43,18 +39,6 @@ export function MiniApp({
   const [stalled, setStalled] = useState(false)
 
   useEffect(() => {
-    const reply = (target: Window, message: Message): void => {
-      const id = message.ask
-      const service = message.service
-      const told = (answer: { ok: boolean; value?: unknown; error?: string }): void => {
-        target.postMessage({ kit: message.kit, type: 'told', ask: id, ...answer }, '*')
-      }
-      if (typeof id !== 'number' || typeof service !== 'string') return
-      window.whetstone.services.ask(slug, service, message.request).then(told, (cause: Error) => {
-        told({ ok: false, error: cause.message })
-      })
-    }
-
     const listen = (event: MessageEvent): void => {
       // The frame's origin is opaque, so it can only post to "*" and `event.origin` is
       // "null". Identity of the sending window is the check that holds.
@@ -74,12 +58,6 @@ export function MiniApp({
         case 'answer':
           if (onAnswer) onAnswer(message.value)
           break
-        case 'ask':
-          // A Service request. This carries the question to the main process and the
-          // reply back, and reads neither: the main process decides what a Course may
-          // ask for, and the frame is told no when it asks for anything else.
-          reply(event.source as Window, message)
-          break
         case 'review':
           // The review path writes the payload outside the Course and spawns a Grader.
           // It arrives with the tutor, in phase 4.
@@ -88,7 +66,7 @@ export function MiniApp({
     }
     window.addEventListener('message', listen)
     return () => window.removeEventListener('message', listen)
-  }, [onAnswer, slug])
+  }, [onAnswer])
 
   // A Mini-app says when it has drawn. One that never does is a broken activity, and
   // saying so beats leaving an empty rectangle on the page.

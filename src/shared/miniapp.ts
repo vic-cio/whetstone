@@ -16,7 +16,7 @@ import { join } from 'node:path'
  */
 
 /** The toolkit this build ships. It is written into a Course at build time, and nowhere else. */
-export const TOOLKIT_VERSION = '1.1.0'
+export const TOOLKIT_VERSION = '1.0.0'
 
 const MARKER = /whetstone-toolkit\s+(\d+\.\d+\.\d+)/
 
@@ -70,14 +70,57 @@ export function readToolkit(dir: string): Toolkit | undefined {
 export const EXTERNAL = /\b(?:src|href)\s*=\s*["']?(?:https?:|\/\/|file:|blob:)/i
 
 /**
+ * The Course's own library: the files `course.json` lists under `library`, read from
+ * `lib/` in the order the Course gave (docs/adr/0019).
+ *
+ * This is how a Course carries a feature the toolkit does not have. The toolkit is the
+ * same in every Course and holds the plumbing. A library is one Course's own code, it goes
+ * into every Mini-app in that Course, and the app knows nothing about what is in it.
+ *
+ * A name the parser already refused cannot reach here, so a missing file is skipped rather
+ * than thrown: a Mini-app drawing without its library is a visible failure in the frame,
+ * and a Course that will not open at all is not.
+ */
+function courseLibrary(courseDir: string): { css: string[]; js: string[] } {
+  const css: string[] = []
+  const js: string[] = []
+  const manifest = join(courseDir, 'course.json')
+  if (!existsSync(manifest)) return { css, js }
+
+  let listed: unknown
+  try {
+    listed = (JSON.parse(readFileSync(manifest, 'utf8')) as Record<string, unknown>)['library']
+  } catch {
+    return { css, js }
+  }
+  if (!Array.isArray(listed)) return { css, js }
+
+  for (const name of listed) {
+    if (typeof name !== 'string' || name.includes('/') || name.includes('\\') || name.startsWith('.')) {
+      continue
+    }
+    const file = join(courseDir, 'lib', name)
+    if (!existsSync(file)) continue
+    if (name.endsWith('.css')) css.push(readFileSync(file, 'utf8'))
+    else if (name.endsWith('.js')) js.push(readFileSync(file, 'utf8'))
+  }
+  return { css, js }
+}
+
+/**
  * Build the document for one Mini-app. Throws only for a Course the parser already
  * accepted, so a failure here is a programming error rather than a broken Course.
+ *
+ * Order is the contract. The toolkit is first, then the Course's library in the order the
+ * Course listed it, then the app. So a library file may use the toolkit, an app may use
+ * both, and the toolkit can be read without knowing either.
  */
 export function frameSource(courseDir: string, appId: string): string {
   const file = join(courseDir, 'apps', appId, 'index.html')
   if (!existsSync(file)) throw new Error(`mini-app "${appId}" has no index.html`)
   const toolkit = readToolkit(join(courseDir, 'toolkit'))
   if (!toolkit) throw new Error(`course at ${courseDir} has no pinned toolkit`)
+  const library = courseLibrary(courseDir)
 
   const markup = readFileSync(file, 'utf8')
   if (EXTERNAL.test(markup)) throw new Error(`mini-app "${appId}" refers to something outside itself`)
@@ -88,10 +131,10 @@ export function frameSource(courseDir: string, appId: string): string {
     '<head>',
     '<meta charset="utf-8">',
     `<meta http-equiv="Content-Security-Policy" content="${POLICY}">`,
-    `<style>\n${toolkit.css}\n</style>`,
+    `<style>\n${[toolkit.css, ...library.css].join('\n')}\n</style>`,
     '</head>',
     '<body>',
-    `<script>\n${toolkit.js}\n</script>`,
+    `<script>\n${[toolkit.js, ...library.js].join('\n')}\n</script>`,
     markup,
     '</body>',
     '</html>',
