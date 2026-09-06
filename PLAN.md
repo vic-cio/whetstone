@@ -270,7 +270,15 @@ claude -p "<prompt>"
   --disallowedTools "Write,Edit,Bash"    # per role
   --permission-mode dontAsk
   --permission-prompts none              # nobody can answer a prompt in this UI
+  --setting-sources project,local        # the user's own instructions stay out, see 3.13
+  --max-budget-usd <cap>                 # the CLI stops itself, see below
 ```
+
+Every flag above was checked against `claude 2.1.263` rather than taken from an earlier note.
+
+**The budget is the CLI's to keep, not ours.** `--max-budget-usd` stops the run at the cap. The app still reads `total_cost_usd` for the meter and the `runs` table, but it does not have to watch a stream and kill a process, and a run cannot overshoot while the app is deciding to. Pass the role's budget on every spawn.
+
+**`--restricted` is a second lock.** It removes the built-in tools that run commands or code, and WebFetch. The Tutor and Grader get it as well as their allow list, because two mechanisms that must both fail is the point of section 3.14.
 
 The stream is newline-delimited JSON. A `system` event with subtype `init` reports the model, the tools, and the loaded plugins, with `plugin_errors` when a bundle fails to load. `assistant` and `user` events carry the turn and its tool results. `stream_event` carries text deltas for live typing. The final `result` event carries `total_cost_usd`, which drives the spend meter with no estimation of our own.
 
@@ -466,9 +474,11 @@ One real fork sits underneath this, and it is a trade, not a detail.
 
 Whetstone defaults to the first, because it needs no key and no setup. The cost is a real leak: Victor's global instruction file would reach the Tutor and colour its voice, which matters when the Course is supposed to speak in its own. Two mitigations, and one honest residual.
 
-1. The role instruction file is passed with `--append-system-prompt-file` and states plainly that the Course's own guidance outranks anything from the environment.
-2. Settings offers a deterministic mode that adds `--bare` and uses a key from the macOS Keychain, for anyone who wants the Tutor's voice to be exactly the Course's.
-3. The residual is that in the default mode a user's global memory still loads. That is acceptable for one user and should be revisited before the app is shared.
+1. **`--setting-sources project,local` closes it.** The default is `user,project,local`, and `user` is where a personal instruction file lives. Dropping it keeps the OAuth login, needs no key, and leaves the personal instructions out. Measured, not assumed: the same one-line question asked in an empty folder answers `yes` by default and `no` with the flag, so a global rule about Simplified Technical English reaches a default spawn and does not reach this one.
+2. The role instruction file is passed with `--append-system-prompt-file` and states plainly that the Course's own guidance outranks anything from the environment.
+3. Settings still offers a deterministic mode that adds `--bare` and uses a key from the macOS Keychain, for anyone who wants nothing at all from the machine. It is now a preference rather than the only way to get a clean voice.
+
+The residual the earlier draft accepted is therefore gone. Do not drop `--setting-sources` from a spawn to make something work; if a spawn needs a setting, pass it with `--settings`.
 
 Any key a harness does need goes into the Keychain through `safeStorage`, reaches the child process in its environment only, and never touches a file, the database, or a log.
 
