@@ -488,9 +488,13 @@ The Tutor runs inside the Course folder and reads every file there, which is the
 
 Three layers, strongest first.
 
-1. **The tool allowance.** The Tutor is spawned with `--allowedTools "Read,Glob,Grep"`, `--disallowedTools "Write,Edit,Bash"` and `--restricted`. Note what this does and does not do: in a recorded run, `--allowedTools` did **not** shorten the tool list, and `system/init` advertised 76 tools with `Write` and `Bash` among them. The allow list is a permission filter, not a tool filter, so the earlier claim that the Tutor "has no instrument that writes" is wrong. What denies a write is the disallow list and the permission mode below it, and phase 3 must prove that with a spawn that tries to write and is refused. See `fixtures/streams/README.md`.
-2. **The permission mode.** `--permission-mode dontAsk` with `--permission-prompts none` denies anything the allowance did not already cover, and reports the denial in the result rather than waiting for an answer nobody can give.
-3. **A content hash.** The host hashes the Course content before the spawn and after the process exits. Any difference is reverted and reported. This catches a harness whose flags are weaker than the Claude CLI's, which is the case phase 6 must verify for Codex and pi.
+1. **The tool allowance.** Two flags, and they do different things. Measured against two recorded runs of `claude 2.1.263`, not assumed. `--allowedTools` is a permission filter and not a tool filter: it named two tools and `system/init` still advertised 76. `--disallowedTools` is a real tool filter: every name it carried was absent from the advertised list. So a read-only role is made by the disallow list, and that list has to be exhaustive, because a run that named `Write`, `Edit` and `Bash` still advertised `NotebookEdit`. Whetstone names every writer and every outward-facing tool it knows of in one place, `READ_ONLY` in `src/shared/harness.ts`, and passes `--restricted` beside it, which also takes `WebFetch`. In the second recording that left 62 tools of 76.
+
+2. **The permission mode.** `--permission-mode dontAsk` with `--permission-prompts none` denies anything the allowance did not already cover, and reports it rather than waiting for an answer nobody can give. This layer is not theoretical: told to write a file, the run called `Write` anyway, was refused with "No such tool available: Write. Write is disabled for this session, in subagents as well as here", went looking for `Edit` with `ToolSearch`, and gave up. Nothing was written. The clause about subagents matters, because `Task` is still advertised.
+
+   One finding from that run changes what the app may rely on. **The refusal never reached the result event.** `permission_denials` was empty and the run ended `success`. So an empty denial list is not evidence that nothing was refused, and the app must not read it as one. `tests/refusal.test.ts` pins that, and `scripts/prove-refusal.mjs` re-records it when the flags change.
+
+3. **A content hash.** The host hashes the Course content before the spawn and after the process exits. Any difference is reverted and reported. This is what catches a harness whose flags are weaker than the Claude CLI's, which is the case phase 6 must verify for Codex and pi, and it is now also the only layer that reports a refusal to the app rather than to the run.
 
 ### 3.15 Answering, grading, and coming back to things
 
@@ -704,8 +708,17 @@ Four things settled during the build.
 
 Test 7 grew a second half. One Course in `fixtures/courses-sealed/` declares chess and reports what came back, and the hostile one asks for chess without declaring it and reports the refusal. Both run in the real app, in one pass.
 
-**Phase 3. Constructor.**
-The harness registry and spawn layer, the Claude CLI adapter, event normalisation, the authoring plugin bundle, staging and validation with the repair loop, the brief conversation with its attachment tray and its outline, the build screen as an activity feed, Delete Course. The flow is section 3.19. Tests 5, 8, 10, 11, 16.
+**Phase 3. Constructor. Done.**
+The harness registry and spawn layer, the Claude CLI adapter, event normalisation, the authoring plugin bundle, staging and validation with the repair loop, the brief conversation with its attachment tray and its outline, the build screen as an activity feed, Delete Course. The flow is section 3.19. Tests 5, 8, 10, 11 and 16 pass, 173 assertions in all.
+
+Four things settled during the build, three of them by measurement rather than by design.
+
+- **The disallow list is what makes a role read-only, and it must be exhaustive.** Section 3.14 now says what two recorded runs measured rather than what the flags looked like they did. `--allowedTools` changes nothing about the tool list; `--disallowedTools` removes exactly what it names, so a writer it does not name survives. `READ_ONLY` in `src/shared/harness.ts` is the one place that list lives.
+- **A refusal never reaches the app.** Told to write a file, a read-only run called `Write` anyway, was refused, went looking for `Edit`, and gave up, and the result event reported `success` with an empty `permission_denials`. So the app may not read an empty denial list as proof that nothing was refused, and the content hash of 3.14 is the only layer that reports one to the app. `scripts/prove-refusal.mjs` re-records this, and it is the phase's real spawn.
+- **Asking to write is not writing.** The first adapter reported a file the moment a run asked for it, which the refusal recording immediately proved wrong: it would have told the reader that two files appeared when neither did. A tool call and its result are two events, so the reader holds the file until the result says it worked, and reading a stream is a reader with memory rather than a pure function of a line.
+- **The app writes the toolkit into staging, not the Constructor.** A Course pins the toolkit it was built against, and the one thing that would quietly break that pin is an agent writing its own idea of the toolkit into the folder. Decision record 0020.
+
+Two decisions taken without asking. The technical log holds the normalised moments rather than the harness's raw stream, because the raw stream never crosses the bridge and adding a second channel to carry it would be a hole in the thing the first channel exists for. And the app picks a Course's folder name from its id, taking the first free one, so two Courses about one idea can both exist without a Run spending a turn on naming.
 
 **Phase 4. Tutor and Grader.**
 The Tutor and Grader profiles on the same spawn layer, the Tutor's attachment tray for files, images, and pasted screenshots, the tutoring and grading bundles, the Course-level `AGENTS.md` the Constructor writes, the live snapshot file, `model` and `rubric` checks, Submissions, the Verdict view, defect reports, the Tutor pane, and the Mini-app review path. Tests 4, 12, 13, 14. The "needs a model" marker on Tasks.

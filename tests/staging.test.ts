@@ -1,0 +1,164 @@
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import { BRIEF, freeSlug, inspect, moveIn, prepare, repairPrompt, slugFrom, trayContents } from '../src/shared/staging'
+
+/**
+ * Test 8: a Harness that writes an invalid folder never touches `courses/`, and a valid
+ * staging folder moves in atomically.
+ * Test 11: the gate rejects a Mini-app with any external reference.
+ * Test 16: material attached in the Brief reaches the staging folder, and stays out of the
+ * Course that is built from it.
+ *
+ * A Run costs minutes and money, so none of this spawns anything. What is under test is
+ * the gate between what a Run wrote and what the reader can open, and that gate is a pure
+ * function of a folder.
+ */
+
+const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..')
+const SAMPLE = join(ROOT, 'fixtures', 'courses', 'gradients-by-hand')
+const TOOLKIT = join(ROOT, 'toolkit')
+
+let box = ''
+beforeAll(() => {
+  box = mkdtempSync(join(tmpdir(), 'whetstone-staging-'))
+})
+afterAll(() => rmSync(box, { recursive: true, force: true }))
+
+/** A fresh library and a fresh staging folder holding a Course a Run could have written. */
+function scene(): { root: string; staging: string } {
+  const where = mkdtempSync(join(box, 'run-'))
+  const root = join(where, 'courses')
+  const staging = join(where, 'staging')
+  mkdirSync(root, { recursive: true })
+  cpSync(SAMPLE, staging, { recursive: true })
+  return { root, staging }
+}
+
+describe('the gate between staging and the library', () => {
+  it('accepts a course the parser reads, and names the folder it will take', () => {
+    const { root, staging } = scene()
+    const gate = inspect(staging, root)
+    expect(gate.ok).toBe(true)
+    if (gate.ok) expect(gate.slug).toBe('gradients-by-hand')
+  })
+
+  it('refuses a course that was never written', () => {
+    const { root } = scene()
+    const empty = mkdtempSync(join(box, 'empty-'))
+    const gate = inspect(empty, root)
+    expect(gate.ok).toBe(false)
+    if (!gate.ok) expect(gate.errors[0]).toEqual({ file: 'course.json', message: 'was never written' })
+  })
+
+  it('refuses a course whose manifest is wrong, and says where', () => {
+    const { root, staging } = scene()
+    const manifest = JSON.parse(readFileSync(join(staging, 'course.json'), 'utf8'))
+    delete manifest.ladder
+    writeFileSync(join(staging, 'course.json'), JSON.stringify(manifest))
+
+    const gate = inspect(staging, root)
+    expect(gate.ok).toBe(false)
+    if (!gate.ok) {
+      expect(gate.errors.some((error) => error.field === 'ladder')).toBe(true)
+      expect(readdirSync(root)).toEqual([])
+    }
+  })
+
+  it('refuses a mini-app that reaches outside itself', () => {
+    // Test 11. The sandbox denies an external resource, so a mini-app that reaches for one
+    // would render wrong and silently: it is stopped at the gate instead.
+    const { root, staging } = scene()
+    const file = join(staging, 'apps', 'slope-explorer', 'index.html')
+    writeFileSync(file, `<script src="https://cdn.example.com/plot.js"></script>\n${readFileSync(file, 'utf8')}`)
+
+    const gate = inspect(staging, root)
+    expect(gate.ok).toBe(false)
+    if (!gate.ok) {
+      expect(gate.errors[0]?.file).toBe('apps/slope-explorer/index.html')
+      expect(gate.errors[0]?.message).toContain('outside itself')
+    }
+    expect(readdirSync(root)).toEqual([])
+  })
+
+  it('never leaves a half-written course where the library can see it', () => {
+    const { root, staging } = scene()
+    const target = moveIn(staging, root, 'gradients-by-hand')
+
+    expect(readdirSync(root)).toEqual(['gradients-by-hand'])
+    expect(existsSync(join(target, 'course.json'))).toBe(true)
+    expect(existsSync(join(target, 'apps', 'slope-explorer', 'index.html'))).toBe(true)
+    // Staging is emptied, and the folder it was copied through has gone with it.
+    expect(existsSync(staging)).toBe(false)
+    expect(readdirSync(root).some((name) => name.startsWith('.incoming'))).toBe(false)
+  })
+
+  it('refuses to write over a course that is already there', () => {
+    const { root, staging } = scene()
+    mkdirSync(join(root, 'gradients-by-hand'), { recursive: true })
+    expect(() => moveIn(staging, root, 'gradients-by-hand')).toThrow(/already in the library/)
+    expect(readdirSync(join(root, 'gradients-by-hand'))).toEqual([])
+  })
+
+  it('finds a free name rather than refusing a second course about one idea', () => {
+    const { root } = scene()
+    expect(freeSlug(root, 'chess')).toBe('chess')
+    mkdirSync(join(root, 'chess'))
+    expect(freeSlug(root, 'chess')).toBe('chess-2')
+  })
+
+  it('makes a folder name out of a course id', () => {
+    expect(slugFrom('crs-gradients-by-hand')).toBe('crs-gradients-by-hand')
+    expect(slugFrom('Gradients, by hand!')).toBe('gradients-by-hand')
+    expect(slugFrom('///')).toBe('course')
+  })
+})
+
+describe('handing the errors back to the run that made them', () => {
+  it('names the file and the field, and asks for nothing else', () => {
+    const prompt = repairPrompt([
+      { file: 'course.json', field: 'ladder', message: 'is missing' },
+      { file: 'tasks/tsk-one.json', message: 'names an objective that is not there' },
+    ])
+    expect(prompt).toContain('- course.json · ladder: is missing')
+    expect(prompt).toContain('- tasks/tsk-one.json: names an objective that is not there')
+    expect(prompt).toContain('Do not start again')
+  })
+})
+
+describe('the brief’s tray', () => {
+  it('puts the toolkit in before the run, so the course cannot pin its own idea of it', () => {
+    const staging = join(box, 'prepared')
+    prepare(staging, TOOLKIT, { files: [], links: [] })
+    expect(existsSync(join(staging, 'toolkit', 'kit.js'))).toBe(true)
+    expect(existsSync(join(staging, BRIEF))).toBe(false)
+  })
+
+  it('carries attached material into staging, where the run can read it', () => {
+    // Test 16, the first half.
+    const staging = join(box, 'with-tray')
+    const note = join(box, 'my notes.md')
+    writeFileSync(note, '# what I already know\n')
+
+    prepare(staging, TOOLKIT, { files: [note], links: ['https://example.com/paper'] })
+    expect(trayContents(staging)).toEqual(['links.json', 'my notes.md'])
+    expect(readFileSync(join(staging, BRIEF, 'my notes.md'), 'utf8')).toContain('what I already know')
+    expect(readFileSync(join(staging, BRIEF, 'links.json'), 'utf8')).toContain('example.com/paper')
+  })
+
+  it('leaves the attached material behind when the course moves in', () => {
+    // Test 16, the second half. The tray is what the Constructor read, not what it wrote,
+    // so a shared Course carries none of it.
+    const { root, staging } = scene()
+    const note = join(box, 'private.md')
+    writeFileSync(note, 'do not ship me')
+    mkdirSync(join(staging, BRIEF), { recursive: true })
+    cpSync(note, join(staging, BRIEF, 'private.md'))
+
+    const target = moveIn(staging, root, 'gradients-by-hand')
+    expect(existsSync(join(target, BRIEF))).toBe(false)
+  })
+})

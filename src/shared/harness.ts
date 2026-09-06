@@ -1,0 +1,170 @@
+import { z } from 'zod'
+
+/**
+ * What a Harness is, and what comes back out of one.
+ *
+ * A Harness is an agent program the app spawns when a job needs a model (PLAN 3.5). It is
+ * a registry entry rather than code: adding one is a line of JSON naming a command and an
+ * adapter. The adapter is the only part that knows a particular CLI's flags and output.
+ *
+ * Everything above the adapter deals in `Moment`s, which are the app's own words for what
+ * happened. That is what makes the harness invisible (PLAN 3.6): no tool name, no ANSI, no
+ * exit code and no raw stream ever reaches the interface, because the interface is handed
+ * a `Moment` and a `Moment` cannot carry one.
+ *
+ * Nothing here spawns anything. This module is the vocabulary; `src/main/harness.ts` runs
+ * the process.
+ */
+
+export const HarnessSchema = z.object({
+  id: z.string().min(1),
+  /** What Settings calls it. The student never sees this either way. */
+  label: z.string().min(1),
+  /** The program to run. Looked up on a widened PATH, so Finder launches work. */
+  command: z.string().min(1),
+  /** Which adapter builds this CLI's arguments and reads its output. */
+  adapter: z.string().min(1),
+  models: z.array(z.string().min(1)).min(1),
+  /**
+   * Set when this CLI cannot restrict its own tools, so the content hash of PLAN 3.14 is
+   * the only guard left. Phase 6 has to fill this in per CLI rather than assume it.
+   */
+  restrictsTools: z.boolean().default(true),
+})
+export type Harness = z.infer<typeof HarnessSchema>
+
+export const RegistrySchema = z.object({ harnesses: z.array(HarnessSchema).min(1) })
+
+/** Read a `harnesses.json`, or say what is wrong with it. Never throws. */
+export function readRegistry(text: string): { ok: true; harnesses: Harness[] } | { ok: false; message: string } {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (cause) {
+    return { ok: false, message: `harnesses.json is not valid JSON: ${(cause as Error).message}` }
+  }
+  const result = RegistrySchema.safeParse(parsed)
+  if (!result.success) {
+    const first = result.error.issues[0]
+    const where = first?.path.join('.') ?? ''
+    return { ok: false, message: `harnesses.json ${where}: ${first?.message ?? 'is not a registry'}` }
+  }
+  return { ok: true, harnesses: result.data.harnesses }
+}
+
+export const ROLES = ['constructor', 'tutor', 'grader'] as const
+export type Role = (typeof ROLES)[number]
+
+/**
+ * What makes one role differ from another. A role has no code path of its own: it is a
+ * working directory, an instruction file, a plugin bundle, a tool allowance and a budget
+ * (PLAN 3.5). The host resolves a profile plus a Harness plus a model into one spawn.
+ */
+export interface AgentProfile {
+  role: Role
+  cwd: string
+  /** Absolute paths to plugin bundles the app ships. The user never sees these. */
+  plugins: string[]
+  allowedTools: string[]
+  disallowedTools: string[]
+  budgetUsd: number
+  /**
+   * A second lock for a role that must run nothing: it takes away the built-in tools that
+   * execute commands or code, and WebFetch. The Constructor writes and searches, so it is
+   * the one role this is false for (PLAN 3.5, PLAN 3.14).
+   */
+  restricted: boolean
+  /** The role instruction file, appended to the harness's own system prompt. */
+  instructions: string
+  /** Folders outside `cwd` the run may read, such as a conversation's attachments. */
+  alsoRead: string[]
+}
+
+export interface SpawnRequest {
+  harness: Harness
+  model: string
+  profile: AgentProfile
+  prompt: string
+  /**
+   * Continue a previous exchange. The Brief is several spawns against one conversation
+   * (PLAN 3.19), and this is what keeps them one conversation rather than several.
+   */
+  resume?: string
+  /** A JSON schema the harness validates its own output against, when it can (PLAN 3.11). */
+  schema?: unknown
+}
+
+/**
+ * What the app understood happened. The interface renders these and nothing else.
+ *
+ * `doing` is already a phrase in the app's own vocabulary, never a tool name: an adapter
+ * that cannot phrase a tool call emits no `doing` at all (PLAN 3.6, rule 2).
+ */
+export type Moment =
+  | { at: 'started'; model: string; session: string }
+  | { at: 'says'; text: string }
+  | { at: 'doing'; what: string }
+  | { at: 'wrote'; file: string }
+  | { at: 'finished'; usd: number; ok: boolean; denied: string[]; output?: unknown }
+  | { at: 'failed'; message: string }
+
+export interface Adapter {
+  id: string
+  /** The whole argument list, prompt included. */
+  argv(request: SpawnRequest): string[]
+  /**
+   * A fresh reader for one run. It is a factory rather than a function because reading a
+   * stream needs memory: a tool call and whether it worked arrive as two separate events,
+   * and a Mini-app file that a run asked to write and was refused must not be reported as
+   * a file that appeared.
+   */
+  reader(): Reader
+}
+
+/** One line of a harness's output, as a Moment, or nothing when it says nothing. */
+export type Reader = (line: string) => Moment | undefined
+
+/**
+ * ANSI escapes have no meaning in a window that is not a terminal, and a harness that
+ * emits them into a message would put them on screen as rubbish. They come off here, once,
+ * so no adapter has to remember to do it.
+ */
+const ANSI = /\u001b\[[0-9;?]*[ -\/]*[@-~]/g
+export const plain = (text: string): string => text.replace(ANSI, '')
+
+/** Just the file's name. A path from inside a run is the machine's business, not the reader's. */
+export const named = (path: string): string => path.split('/').filter(Boolean).pop() ?? ''
+
+/**
+ * Tools by what they do, so a role's allowance is written once and read everywhere.
+ *
+ * Measured against a recorded run of `claude 2.1.263`, not assumed. `--allowedTools` is a
+ * permission filter and not a tool filter: it named two tools and `system/init` still
+ * advertised 76. `--disallowedTools` is a real tool filter: it named `Write`, `Edit` and
+ * `Bash`, and none of the three was advertised. So a role is shaped by what it denies, and
+ * the denial has to be exhaustive. That same run still advertised `NotebookEdit`, which
+ * writes a file and was simply not named.
+ *
+ * These are one CLI's tool names. Phase 6 must read the list each new harness advertises
+ * and check these against it, rather than carry them over.
+ */
+export const WRITERS = ['Write', 'Edit', 'NotebookEdit']
+export const RUNNERS = ['Bash', 'BashOutput', 'KillShell']
+/** Tools that reach out of the machine. No role the app spawns has any use for one. */
+export const OUTWARD = [
+  'Artifact',
+  'SendMessage',
+  'PushNotification',
+  'RemoteTrigger',
+  'CronCreate',
+  'CronDelete',
+  'DesignSync',
+  'EnterWorktree',
+  'ExitWorktree',
+]
+
+/** A role that reads and answers: the Tutor, the Grader, and the Constructor in a Brief. */
+export const READ_ONLY = [...WRITERS, ...RUNNERS, ...OUTWARD]
+
+/** A role that writes files and nothing else: the Constructor building a Course. */
+export const WRITES_ONLY_FILES = [...RUNNERS, ...OUTWARD]

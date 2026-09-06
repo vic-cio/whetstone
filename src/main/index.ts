@@ -1,9 +1,21 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, net, protocol, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, shell } from 'electron'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 
 import { appFrame, coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
+import {
+  OUTLINE,
+  addToTray,
+  briefTray,
+  buildCourse,
+  cancelBrief,
+  discardBrief,
+  harnesses,
+  sendMessage,
+  startBrief,
+} from './newCourse'
+import { removeCourse } from '../shared/remove'
 import { fileInCourse } from '../shared/courseFile'
 import { POLICY } from '../shared/miniapp'
 import { answerTask, answerTry, reachedEndOfLesson } from './study'
@@ -95,8 +107,9 @@ function createWindow(): void {
     // to draw and report needs longer than one that only clicks through pages.
     const pause = Number(process.env['WHETSTONE_CAPTURE_WAIT'] ?? 600)
 
-    // Whatever happens, this run ends.
-    setTimeout(() => app.exit(1), 30_000)
+    // Whatever happens, this run ends. A capture that waits on a spawned harness needs
+    // longer than one that only clicks through pages, so the limit is settable.
+    setTimeout(() => app.exit(1), Number(process.env['WHETSTONE_CAPTURE_LIMIT'] ?? 30_000))
 
     window.webContents.once('did-finish-load', () => {
       void (async () => {
@@ -170,6 +183,49 @@ app.whenReady().then(() => {
     (_event, slug: string, lessonId: string, tryId: string, given: unknown) =>
       answerTry(loadCourse(slug), lessonId, tryId, given),
   )
+
+  // ---------------------------------------------------------------- building a course
+  //
+  // A Run reports as it goes, so the window draws a conversation as it is typed and a build
+  // as it happens. What crosses is a `Moment`: the app's own words, never a raw event.
+  const report = (event: Electron.IpcMainInvokeEvent) => (moment: unknown) =>
+    event.sender.send('run:moment', moment)
+
+  ipcMain.handle('harnesses:list', () => harnesses())
+  ipcMain.handle('brief:start', () => startBrief())
+  ipcMain.handle('brief:tray', () => briefTray())
+  ipcMain.handle('brief:discard', () => discardBrief())
+  ipcMain.handle('brief:cancel', () => cancelBrief())
+
+  ipcMain.handle('brief:attach', async () => {
+    const picked = await dialog.showOpenDialog({
+      title: 'Material for this course',
+      properties: ['openFile', 'multiSelections'],
+    })
+    return picked.canceled ? briefTray() : addToTray(picked.filePaths, [])
+  })
+  ipcMain.handle('brief:link', (_event, url: string) => addToTray([], [url]))
+
+  ipcMain.handle('brief:say', (event, text: string, harnessId: string, model: string) =>
+    sendMessage(text, harnessId, model, report(event)),
+  )
+  ipcMain.handle('brief:outline', (event, harnessId: string, model: string) =>
+    sendMessage(OUTLINE, harnessId, model, report(event)),
+  )
+  ipcMain.handle('brief:build', (event, harnessId: string, model: string, brief: string) =>
+    buildCourse(coursesRoot(), harnessId, model, brief, report(event)),
+  )
+
+  ipcMain.handle('courses:remove', (_event, slug: string) =>
+    removeCourse(
+      coursesRoot(),
+      slug,
+      (name) => progress().forget(name),
+      (folder) => shell.trashItem(folder),
+    ),
+  )
+  // A failed build leaves its folder where it is, so there has to be a way to open it.
+  ipcMain.handle('courses:reveal', (_event, folder: string) => shell.showItemInFolder(folder))
 
   createWindow()
   app.on('activate', () => {

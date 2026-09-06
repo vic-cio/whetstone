@@ -156,6 +156,14 @@ _Avoid_: Mode, persona, configuration
 A folder of skills, subagents, and hooks the app ships and loads for one role. Hidden from the user. The authoring bundle also tells the Constructor what agents can handle at study time.
 _Avoid_: Extension, pack, toolkit
 
+**Staging**:
+The folder a Course is written into while it is being built, outside the library. A Course in Staging is not listed and cannot be opened. Only a folder the parser accepts moves out of it, and it moves in one step.
+_Avoid_: Draft, temp, scratch, working copy
+
+**Moment**:
+One thing the app understood a [[harness]] to have done, in the app's own words: it started, it said something, it is doing something, a file appeared, it finished, it failed. A Moment is all the interface ever receives, which is what makes the harness invisible.
+_Avoid_: Event, message, update, chunk
+
 **Live snapshot**:
 The file the app rewrites continuously with the current study state, so a Harness can see what the student is doing without an API. Read fresh, never cached.
 _Avoid_: State file, status, telemetry

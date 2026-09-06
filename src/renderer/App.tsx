@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { Course } from './Course'
+import { NewCourse } from './NewCourse'
 import { Lesson } from './Lesson'
 import { Test } from './Test'
 import type { BrokenCourse, CourseSummary } from '../main/courseStore'
@@ -17,6 +18,7 @@ import type { CourseError } from '../shared/format'
 
 type Route =
   | { at: 'home' }
+  | { at: 'new' }
   | { at: 'course'; slug: string }
   | { at: 'page'; slug: string; pageId: string }
 
@@ -53,11 +55,25 @@ export function App(): React.JSX.Element {
   }, [])
 
   const goHome = useCallback(() => {
+    // Leaving the brief bins it. A Run costs minutes rather than hours, so a half-written
+    // course kept for later is state to get wrong for very little (PLAN 3.19).
+    void window.whetstone.brief.discard()
     setRoute({ at: 'home' })
     setCourse(undefined)
     setFailed([])
     refreshLibrary()
   }, [refreshLibrary])
+
+  const remove = useCallback(
+    (slug: string, title: string) => {
+      if (!window.confirm(`Delete "${title}"? The folder goes to the Trash.`)) return
+      void window.whetstone.courses.remove(slug).then((result) => {
+        if (!result.ok && result.message !== undefined) window.alert(result.message)
+        refreshLibrary()
+      })
+    },
+    [refreshLibrary],
+  )
 
   const page = route.at === 'page' ? findPage(course, route.pageId) : undefined
 
@@ -81,7 +97,7 @@ export function App(): React.JSX.Element {
           <button type="button" className="collapse" onClick={() => setRailOpen(false)}>
             ☰ hide
           </button>
-          {route.at === 'home' ? (
+          {route.at === 'home' || route.at === 'new' ? (
             <>
               <div className="brand">Whetstone</div>
               {courses.map((entry) => (
@@ -90,7 +106,7 @@ export function App(): React.JSX.Element {
                 </button>
               ))}
               <div className="foot">
-                <button type="button" className="hi">
+                <button type="button" className="hi" onClick={() => setRoute({ at: 'new' })}>
                   + New course
                 </button>
                 <button type="button">Settings</button>
@@ -130,16 +146,35 @@ export function App(): React.JSX.Element {
       ) : (
         <button type="button" className="stub" onClick={() => setRailOpen(true)}>
           <b>☰</b>
-          <span>{route.at === 'home' ? 'Courses' : 'Contents'}</span>
+          <span>{route.at === 'course' || route.at === 'page' ? 'Contents' : 'Courses'}</span>
         </button>
       )}
 
       <main className="reader">
         {route.at === 'home' && (
-          <Home courses={courses} broken={broken} loaded={loaded} onOpen={openCourse} />
+          <Home
+            courses={courses}
+            broken={broken}
+            loaded={loaded}
+            onOpen={openCourse}
+            onNew={() => setRoute({ at: 'new' })}
+            onRemove={remove}
+          />
         )}
 
-        {failed.length > 0 && <Broken slug={route.at === 'home' ? '' : route.slug} errors={failed} />}
+        {route.at === 'new' && (
+          <NewCourse
+            onOpen={(slug) => {
+              refreshLibrary()
+              openCourse(slug)
+            }}
+            onLeave={goHome}
+          />
+        )}
+
+        {failed.length > 0 && (
+          <Broken slug={route.at === 'course' || route.at === 'page' ? route.slug : ''} errors={failed} />
+        )}
 
         {route.at === 'course' && course && (
           <Course
@@ -213,33 +248,40 @@ function Home({
   broken,
   loaded,
   onOpen,
+  onNew,
+  onRemove,
 }: {
   courses: CourseSummary[]
   broken: BrokenCourse[]
   loaded: boolean
   onOpen: (slug: string) => void
+  onNew: () => void
+  onRemove: (slug: string, title: string) => void
 }): React.JSX.Element {
   return (
     <>
       <div className="head">
         <h1 className="title">Courses</h1>
-        <button type="button" className="btn">
+        <button type="button" className="btn" onClick={onNew}>
           New course
         </button>
       </div>
 
       {courses.map((entry) => (
-        <button key={entry.slug} type="button" className="crow" onClick={() => onOpen(entry.slug)}>
-          <span>
+        <div key={entry.slug} className="crow">
+          <button type="button" className="cgo" onClick={() => onOpen(entry.slug)}>
             <span className="cname">{entry.title}</span>
             <span className="cmeta">
               {entry.subject} · {entry.moduleCount} {entry.moduleCount === 1 ? 'module' : 'modules'}
             </span>
-          </span>
+          </button>
           <span className="cnt">
             {entry.pagesDone} of {entry.pageCount} pages
           </span>
-        </button>
+          <button type="button" className="cbin" onClick={() => onRemove(entry.slug, entry.title)}>
+            Delete
+          </button>
+        </div>
       ))}
 
       {loaded && courses.length === 0 && (
@@ -249,7 +291,12 @@ function Home({
       )}
 
       {broken.map((entry) => (
-        <Broken key={entry.slug} slug={entry.slug} folder={entry.folder} errors={entry.errors} />
+        <div key={entry.slug}>
+          <Broken slug={entry.slug} folder={entry.folder} errors={entry.errors} />
+          <button type="button" className="cbin" onClick={() => onRemove(entry.slug, entry.slug)}>
+            Delete
+          </button>
+        </div>
       ))}
     </>
   )

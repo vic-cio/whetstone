@@ -1,0 +1,12 @@
+{
+  "harnesses": [
+    {
+      "id": "claude",
+      "label": "Claude Code",
+      "command": "claude",
+      "adapter": "claude",
+      "models": ["claude-opus-5", "claude-fable-5-1", "claude-sonnet-5", "claude-haiku-4-5"],
+      "restrictsTools": true
+    }
+  ]
+}

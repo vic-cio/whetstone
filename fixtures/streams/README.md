@@ -22,10 +22,36 @@ Two things in it were not in the plan and are worth reading before writing the a
 `rate_limit_event`. The adapter must ignore what it does not know rather than fail on it,
 and the test for "no raw tool name reaches the UI" has to cover the unknown ones too.
 
-**`--allowedTools` did not shorten the tool list.** The `system/init` event advertises 76
-tools, `Write` and `Bash` among them, despite the allow list naming two. So the allow list
-is a permission filter and not a tool filter, and section 3.14's first layer does not say
-what it claims. Re-record with an attempted write before relying on it.
+**The two allowance flags do different things.** The `system/init` event advertises 76
+tools despite `--allowedTools` naming two, so the allow list is a permission filter and not
+a tool filter. `--disallowedTools` is a tool filter: it named `Write`, `Edit` and `Bash`,
+and none of the three is advertised. But `NotebookEdit` is, and it writes a file, so a
+read-only role is only as read-only as its disallow list is complete. `tests/harness.test.ts`
+pins all three of those facts against this file.
+
+## `claude-refused-a-write.jsonl`
+
+The other half, recorded the same day with the same CLI. A Tutor-shaped run in a folder
+holding one lesson, told to write `note.txt` and to edit the lesson. `tests/refusal.test.ts`
+runs against it and `scripts/prove-refusal.mjs` produced it, with the argument list built by
+the adapter itself rather than typed out beside it.
+
+It wrote nothing. Four things in it are worth reading.
+
+**The disallow list did the work.** 62 tools were advertised, down from 76, and every name
+in `READ_ONLY` was absent. `--restricted` took `WebFetch` as well.
+
+**The run tried anyway.** It called `Write`, was refused, then called `ToolSearch` looking
+for `Edit`. So a tool that is not advertised can still be called, and something below the
+list has to catch it.
+
+**Something did, and it covers a subagent.** The refusal came back as a tool result:
+"No such tool available: Write. Write is disabled for this session, in subagents as well as
+here." That last clause matters, because `Task` is still advertised.
+
+**The refusal is invisible to the app.** `permission_denials` was empty and the result was a
+success. The refusal reached the run and never reached the result event, so an empty denial
+list is not evidence that nothing was refused. The content hash of PLAN 3.14 stays.
 
 Do not regenerate these by hand. Re-record with a real spawn, and say in the commit which
 CLI version produced it.

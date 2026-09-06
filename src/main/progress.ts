@@ -36,6 +36,14 @@ export interface AttemptRecord {
   outcome: 'pass' | 'fail' | 'voided'
 }
 
+/** One execution of a Harness. Every Run is recorded, spend included (PLAN 3.4). */
+export interface RunRecord {
+  kind: string
+  courseSlug?: string
+  harness: string
+  model: string
+}
+
 export interface Progress {
   ticks(courseSlug: string): Record<string, Tick>
   pagesDone(courseSlug: string): number
@@ -49,6 +57,13 @@ export interface Progress {
   earnTick(courseSlug: string, pageId: string, pageType: PageType): void
   recordAttempt(attempt: AttemptRecord): string
   attemptedTaskIds(courseSlug: string): Set<string>
+  /** Open a Run's row. It is written before the spawn, so a crash still leaves a trace. */
+  startRun(run: RunRecord): string
+  endRun(id: string, usd: number, status: 'ok' | 'failed' | 'cancelled'): void
+  /** What the last Run against this Course used, which is what a new one pre-fills from. */
+  lastRun(courseSlug: string): { harness: string; model: string } | undefined
+  /** Everything the database holds about one Course. Deleting a Course deletes this. */
+  forget(courseSlug: string): void
   close(): void
 }
 
@@ -79,6 +94,17 @@ export function openProgress(file: string): Progress {
       submittedAt TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS attempts_by_course ON attempts (courseSlug, taskId);
+    CREATE TABLE IF NOT EXISTS runs (
+      id         TEXT PRIMARY KEY,
+      kind       TEXT NOT NULL,
+      courseSlug TEXT,
+      harness    TEXT NOT NULL,
+      model      TEXT NOT NULL,
+      usd        REAL NOT NULL,
+      status     TEXT NOT NULL,
+      startedAt  TEXT NOT NULL,
+      endedAt    TEXT
+    );
   `)
 
   const selectTicks = db.prepare('SELECT pageId, ticked, byUser FROM page_ticks WHERE courseSlug = ?')
@@ -99,6 +125,16 @@ export function openProgress(file: string): Progress {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `)
   const selectAttempted = db.prepare('SELECT DISTINCT taskId FROM attempts WHERE courseSlug = ?')
+  const openRun = db.prepare(`
+    INSERT INTO runs (id, kind, courseSlug, harness, model, usd, status, startedAt)
+    VALUES (?, ?, ?, ?, ?, 0, 'running', ?)
+  `)
+  const closeRun = db.prepare('UPDATE runs SET usd = ?, status = ?, endedAt = ? WHERE id = ?')
+  const latestRun = db.prepare(
+    "SELECT harness, model FROM runs WHERE courseSlug = ? AND status = 'ok' ORDER BY startedAt DESC LIMIT 1",
+  )
+  const dropTicks = db.prepare('DELETE FROM page_ticks WHERE courseSlug = ?')
+  const dropAttempts = db.prepare('DELETE FROM attempts WHERE courseSlug = ?')
 
   return {
     ticks(courseSlug) {
@@ -135,6 +171,22 @@ export function openProgress(file: string): Progress {
     attemptedTaskIds(courseSlug) {
       const rows = selectAttempted.all(courseSlug) as { taskId: string }[]
       return new Set(rows.map((row) => row.taskId))
+    },
+    startRun(run) {
+      const id = randomUUID()
+      openRun.run(id, run.kind, run.courseSlug ?? null, run.harness, run.model, new Date().toISOString())
+      return id
+    },
+    endRun(id, usd, status) {
+      closeRun.run(usd, status, new Date().toISOString(), id)
+    },
+    lastRun(courseSlug) {
+      return latestRun.get(courseSlug) as { harness: string; model: string } | undefined
+    },
+    forget(courseSlug) {
+      // A Run is the spend ledger and outlives the Course it built, so it stays.
+      dropTicks.run(courseSlug)
+      dropAttempts.run(courseSlug)
     },
     close() {
       db.close()

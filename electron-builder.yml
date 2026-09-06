@@ -18,6 +18,10 @@ extraResources:
   # else: the host always injects the copy pinned inside the Course folder.
   - from: toolkit
     to: toolkit
+  # What the app hands a Harness: the registry, the role instruction files, and the plugin
+  # bundles. The user never sees any of it; it is implementation, not a feature.
+  - from: agent
+    to: agent
 mac:
   target:
     - target: dir

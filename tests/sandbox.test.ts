@@ -22,9 +22,12 @@ import { TOOLKIT_VERSION } from '../src/shared/miniapp'
 const ROOT = join(import.meta.dirname, '..')
 const ELECTRON = join(ROOT, 'node_modules', '.bin', 'electron')
 
-/** Click the library row for one course, by its title rather than by its place. */
+/**
+ * Click the library row for one course, by its title rather than by its place. The row is
+ * a container holding two destinations, so what is clicked is the one that opens it.
+ */
 const open = (title: string): string =>
-  `Array.from(document.querySelectorAll(".crow")).filter(function (b) { return b.textContent.indexOf(${JSON.stringify(title)}) >= 0 })[0].click()`
+  `Array.from(document.querySelectorAll(".crow")).filter(function (b) { return b.textContent.indexOf(${JSON.stringify(title)}) >= 0 })[0].querySelector(".cgo").click()`
 
 interface Message {
   kit?: string

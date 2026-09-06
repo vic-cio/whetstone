@@ -12,11 +12,17 @@ Harness, Toolkit and the rest all mean something specific here.
 ```
 src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts,
                miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
-               samples.ts (keeping the shipped Courses current in a library)
-src/main/      Electron main process. Node lives here and nowhere else
+               samples.ts (keeping the shipped Courses current in a library),
+               harness.ts (what a Harness is, and the Moment union), claude.ts (the CLI
+               adapter), staging.ts (the gate into the library), remove.ts (deleting)
+src/main/      Electron main process. Node lives here and nowhere else. harness.ts spawns,
+               build.ts runs a build, newCourse.ts holds one Brief
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
 toolkit/       the toolkit this build ships. See docs/toolkit.md
+agent/         what the app hands a Harness: harnesses.json, roles/ (the instruction file
+               per role), bundles/authoring/ (the Constructor's plugin bundle)
+scripts/       things run by hand. prove-refusal.mjs spawns a real harness and spends money
 fixtures/courses/        hand-written Courses the tests run against, and the sample the
                          app seeds a fresh library with
 fixtures/courses-sealed/ the hostile Course test 7 runs. Never shipped
@@ -67,6 +73,27 @@ tests/         vitest, run against the fixtures
   that way. `fileInCourse` calls `realpathSync` first.
 - **A Mini-app reports; it never decides.** `grade.ts` compares what the frame sent with what
   the Constructor wrote. An `assertions-pass` Task passes only on the assertions it declares.
+- **A role is shaped by what it denies, not by what it allows.** Measured, not assumed:
+  `--allowedTools` changed nothing about the tool list in a recorded run, and
+  `--disallowedTools` removed exactly what it named. So `READ_ONLY` in `src/shared/harness.ts`
+  has to name every writer and every outward-facing tool, and a writer it misses survives.
+  `fixtures/streams/README.md` and `tests/refusal.test.ts` carry the evidence. `PLAN.md` 3.14.
+- **An empty `permission_denials` proves nothing.** A read-only run told to write called
+  `Write`, was refused, and the result event still said `success` with an empty denial list.
+  The refusal reached the run and never reached the app. Do not write a check that reads that
+  field as evidence; the content hash of 3.14 is the layer that reports one to the app.
+- **The harness is invisible.** Only a `Moment` crosses the bridge: the app's own words, with
+  no tool name, no ANSI, no path and no exit code. An adapter that cannot phrase a tool call
+  emits nothing rather than its name. The technical log holds Moments, never the raw stream,
+  because a second channel carrying the stream would be a hole in the first one.
+- **Asking to write is not writing.** A tool call and its result are two events. A file is
+  reported only once its result says the tool worked, which is why reading a stream is a
+  reader with memory rather than a pure function of a line. The first version got this wrong
+  and would have told the reader that two refused files had appeared.
+- **A Course is built in staging, and the parser is the only gate.** A Run writes outside the
+  library, and a folder the parser accepts is renamed into place in one step. A folder it
+  refuses goes back to the same session at most three times. The app writes `toolkit/` into
+  staging itself, because an agent writing its own copy would break the pin. `docs/adr/0020`.
 - **Lesson prose becomes data, never markup.** `src/shared/markdown.ts` returns a tree and
   the renderer builds elements from it. Nothing in a Course may become HTML in the host
   window, which is the window holding the preload bridge.
@@ -98,7 +125,14 @@ npm test                  # vitest
 npm run typecheck         # tsc --noEmit, strict
 npm run dev               # electron-vite dev
 WHETSTONE_COURSES=<dir>   # read Courses from somewhere other than userData
+WHETSTONE_STAGING=<dir>   # build a Course somewhere other than userData
 ```
+
+`node scripts/prove-refusal.mjs` spawns a real harness and **spends real money**, about five
+cents on haiku. It asks a read-only role to write a file and records what came back into
+`fixtures/streams/`, which is what `tests/refusal.test.ts` then runs against, free and
+offline. Re-run it when the tool flags change, and say in the commit which CLI version
+produced it. Nothing in `npm test` spawns anything.
 
 To check the real window without a person at the keyboard, set `WHETSTONE_CAPTURE` to a
 png path and optionally `WHETSTONE_THEME=light|dark`. The app renders once, writes the png
@@ -110,6 +144,11 @@ build whose screenshot plainly showed black-on-black text, and a check that miss
 in front of it is worse than no check. A real one needs to sample painted pixels rather
 than trust `getComputedStyle`, and system colours such as `buttontext` are where it went
 wrong. Until that exists, the screenshot is the check.
+
+Two rules that both look reasonable can leave a button invisible. `.acts button` sets a
+transparent ground and beats `.btn` on specificity, so the filled amber button came out as an
+empty box with white text on white. It looked right in the screenshot only because it was
+disabled at the time. Capture the enabled state too.
 
 A `<button>` does not inherit `color`. Without an explicit colour it falls back to the
 user-agent default, which is legible in one theme and invisible in the other. `theme.css`
@@ -136,8 +175,16 @@ A capture also writes `<png>.json`, holding whatever a step left on `window.__pr
 how the sandbox check reads what a sealed frame managed to reach: a message posted out of a
 frame is delivered to the page and nowhere else, so the listener has to live in the page.
 
-Set `WHETSTONE_DB` on any capture run. Without it the run writes ticks into the real
-Progress DB.
+Set `WHETSTONE_DB` and `WHETSTONE_STAGING` on any capture run. Without them the run writes
+ticks into the real Progress DB and leaves a staging folder in the real data directory.
+
+`WHETSTONE_CAPTURE_LIMIT` is the hard exit, 30 seconds by default. A capture that waits on a
+spawned harness needs more, and it needs the waiting to happen after the last step: the pause
+runs after every step, so a trailing `"0"` step is how a capture waits.
+
+`document.hasFocus()` is false in a capture, and Chromium does not match `:focus` in an
+unfocused document. A `:focus` rule therefore cannot be checked this way. Simulate the state
+with an injected stylesheet instead, and measure the box rather than trusting the picture.
 
 Class names are global in `theme.css`. `.end` on a lesson footer once also matched
 `class="prow end"` on a course row and drew a stray rule there; check a new utility name

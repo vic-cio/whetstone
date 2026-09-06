@@ -105,22 +105,41 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
   padding: 7px 13px; background: var(--amber); color: var(--on-amber); border: 0; cursor: pointer;
 }
 
+/*
+ * A course row is a container rather than one button, because it holds two destinations:
+ * the course, and the Trash. Delete is out of the way until the pointer is on the row, and
+ * it takes the arrow's place rather than adding a column, so the row does not move.
+ */
 .crow {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: baseline;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 74px; gap: 16px; align-items: baseline;
   padding: 13px 10px 13px 0; border-bottom: 1px solid var(--line); width: 100%;
-  background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; cursor: pointer;
+  color: var(--ink);
+}
+.cgo {
+  grid-column: 1; background: none; border: 0; padding: 0; text-align: left; cursor: pointer;
   /* A button does not inherit colour. Without this it falls back to the UA default,
      which is near-black and invisible on a dark ground. */
   color: var(--ink);
 }
-/* A row is a button, so it says so before the pointer arrives: the arrow is always
-   there, and the whole row lights on hover rather than the title alone. */
+/* A row is a destination, so it says so before the pointer arrives. */
 .crow::after {
   content: "\2192"; color: var(--muted); font-size: 15px; align-self: center;
-  grid-column: 3; padding-left: 2px;
+  grid-column: 3; grid-row: 1; justify-self: end;
 }
+/* The two share a cell, so whatever reveals Delete has to take the arrow away, or the
+   word sits on top of it. Focus reveals it for a keyboard as well as a pointer. */
+.crow:hover::after, .crow:has(.cbin:focus)::after { content: ""; }
+.cbin {
+  grid-column: 3; grid-row: 1; justify-self: end; align-self: center;
+  /* Faded rather than hidden. `visibility: hidden` takes an element out of the tab order,
+     so a delete control written that way cannot be reached by a keyboard at all. */
+  background: none; border: 0; padding: 2px 0; cursor: pointer; opacity: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
+}
+.crow:hover .cbin, .cbin:focus { opacity: 1; }
+.cbin:hover, .cbin:focus { color: var(--fail); }
 .crow:hover { background: var(--said-bg); }
-.crow:hover .cname, .crow:hover::after { color: var(--amber); }
+.crow:hover .cname { color: var(--amber); }
 .cname {
   font-family: Archivo, "Inter Tight", sans-serif;
   font-weight: 700; font-size: 17px; letter-spacing: -0.02em; text-transform: uppercase; display: block;
@@ -391,3 +410,86 @@ pre.code {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 10.5px; letter-spacing: 0.06em; color: var(--muted); margin: 6px 0 0;
 }
+
+/* ---------------------------------------------------------------- new course
+ *
+ * A conversation, not a form. The two sides are told apart by indent and colour rather
+ * than by a bubble: this is a page that holds a conversation, not a chat app.
+ */
+.talk { margin: 18px 0 4px; display: grid; gap: 14px; }
+.talk p { margin: 0; max-width: 62ch; }
+.talk .mine {
+  padding-left: 12px; border-left: 2px solid var(--frame); color: var(--ink);
+}
+.talk .theirs { color: var(--ink); }
+.talk .waiting, .feed .waiting { color: var(--muted); font-style: italic; }
+
+.trouble {
+  border-left: 3px solid var(--fail); padding: 8px 0 8px 12px;
+  max-width: 62ch; color: var(--ink);
+}
+
+/* The tray. What the constructor was given, named, so it is never a mystery. */
+.tray { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.tray li {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
+  border: 1px solid var(--line); padding: 3px 8px;
+}
+
+.composer { margin-top: 16px; border-top: 1px solid var(--frame); padding-top: 12px; }
+.composer textarea {
+  width: 100%; padding: 9px 10px; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); resize: vertical;
+}
+.composer textarea:focus { outline: 1px solid var(--amber); outline-offset: -1px; }
+
+/* A row of things to press. The rightmost is the one the row is for. */
+.acts { display: flex; gap: 10px; align-items: center; margin-top: 9px; }
+.acts button { background: none; border: 1px solid var(--line); padding: 6px 12px; cursor: pointer; }
+.acts button:hover:enabled { border-color: var(--frame); }
+.acts button:disabled { color: var(--muted); cursor: default; }
+/* `.acts button` sets a transparent ground, and it beats `.btn` on specificity, so the
+   filled button has to be filled again here. Without this the label is on-amber white on
+   white and the button reads as an empty box. */
+.acts .btn { background: var(--amber); color: var(--on-amber); border-color: var(--amber); }
+.acts .btn:disabled { background: var(--line); border-color: var(--line); color: var(--muted); }
+
+/* What this will run on, and what it may spend. Shown where the spending is decided. */
+.using {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
+  margin: 0 0 8px; display: flex; gap: 8px; align-items: center;
+}
+.using select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 2px 4px; }
+.link { background: none; border: 0; padding: 0; color: var(--amber); cursor: pointer; text-decoration: underline; }
+
+/* The build feed: what the run is doing, in the app's own words. Never a terminal. */
+.feed { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 6px; }
+.feed li {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted);
+  padding-left: 14px; position: relative;
+}
+.feed li::before { content: "\00b7"; position: absolute; left: 3px; color: var(--amber); }
+.spend {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
+  margin-top: 16px; padding-top: 9px; border-top: 1px solid var(--line);
+}
+
+/* Closed, and the app never opens it. Nothing in a lesson has one of these. */
+.log { margin-top: 22px; }
+.log summary {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
+  cursor: pointer;
+}
+.log pre {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
+  background: var(--said-bg); padding: 10px; overflow-x: auto; max-height: 320px;
+}
+
+/* Amber is the one thing on a page worth pressing. Leaving, stopping and showing a folder
+   are none of them, so they are outlined rather than filled. */
+.quiet {
+  background: none; border: 1px solid var(--line); padding: 6px 12px; cursor: pointer;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.quiet:hover { border-color: var(--frame); color: var(--ink); }
