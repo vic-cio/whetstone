@@ -782,10 +782,10 @@ Two things did not survive contact, and both were found by running rather than b
 
 The skills a role is given already reach any harness, because they are files the prompt names rather than a plugin (section 3.9, decision record 0021). What is left for this phase is each CLI's own vocabulary: its tool names, which `denied()` in that CLI's adapter has to cover exhaustively, and its headless output, which its reader has to normalise into a `Moment`.
 
-**Phase 7. Finish. Mostly done: the icon and a signed build are left.**
+**Phase 7. Finish. Done, apart from signing.**
 Dark mode was built in phase 0 and has been captured in both themes on every screen since. Keyboard navigation in the reader is left and right along the Course's Pages and escape back to the contents, with nothing bound to an action that spends money or records an Attempt, because a key pressed by accident should do neither. The spend view reads the `runs` table, by kind, in the app's own words: it is the only number in the app that is about the app rather than about the reader, which is why it is allowed to be a number. Export writes a zip of the Course folder, which is the whole of what sharing a Course is.
 
-An app icon and a signed build are what remain. Signing needs an Apple developer identity, which is Victor's to provide.
+The icon is a whetstone with an edge being sharpened on it, in the app's own two colours, drawn in HTML and captured through the same mechanism that takes every other screenshot in this repository. A signed build is what remains, and signing needs an Apple developer identity, which is Victor's to provide.
 
 ---
 
@@ -804,7 +804,21 @@ Phase 3 shipped a Constructor that had never built a Course. Four live attempts 
 
 **And two things about the run rather than the app.** It read seven hundred lines of `toolkit/kit.js` because the skill said it was there "if you need to read one"; the skill is now the reference and says so. And told to write a whole Course at once it read for thirteen minutes without writing anything, so the instruction now names an order and asks for `course.json` first, which buys an early cheap write and leaves the repair loop something to work on when a run dies halfway.
 
-What is still unknown is the thing only a finished run can say: whether a Constructor's Course passes the gate. Driving a fifteen-minute flow through synthetic clicks is the fragile part now, not the app, so the next attempt should be a person pressing the button.
+**The seventh attempt built one.** `fourier-decomposition`, on `pi` over OpenRouter with Sonnet, for 67 cents and about eight minutes. It passed the parser first time, moved into the library, and opens in the reader. What it wrote:
+
+- Two Objectives, a three-Rung ladder, one Module with two Lessons and a Test, which is what the brief asked for.
+- Nine Tasks: three at each Rung, and eight of the nine `deterministic`. Rule 17 asks for fewer than one in five needing a model, and it wrote one in nine.
+- Every deterministic kind: `multiple-choice`, `accepted-answers`, `numeric`, `ordering`, `app-result` and `assertions-pass`.
+- Three Mini-apps, a diagram carrying both colour schemes, `resources.json`, and an `AGENTS.md` that names its load-bearing Objective and the misconceptions at it.
+- `builtBy` stamped by the app, `toolkitVersion` correct, and none of the harness's own litter inside the folder.
+
+Three more bugs were found between the fourth attempt and this one, and every one of them was in the app rather than in the Constructor.
+
+- A run settled on `close`, which waits for the stdio streams as well as the process. `pi` leaves a helper holding the pipe, so a Brief that took eighteen seconds by hand never returned inside the app at all.
+- `.brief/` was made only when something was attached, so a run that was told its material lived there reported "path not found" and spent a turn deciding there was none.
+- A provider error was a silent success. The OpenRouter account was out of credit, every model answered 403, `pi` reported the turn as an error and exited zero, and the app recorded a run that had said nothing and cost nothing as `ok`.
+
+**The gap the first real Course exposed is maths.** It is a course about the Fourier transform, so its prose is full of `$\hat{x}(f) = \int x(t) e^{-i2\pi f t} dt$`, and the reader shows that as characters. Phase 1 deferred KaTeX with the note that it would arrive later, and the first Course anybody would actually build is the argument for later being now.
 
 ---
 

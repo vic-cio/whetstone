@@ -23,6 +23,10 @@ extraResources:
   - from: agent
     to: agent
 mac:
+  # The mark is a whetstone with an edge on it, in the app's own two colours. It is drawn in
+  # `build/icon.png` and turned into `build/icon.icns`; electron-builder picks up the icns
+  # from `buildResources` by name.
+  icon: build/icon.icns
   target:
     - target: dir
       arch: [arm64]
