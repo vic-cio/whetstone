@@ -3,7 +3,7 @@
 **Written:** 2026-09-07
 **Written by:** Claude Opus 5, from a bug sweep and three interview rounds with Victor.
 **Written for:** the next session, starting cold.
-**Status:** part A is ready to write. Part B is settled apart from one decision, marked in section 9.
+**Status:** settled. Nothing waits on Victor. Part A is ready to write and part B is designed.
 
 ---
 
@@ -155,17 +155,17 @@ Write these before the code. They are the parts that fail quietly.
 6. A removed Module leaves the Course parsing, and every Attempt under it voided.
 7. Nothing in the app displays a score, a percentage or an average. This is the rule most likely to be broken by accident while building the reveal screen.
 
-## 9. The one open decision
+## 9. Why the results are held, and what was rejected
 
-**When the result of a checked question appears.**
+**Settled.** You press Check on each question, the run happens then in the background, the result is held, and the last check reveals everything at once. This is section 3.1 and it is not open.
 
-Written here as **B**: you press Check on each question, the run happens then in the background, the result is held, and the last check reveals everything at once.
+It is written down here because the rejected option is the one the app does today, and it is the one somebody will re-propose the first time the reveal screen feels awkward to build.
 
-The alternative is **C**: the result shows the moment you check. That is what the app does today. C is free to build and it puts the correction where it does the most good, at the moment you were still thinking about the question. It loses the thing a Test is for, because every answer after the first is informed by how the last went, and "Try again" turns a multiple-choice question into a guessing loop.
+**The rejected option: show the result the moment you check.** It is free, because it is the current behaviour. It puts the correction at the moment of most attention, while you are still thinking about the question. It lets you catch a misunderstanding before it spoils the next question.
 
-The argument for B is that the app already has a place for immediate feedback and it is the Lesson. A Try answers in place, records nothing, and offers another go. ADR 0013 split those two on purpose. B leaves the Test to be the other thing; C collapses them back together and makes the Try redundant.
+**Why it lost.** Every answer after the first would be informed by how the last one went, so the sitting stops measuring what you can do unaided, which is the one thing a Test does that a Lesson does not. With another go offered, a multiple-choice question becomes a guessing loop. And a cross on question two changes how you answer question three.
 
-**If Victor chooses C**, section 3.1 goes, `held_answers` goes, verification items 1 and 2 go, and part A finding 1 becomes the whole of the Test work. Nothing else in part B changes.
+**The argument that decided it.** The app already has a place for immediate feedback and it is the Lesson. A Try answers in place, records nothing, and offers another go. `docs/adr/0013` split those two on purpose. Holding the results does not lose immediate feedback. It leaves it where the design already put it, and lets the Test be the other thing. Showing at once would collapse them back together and make a Try redundant.
 
 ## 10. Order of work
 
@@ -181,7 +181,7 @@ The argument for B is that the app already has a place for immediate feedback an
 | Decision | Who |
 |---|---|
 | No mark, no number. Ticks and crosses at the reveal | Victor |
-| Results held until the last question is checked | Victor, pending section 9 |
+| Results held until the last question is checked | Victor |
 | Each question checked by its own amnesiac run | Victor |
 | A dependent question is marked on the reader's own earlier answer | Victor |
 | Answers saved as you go, retake button at the bottom | Victor |
