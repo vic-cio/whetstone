@@ -110,6 +110,13 @@ const api = {
     ): Promise<Revision> => ipcRenderer.invoke('course:revise', slug, harnessId, model, work),
   },
 
+  settings: {
+    roles: (): Promise<Record<'constructor' | 'tutor' | 'grader', { harnessId: string; model: string }>> =>
+      ipcRenderer.invoke('settings:roles'),
+    setRole: (role: string, harnessId: string, model: string): Promise<void> =>
+      ipcRenderer.invoke('settings:setRole', role, harnessId, model),
+  },
+
   defects: {
     file: (slug: string, taskId: string, ground: Ground, note: string): Promise<string> =>
       ipcRenderer.invoke('defects:file', slug, taskId, ground, note),

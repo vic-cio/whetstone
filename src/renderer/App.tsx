@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Course } from './Course'
 import { NewCourse } from './NewCourse'
 import { Review } from './Review'
+import { Settings } from './Settings'
 import { Tutor } from './Tutor'
 import { Lesson } from './Lesson'
 import { Test } from './Test'
@@ -23,6 +24,7 @@ type Route =
   | { at: 'new' }
   | { at: 'course'; slug: string }
   | { at: 'review'; slug: string }
+  | { at: 'settings' }
   | { at: 'page'; slug: string; pageId: string }
 
 export function App(): React.JSX.Element {
@@ -43,15 +45,22 @@ export function App(): React.JSX.Element {
    * (PLAN 3.12). Reading the registry starts no process and costs nothing.
    */
   const [agent, setAgent] = useState({ harnessId: '', model: '' })
+  const [grader, setGrader] = useState({ harnessId: '', model: '' })
   useEffect(() => {
-    void window.whetstone.brief.harnesses().then((found) => {
-      const first = found.harnesses.find((entry) => entry.installed) ?? found.harnesses[0]
-      if (!first) return
-      // A mid-tier model, which is what a turn of explaining is worth (PLAN 3.12).
-      const model = first.models.find((name) => name.includes('sonnet')) ?? first.models[0] ?? ''
-      setAgent({ harnessId: first.id, model })
-    })
-  }, [])
+    void Promise.all([window.whetstone.brief.harnesses(), window.whetstone.settings.roles()]).then(
+      ([found, roles]) => {
+        const first = found.harnesses.find((entry) => entry.installed) ?? found.harnesses[0]
+        // A row that was never set falls back to the first installed harness and a mid-tier
+        // model, which is what a turn of explaining is worth (PLAN 3.12).
+        const fallback = {
+          harnessId: first?.id ?? '',
+          model: first?.models.find((name) => name.includes('sonnet')) ?? first?.models[0] ?? '',
+        }
+        setAgent(roles.tutor.harnessId === '' ? fallback : roles.tutor)
+        setGrader(roles.grader.harnessId === '' ? fallback : roles.grader)
+      },
+    )
+  }, [route.at])
 
   const refreshLibrary = useCallback(() => {
     void window.whetstone.courses.list().then((result) => {
@@ -119,7 +128,7 @@ export function App(): React.JSX.Element {
           <button type="button" className="collapse" onClick={() => setRailOpen(false)}>
             ☰ hide
           </button>
-          {route.at === 'home' || route.at === 'new' ? (
+          {route.at === 'home' || route.at === 'new' || route.at === 'settings' ? (
             <>
               <div className="brand">Whetstone</div>
               {courses.map((entry) => (
@@ -131,7 +140,9 @@ export function App(): React.JSX.Element {
                 <button type="button" className="hi" onClick={() => setRoute({ at: 'new' })}>
                   + New course
                 </button>
-                <button type="button">Settings</button>
+                <button type="button" onClick={() => setRoute({ at: 'settings' })}>
+                  Settings
+                </button>
               </div>
             </>
           ) : (
@@ -168,7 +179,7 @@ export function App(): React.JSX.Element {
       ) : (
         <button type="button" className="stub" onClick={() => setRailOpen(true)}>
           <b>☰</b>
-          <span>{route.at === 'home' || route.at === 'new' ? 'Courses' : 'Contents'}</span>
+          <span>{route.at === 'course' || route.at === 'page' || route.at === 'review' ? 'Contents' : 'Courses'}</span>
         </button>
       )}
 
@@ -183,6 +194,8 @@ export function App(): React.JSX.Element {
             onRemove={remove}
           />
         )}
+
+        {route.at === 'settings' && <Settings onDone={goHome} />}
 
         {route.at === 'new' && (
           <NewCourse
@@ -265,7 +278,7 @@ export function App(): React.JSX.Element {
                 if (result.ok) setCourse(result.course)
               })
             }}
-            grading={agent}
+            grading={grader}
           />
         )}
 

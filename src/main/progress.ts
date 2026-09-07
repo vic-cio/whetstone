@@ -98,6 +98,9 @@ export interface Progress {
   /** File a defect report. It records a claim; it never changes an outcome. */
   fileDefect(report: { courseSlug: string; taskId: string; ground: Ground; note: string }): string
   defectsFor(courseSlug: string): { taskId: string; ground: Ground; status: string }[]
+  /** Which harness and model each role uses. Never a secret: those live in the Keychain. */
+  setting(key: string): string | undefined
+  setSetting(key: string, value: string): void
   /** Everything the database holds about one Course. Deleting a Course deletes this. */
   forget(courseSlug: string): void
   close(): void
@@ -148,6 +151,10 @@ export function openProgress(file: string): Progress {
       note       TEXT NOT NULL,
       status     TEXT NOT NULL,
       filedAt    TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS runs (
       id         TEXT PRIMARY KEY,
@@ -210,6 +217,10 @@ export function openProgress(file: string): Progress {
     VALUES (?, ?, ?, ?, ?, 'open', ?)
   `)
   const selectDefects = db.prepare('SELECT taskId, ground, status FROM defect_reports WHERE courseSlug = ?')
+  const readSetting = db.prepare('SELECT value FROM settings WHERE key = ?')
+  const writeSetting = db.prepare(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+  )
 
   return {
     ticks(courseSlug) {
@@ -293,6 +304,12 @@ export function openProgress(file: string): Progress {
     },
     defectsFor(courseSlug) {
       return selectDefects.all(courseSlug) as { taskId: string; ground: Ground; status: string }[]
+    },
+    setting(key) {
+      return (readSetting.get(key) as { value: string } | undefined)?.value
+    },
+    setSetting(key, value) {
+      writeSetting.run(key, value)
     },
     forget(courseSlug) {
       // A Run is the spend ledger and outlives the Course it built, so it stays.

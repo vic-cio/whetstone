@@ -328,6 +328,21 @@ app.whenReady().then(() => {
   // ---------------------------------------------------------------- building a course
 
   ipcMain.handle('harnesses:list', () => harnesses())
+
+  // Which harness and model each role uses. One row per role (PLAN 3.12), remembered, and
+  // the model list belongs to the harness so switching one resets the other.
+  ipcMain.handle('settings:roles', () => {
+    const store = progress()
+    const read = (role: string): { harnessId: string; model: string } => ({
+      harnessId: store.setting(`${role}.harness`) ?? '',
+      model: store.setting(`${role}.model`) ?? '',
+    })
+    return { constructor: read('constructor'), tutor: read('tutor'), grader: read('grader') }
+  })
+  ipcMain.handle('settings:setRole', (_event, role: string, harnessId: string, model: string) => {
+    progress().setSetting(`${role}.harness`, harnessId)
+    progress().setSetting(`${role}.model`, model)
+  })
   ipcMain.handle('brief:start', () => startBrief())
   ipcMain.handle('brief:tray', () => briefTray())
   ipcMain.handle('brief:discard', () => discardBrief())

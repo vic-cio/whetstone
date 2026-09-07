@@ -760,7 +760,7 @@ Three things settled during the build.
 
 **A bug found on the way, and it was not in this phase.** A harness spawned by the app got the app's environment, which on a Mac launched from Finder is almost nothing. `~/.zshrc` is read by an interactive shell and by nothing else, so a harness configured to take its key from `$OPENROUTER_API_KEY` found nothing, reported itself unauthenticated, and the app had no way to know why. This is the same class of problem as the PATH widening that was already there, and the PATH widening exists precisely because of it, so the environment was the half that was missed. The app now asks the login shell once for what it exports and merges it under anything Electron set. Found by measuring rather than by reasoning: a credential check run from a non-interactive shell disagreed with the same check in Victor's own terminal.
 
-**Phase 6. More harnesses. In progress: pi done, Codex and Settings to come.**
+**Phase 6. More harnesses. Done.**
 Verify each CLI's headless output format, tool restriction flags, structured-output support, and cost reporting by running it at this point, not before. Where a CLI cannot restrict tools, the content hash from 3.14 is the only guard, and that must be stated in its registry entry.
 
 **pi 0.84.3 is in, and it moved three things out of the adapter and into the registry.** A second harness was always going to say which of the assumptions in this plan were about harnesses and which were about `claude`, and the answer was three of them.
@@ -769,7 +769,16 @@ Verify each CLI's headless output format, tool restriction flags, structured-out
 - **A spend cap is not a given.** pi has no `--max-budget-usd`, so `capsSpend: false` in its entry and the app stops the run on the reported cost. Section 3.5 said the cap was the CLI's to keep, and that was a fact about one CLI.
 - **Structured output is not a given either.** pi has no `--json-schema`, so `validatesOutput: false`, and the Grader is told to write `verdict.json` for the app to check. That fallback was written in phase 4 against no second harness, and this is the first time it has had one.
 
-One thing that did not survive contact. The test that proves no raw tool name reaches the interface cannot be run over what a pi model says: pi's tools are called `read`, `write`, `edit` and `bash`, which are also ordinary English, and the recorded run's own answer contains the word "edit". So for pi the claim is about the lines the app writes, a status line and a file notice, rather than about the ones it relays.
+**Codex is the third, and the third mechanism.** `codex exec -s read-only` is an operating system sandbox around everything the run does, rather than an allowlist or a denylist, and it is stronger than either because it does not depend on the tools being named correctly. It has no flag for a system prompt at all, so the role file is read by the caller and put at the top of the prompt. It validates structured output, with `--output-schema`, which takes a path. And `--ignore-user-config` is what closes the leak of section 3.13 there, in place of `--setting-sources`.
+
+So three harnesses, three ways to restrict a role, and two of the three keep no spend cap. None of that could have been read off a page.
+
+Settings shows a row per role, with the model list belonging to the harness beside it, and a harness that is not installed listed and greyed rather than hidden.
+
+Two things did not survive contact, and both were found by running rather than by reading.
+
+- The test that proves no raw tool name reaches the interface cannot be run over what a pi model says. pi's tools are called `read`, `write`, `edit` and `bash`, which are also ordinary English, and the recorded run's own answer contains the word "edit". So for pi the claim is about the lines the app writes, a status line and a file notice, rather than the ones it relays.
+- **A harness writes into its own working directory.** pi keeps sessions in `.pi/` beside whatever it is working on, which for a build is the Course being written and for a Tutor is the Course itself. The first would ship inside a Course and the second would trip the guard in 3.14. Every Agent profile now carries a `stateDir` of the app's own, and a harness that can be told where to put its state is told. A second harness was the only thing that could have surfaced that, because the first one does not do it.
 
 The skills a role is given already reach any harness, because they are files the prompt names rather than a plugin (section 3.9, decision record 0021). What is left for this phase is each CLI's own vocabulary: its tool names, which `denied()` in that CLI's adapter has to cover exhaustively, and its headless output, which its reader has to normalise into a `Moment`.
 
