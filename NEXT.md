@@ -39,7 +39,7 @@ Read `PLAN.md` for the design and `CONTEXT.md` for the vocabulary. Use those wor
 | ~~10~~ | ~~An outside drag reorders an ordering list~~ **done** | `src/renderer/Answer.tsx` |
 | ~~11~~ | ~~The Grader shares one state folder across attempts~~ **done** | `src/main/workspace.ts`, `src/main/grader.ts` |
 
-A twelfth was found and dismissed. The spend cap never fires for `pi`, because `pi` reports its cost once, at `agent_settled`, after the run is over. Worse, when the cap does trip the app kills a process that has already exited and reports a run that finished as failed, discarding work already paid for. **Victor is handling limits at the provider portals, so this is not being fixed.** If it is ever picked up, the fix is a per-turn cost moment from `pi` and a cap that kills on a running total. The false sentence at `src/main/harness.ts:273` is the part worth removing even now.
+A twelfth was found and dismissed. The spend cap never fires for `pi`, because `pi` reports its cost once, at `agent_settled`, after the run is over. Worse, when the cap does trip the app kills a process that has already exited and reports a run that finished as failed, discarding work already paid for. **Victor is handling limits at the provider portals, so this is not being fixed.** If it is ever picked up, the fix is a per-turn cost moment from `pi` and a cap that kills on a running total. **The false sentence at `src/main/harness.ts` is now removed.** A run that goes over the cap is still killed, because a harness that learns to report cost per turn would make that work with no other change, but it is no longer reported as failed. It had finished, and calling it failed threw away work already paid for.
 
 ## 2. The ones that need explaining
 

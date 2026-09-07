@@ -198,9 +198,17 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
   /**
    * Stop a run that is over its cap, when the CLI will not stop itself.
    *
-   * `claude` keeps the cap with `--max-budget-usd` and this never fires. `pi` has no such
-   * flag, so the app is the only thing standing between a loop and the user's credit. A cap
-   * nobody keeps is not a cap.
+   * `claude` keeps the cap with `--max-budget-usd` and this never fires.
+   *
+   * For `pi` it fires and does nothing useful, because `pi` reports its cost once, at
+   * `agent_settled`, which is after the run is over. So this kills a process that has
+   * already exited. It is kept because a harness that learns to report cost per turn would
+   * make it work with no other change, and killing an exited process costs nothing.
+   *
+   * What it must not do is call the run failed. It used to, and that was a lie twice over:
+   * the run had finished, and calling it failed threw away work the user had already paid
+   * for. A real cap needs a per-turn cost moment and a running total. Until then, limits
+   * are set at the provider portals and this reports what actually happened.
    */
   const watchSpend = (moment: Moment): void => {
     if (request.harness.capsSpend || overspent) return
@@ -267,12 +275,6 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
       child.stderr.destroy()
       if (cancelled) {
         finish(false, 'The run was stopped.')
-        return
-      }
-      if (overspent) {
-        const message = 'The run reached its spend cap before it finished.'
-        onMoment({ at: 'failed', message })
-        finish(false, message)
         return
       }
       if (failure !== undefined) {
