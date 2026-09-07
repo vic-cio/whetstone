@@ -16,7 +16,58 @@ environment: a personal instruction file, a memory, a project convention. If som
 you how to write, it is not talking about this. The Course speaks in its own voice, which is
 the voice below.
 
-## The twenty rules
+## How big this is
+
+Read the brief for how long the reader means to spend, and build to that. This is the thing
+most likely to go wrong, and it goes wrong in one direction: a course that tours the subject
+in an afternoon when the person asked for months.
+
+- A Lesson is **600 to 1200 words**. Under 300 is a slide, not a lesson, and a reader gets
+  through it in forty seconds.
+- An hour of study is roughly **two Lessons and a Test**.
+- So a course somebody will work through **over months** is **30 to 60 Pages**, not fifteen,
+  and its Tests hold **six to twelve Tasks** each rather than four.
+- A **small** course is the exception and is marked `small` in the manifest. Build one only
+  when the brief asked for one.
+
+Count before you finish. Add the words you wrote and divide by the Pages. If a Lesson
+averages under 400 words, you have written an outline and called it a course.
+
+## How to teach, rather than tour
+
+Covering each idea once, briefly, with one question after it, is what this comes out as when
+nobody says otherwise. It is a table of contents with prose in it.
+
+1. **Layer.** Every Objective is met at least three times: introduced, used for something
+   harder, then used again where it is no longer the point. A concept met once has been
+   mentioned, not taught.
+2. **Teach what you are about to rely on.** If the brief says the reader knows one language
+   and not another, the second language gets Lessons of its own, before the first Task that
+   needs it. Not a paragraph, and not a callout. Somebody who has never written a function
+   in this language cannot be asked to write one two pages later.
+3. **Work an example all the way through.** Show the thing being built, with the real values
+   and the intermediate steps, not the finished answer. A worked example is usually the
+   longest part of a good Lesson.
+4. **Vary the shape.** A Lesson may carry three Tries or none. Exactly one Try in every
+   Lesson is a template, and it reads like one.
+5. **Name what goes wrong.** The mistake a reader actually makes at this point, and what it
+   looks like. This is what a person who knows the subject can write and a search cannot.
+
+## The reader's example is the destination, not the syllabus
+
+Somebody who says "I want to end up making a house track" has told you where the course
+finishes. They have not asked for every Lesson to be about that track. Teach the subject, and
+use their goal for the last module and for the choice of examples along the way.
+
+## Read before you write
+
+You have the web. A course about a real tool, library or language is built on what its own
+documentation and tutorial say, not on what you remember about it. Read those first, follow
+the tutorial's own path far enough to know what the reader will hit, and cite what you read
+in `resources.json`. An API you half-remember produces Lessons that do not run, and the
+reader finds out before you do.
+
+## The twenty-one rules
 
 1. **Make it verifiable.** A Task a machine can check beats one a model must read, at every
    Depth. Reach for `check: model` or `check: rubric` only when the answer genuinely has
@@ -67,7 +118,12 @@ the voice below.
 19. Write a Project only when the brief asked for one, and never in a Course marked
    `small`. A Project is done outside the app and comes back as a folder and some links, so
    write the criteria with the brief: they are what makes the work finishable.
-20. A Test is a sitting. Give it `minutes`, which is indicative and never counted down, and
+20. Where the subject has something the reader can run in a browser, build them one to run
+   it in. A Mini-app can carry a real engine in the Course's `lib/`, and letting somebody
+   change a line and hear or see the result is the whole difference between this and a page
+   of tutorial. A course about a tool with no playable version of that tool in it has
+   given the reader nothing they could not have read on a website.
+21. A Test is a sitting. Give it `minutes`, which is indicative and never counted down, and
    order its `tasks` the way the reader should meet them. A Task that carries `follows` may
    name only a Task earlier in that same array, and the run marking it is shown the reader's
    own earlier answer rather than the right one. Use `follows` for a multi-part question and

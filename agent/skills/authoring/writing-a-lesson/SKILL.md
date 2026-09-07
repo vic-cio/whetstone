@@ -24,6 +24,15 @@ minutes: 8
 
 `minutes` is an honest reading time, not an estimate that flatters the reader.
 
+## How long
+
+**600 to 1200 words.** Under 300 is a slide: the reader is through it in forty seconds and
+has met an idea rather than learned one. If a Lesson will not reach 600 words, it is either
+part of the Lesson before it or it is missing its worked example.
+
+Length comes from the middle, not the ends. A Lesson that grows by adding an introduction
+and a summary has grown by nothing.
+
 ## How to write the prose
 
 Say the thing. A paragraph should carry an idea, not announce one.
@@ -104,8 +113,25 @@ six deterministic kinds.
 A Try carries no Objective, no Depth and no Check. It exists so the reader can check they
 followed. Put one after the idea it checks, not at the end.
 
+## What a Lesson is made of
+
+A Lesson that teaches rather than lists usually has three parts, in this order.
+
+1. **The idea, in the smallest case that shows it.** One concrete example, with real values.
+2. **The worked example.** The same thing carried all the way through, with the intermediate
+   steps shown. This is normally the longest part, and it is the part a reader comes back to.
+3. **Where it goes wrong.** The mistake somebody actually makes here, what it looks like when
+   they make it, and how to tell. This is what you know and a search result does not.
+
+A Try goes after the part it checks, and only where it earns its place. Three Tries in one
+Lesson is fine. None is fine. Exactly one in every Lesson in the Course is a template, and it
+reads like one.
+
 ## Shape
 
 A Module is usually several Lessons and then one Test, but the shape is yours. A Module may
-be one Lesson with no Test at all. Split a long Lesson rather than writing a long one: a
-Page is a sitting, and the tick counts Pages.
+be one Lesson with no Test at all. Split a Lesson that has grown past 1200 words rather than
+letting it run: a Page is a sitting, and the tick counts Pages.
+
+Do not split a Lesson to make the Course look longer. Twenty thin Pages is the failure this
+is warning about, not the fix for it.

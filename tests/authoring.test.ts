@@ -44,13 +44,47 @@ describe('what the app hands a harness', () => {
 
   it('carries every rule the plan says the Constructor prompt states', () => {
     const build = readFileSync(join(AGENT, 'roles', 'constructor-build.md'), 'utf8')
-    // Numbered 1 to 20, with 9b and 9c beside 9.
-    for (let rule = 1; rule <= 20; rule += 1) expect(build).toContain(`\n${rule}. `)
+    // Numbered 1 to 21, with 9b and 9c beside 9.
+    for (let rule = 1; rule <= 21; rule += 1) expect(build).toContain(`\n${rule}. `)
     expect(build).toContain('9b.')
     expect(build).toContain('9c.')
     // The two that were learned the hard way, rather than designed.
     expect(build).toContain('Marking a right answer wrong')
     expect(build).toContain('Depth and Check are independent')
+  })
+
+  /**
+   * What a first real course got wrong, written down so it cannot be got wrong quietly
+   * again. Measured: seventeen Lessons averaging 174 words, exactly one Try in every one of
+   * them, and a Task the reader could not answer because the language it needed was a
+   * paragraph rather than a Lesson.
+   */
+  it('tells the Constructor how big the course is, and how to teach rather than tour', () => {
+    const build = readFileSync(join(AGENT, 'roles', 'constructor-build.md'), 'utf8')
+    // A size, in numbers, because "long enough" is not an instruction.
+    expect(build).toContain('600 to 1200 words')
+    expect(build).toContain('30 to 60 Pages')
+    expect(build).toContain('Count before you finish')
+    // The three that produce a tour instead of a course.
+    expect(build).toContain('mentioned, not taught')
+    expect(build).toContain('Teach what you are about to rely on')
+    expect(build).toContain('the destination, not the syllabus')
+    // It has the web, and a course about a real tool is built on that tool's own documents.
+    expect(build).toContain('Read before you write')
+  })
+
+  it('tells the lesson skill the same length, so the two cannot drift', () => {
+    const lesson = readFileSync(join(SKILLS, 'writing-a-lesson', 'SKILL.md'), 'utf8')
+    expect(lesson).toContain('600 to 1200 words')
+    expect(lesson).toContain('worked example')
+    // Every lesson carrying exactly one Try is the shape of a template, not of a course.
+    expect(lesson).toContain('is a template')
+  })
+
+  it('tells the mini-app skill to build the subject, not a quiz with buttons', () => {
+    const app = readFileSync(join(SKILLS, 'writing-a-mini-app', 'SKILL.md'), 'utf8')
+    expect(app).toContain('A playable version of the subject')
+    expect(app).toContain('multiple-choice question that')
   })
 
   it('says the Course’s own guidance outranks whatever is on the machine', () => {

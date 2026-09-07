@@ -20,6 +20,25 @@ at the reader's.
 </script>
 ```
 
+## What to build with it
+
+The Mini-app is the reason this is not a web page with questions under it. Reach for the
+thing the reader can drive, not the thing that quizzes them on what they read.
+
+- **A playable version of the subject.** If the course is about a tool with a browser
+  runtime, put a working one in front of them: an editor, a run button, and the result they
+  can hear or see. The engine goes in the Course's `lib/`, listed under `library`, and is
+  written by you. A frame has no network, so anything that fetches at run time is out:
+  synthesise, generate, or carry the data inline.
+- **A model of the idea.** A thing to drag, tune or step through, where the point is what
+  changes when they change it.
+- **A workbench.** The reader writes something and it runs, with your assertions saying what
+  holds. That is `assertions-pass`, and it is the strongest Task the format has.
+
+A frame with four buttons that asks which one is right is a multiple-choice question that
+took an afternoon to build. Write the question instead, and spend the afternoon on an
+activity that could not be a question.
+
 Two rules cover most mistakes.
 
 - **A Mini-app reports; it never decides.** Nothing in the toolkit returns a pass or a fail.

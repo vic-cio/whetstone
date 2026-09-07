@@ -95,7 +95,9 @@ export async function sendMessage(prompt: string, harnessId: string, model: stri
 export const OUTLINE =
   'Propose the course now, as a message. Give the one-sentence goal, the Objectives, the ' +
   'Ladder with a line on why those Rungs, and the Modules with their Pages marked as Lesson ' +
-  'or Test. Write nothing to disk.'
+  'or Test. End with the size: how many Pages, and roughly how many hours of study that is. ' +
+  'The person is about to check that against the time they told you they have, which is the ' +
+  'cheapest place to find out the course is the wrong size. Write nothing to disk.'
 
 export async function buildCourse(
   root: string,

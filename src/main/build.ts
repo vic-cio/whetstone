@@ -4,7 +4,17 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { TOOLKIT_VERSION } from '../shared/miniapp'
-import { BRIEF, inspect, moveIn, offerSkills, prepare, repairPrompt, stamp, trayContents } from '../shared/staging'
+import {
+  BRIEF,
+  inspect,
+  moveIn,
+  offerSkills,
+  prepare,
+  repairPrompt,
+  sizeLine,
+  stamp,
+  trayContents,
+} from '../shared/staging'
 import { adapterFor, agentDir, registry, roleFile, start } from './harness'
 import { tagsInLibrary } from './courseStore'
 import { stateFor } from './workspace'
@@ -236,6 +246,9 @@ export async function build(
     stamp(folder, harness.id, choice.model)
     const gate = inspect(folder, root)
     if (gate.ok) {
+      // Said out loud, because a course that tours its subject in an afternoon parses
+      // exactly as well as one that teaches it, and the difference is a count.
+      onMoment({ at: 'doing', what: `Read the course: ${sizeLine(gate.course)}` })
       moveIn(folder, root, gate.slug, adapterFor(harness)?.litter ?? [])
       return { ok: true, slug: gate.slug, folder, errors: [], attempts: attempt, usd }
     }

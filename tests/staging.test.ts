@@ -7,17 +7,20 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   BRIEF,
   HOUSE,
+  courseSize,
   freeSlug,
   inspect,
   moveIn,
   prepare,
   repairPrompt,
   offerSkills,
+  sizeLine,
   skillsIn,
   slugFrom,
   stamp,
   trayContents,
 } from '../src/shared/staging'
+import { parseCourse } from '../src/shared/parseCourse'
 
 /**
  * Test 8: a Harness that writes an invalid folder never touches `courses/`, and a valid
@@ -290,5 +293,44 @@ describe('what a harness leaves behind', () => {
     const target = moveIn(staging, root, 'gradients-by-hand', ['.pi'])
     expect(existsSync(join(target, '.pi'))).toBe(false)
     expect(existsSync(join(target, '.claude', 'skills', 'the-notation', 'SKILL.md'))).toBe(true)
+  })
+})
+
+
+/**
+ * How big a course is, said at the gate.
+ *
+ * The failure this catches parses perfectly: a course that tours its subject in an
+ * afternoon looks like one that teaches it until somebody counts. Measured on a real
+ * generated course: seventeen Lessons at 174 words each, which is twelve minutes of
+ * reading for something the reader asked to spend months on.
+ */
+describe('the size of a course', () => {
+  it('counts pages, prose and tasks, and none of the machinery', () => {
+    const result = parseCourse(join(import.meta.dirname, '..', 'fixtures', 'courses', 'gradients-by-hand'))
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const size = courseSize(result.course)
+    expect(size.pages).toBe(6)
+    expect(size.lessons).toBe(3)
+    expect(size.tasks).toBe(8)
+    // A Try's JSON is not words the reader reads, and neither is a Mini-app's code.
+    expect(size.words).toBeGreaterThan(100)
+    expect(size.perLesson).toBe(Math.round(size.words / size.lessons))
+    const raw = Object.values(result.course.lessons).reduce(
+      (total, lesson) => total + lesson.body.split(/\s+/).filter(Boolean).length,
+      0,
+    )
+    expect(size.words).toBeLessThan(raw)
+  })
+
+  it('says it in one line, for the feed', () => {
+    const result = parseCourse(join(import.meta.dirname, '..', 'fixtures', 'courses', 'gradients-by-hand'))
+    if (!result.ok) throw new Error('fixture did not parse')
+    const line = sizeLine(result.course)
+    expect(line).toContain('6 pages')
+    expect(line).toContain('a lesson')
+    expect(line).toContain('8 tasks')
   })
 })

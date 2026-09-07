@@ -160,6 +160,55 @@ export function inspect(staging: string, root: string): Gate {
  * goes away in one turn, and the outcome the cap avoids is a ten-minute build dying on a
  * typo without anyone asking it to fix one.
  */
+/**
+ * How big the Course that just parsed actually is.
+ *
+ * Said out loud at the gate, because the failure this catches is invisible otherwise: a
+ * course that tours its subject in an afternoon looks exactly like a course that teaches it
+ * until you count. Seventeen Lessons at 174 words each parses perfectly and is twelve
+ * minutes of reading.
+ *
+ * Prose only. A Try's JSON and a Mini-app's code are not words the reader reads.
+ */
+export function courseSize(course: Course): {
+  pages: number
+  lessons: number
+  words: number
+  perLesson: number
+  tasks: number
+  apps: number
+} {
+  const lessons = Object.values(course.lessons)
+  const words = lessons.reduce((total, lesson) => {
+    const prose = lesson.blocks
+      .filter((block) => block.block === 'prose' || block.block === 'callout')
+      .map((block) => (block.block === 'prose' ? block.markdown : block.markdown))
+      .join(' ')
+    return total + prose.split(/\s+/).filter(Boolean).length
+  }, 0)
+
+  return {
+    pages: course.modules.reduce((total, module) => total + module.pages.length, 0),
+    lessons: lessons.length,
+    words,
+    perLesson: lessons.length === 0 ? 0 : Math.round(words / lessons.length),
+    tasks: Object.keys(course.tasks).length,
+    apps: course.apps.length,
+  }
+}
+
+/** The same, as the one line the build feed shows. */
+export function sizeLine(course: Course): string {
+  const size = courseSize(course)
+  return [
+    `${size.pages} pages`,
+    `${size.words.toLocaleString('en-GB')} words`,
+    `about ${size.perLesson} a lesson`,
+    `${size.tasks} tasks`,
+    `${size.apps} ${size.apps === 1 ? 'activity' : 'activities'}`,
+  ].join(', ')
+}
+
 export function repairPrompt(errors: CourseError[]): string {
   const lines = errors.map((error) => {
     const where = error.field === undefined ? error.file : `${error.file} · ${error.field}`
