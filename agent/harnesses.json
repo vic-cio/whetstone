@@ -17,7 +17,7 @@
     },
     {
       "id": "pi",
-      "label": "pi",
+      "label": "pi (OpenRouter)",
       "command": "pi",
       "adapter": "pi",
       "provider": "openrouter",
@@ -46,6 +46,23 @@
       "restrictsTools": true,
       "capsSpend": false,
       "validatesOutput": true
+    },
+    {
+      "id": "pi-nvidia",
+      "label": "pi (NVIDIA)",
+      "command": "pi",
+      "adapter": "pi",
+      "provider": "nvidia",
+      "models": [
+        "moonshotai/kimi-k3",
+        "deepseek-ai/deepseek-v4-pro-0813",
+        "nvidia/nemotron-3-ultra-550b-a55b",
+        "openai/gpt-oss-120b",
+        "moonshotai/kimi-k2.6"
+      ],
+      "restrictsTools": true,
+      "capsSpend": false,
+      "validatesOutput": false
     }
   ]
 }

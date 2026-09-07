@@ -245,11 +245,26 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
       finish(false, message)
     })
 
-    child.on('close', (code) => {
+    /*
+     * `exit`, not `close`.
+     *
+     * `close` waits for every stdio stream to end as well as for the process, and a harness
+     * that leaves a background helper holding the pipe never closes. Measured: a Brief that
+     * finished in eighteen seconds by hand never returned inside the app, and the run row
+     * sat at "running" for as long as it was given.
+     *
+     * The last of the output is already here by the time a process exits, and anything
+     * still buffered is drained below before the promise settles.
+     */
+    child.on('exit', (code) => {
       if (rest.trim() !== '') {
         const moment = read(rest)
         if (moment) take(moment)
       }
+      // Nothing more will be read, so let go of the streams rather than leaving the app
+      // holding a pipe that a helper the harness left behind is still attached to.
+      child.stdout.destroy()
+      child.stderr.destroy()
       if (cancelled) {
         finish(false, 'The run was stopped.')
         return

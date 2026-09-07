@@ -261,9 +261,12 @@ export function prepare(
   cpSync(toolkit, join(staging, 'toolkit'), { recursive: true })
   seedSkills(staging, skills)
 
-  if (tray.files.length === 0 && tray.links.length === 0) return
+  // Always made, even when it is empty. The Constructor's own instructions tell it that
+  // attached material lives here, so a run that finds no folder at all reports "path not
+  // found" and spends a turn on it. An empty folder answers the question.
   const brief = join(staging, BRIEF)
   mkdirSync(brief, { recursive: true })
+  if (tray.files.length === 0 && tray.links.length === 0) return
   for (const file of tray.files) {
     const name = file.split('/').filter(Boolean).pop() ?? 'attachment'
     cpSync(file, join(brief, name))

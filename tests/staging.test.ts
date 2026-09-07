@@ -234,7 +234,10 @@ describe('the brief’s tray', () => {
     const staging = join(box, 'prepared')
     prepare(staging, TOOLKIT, SKILLS, { files: [], links: [] })
     expect(existsSync(join(staging, 'toolkit', 'kit.js'))).toBe(true)
-    expect(existsSync(join(staging, BRIEF))).toBe(false)
+    // The tray is made even when it is empty. The Constructor is told its material lives
+    // there, so a run that finds no folder reports "path not found" and spends a turn on it.
+    expect(existsSync(join(staging, BRIEF))).toBe(true)
+    expect(trayContents(staging)).toEqual([])
   })
 
   it('carries attached material into staging, where the run can read it', () => {

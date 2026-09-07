@@ -29,7 +29,8 @@ calculus" is a course.
 
 ## Attached material
 
-The user may attach files and links. They are in `.brief/`. Read them. They tell you the
+The user may attach files and links. They go in `.brief/`, which may be empty, and an empty
+one means they attached nothing. Read whatever is there and do not go looking for more. They tell you the
 level to pitch at and the notation to use, and a link they gave you is a link the course
 should cite.
 
