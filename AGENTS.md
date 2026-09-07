@@ -13,6 +13,7 @@ Harness, Toolkit and the rest all mean something specific here.
 src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade.ts,
                verdict.ts (what a Grader may come back with), guard.ts (a course put back),
                snapshot.ts (what the reader is doing), prompts.ts (what each role is told),
+               again.ts (the missed list and a review draw), environment.ts (a login shell),
                miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
                samples.ts (keeping the shipped Courses current in a library),
                harness.ts (what a Harness is, and the Moment union), claude.ts (the CLI
@@ -86,6 +87,16 @@ tests/         vitest, run against the fixtures
   and the adapter maps those to its own CLI's tool names. A tool name in a profile makes
   every role Claude-shaped, which is what a registry of harnesses exists to avoid. This was
   got wrong first time: the profiles carried `allowedTools: ['Read', 'Glob', ...]` directly.
+- **The missed list is derived, never stored.** A Task is missed when its most recent Attempt
+  that was not voided is a fail. `PLAN.md` 3.4 gave it a table and it does not need one: two
+  records of one fact drift, and the drift here is the app accusing somebody of getting a
+  question wrong that they have since got right. Voiding rewrites an Attempt's outcome; it
+  never adds a row saying it was voided.
+- **A harness gets the environment it would have had in a terminal.** An app launched from
+  Finder has almost none of it, and `~/.zshrc` is read by an interactive shell only, so a key
+  a harness expects in the environment is simply absent and the harness says it is not
+  authenticated. `loginEnvironment()` asks the login shell once. This is the same problem the
+  PATH widening solves and it was the half that was missed.
 - **Trouble is not an outcome.** A Grader that ran out of budget, returned half an object, or
   scored a criterion the Task never declared has not judged the work. `readVerdict` returns
   trouble, nothing is recorded, and the Attempt stays open. Never widen a schema in

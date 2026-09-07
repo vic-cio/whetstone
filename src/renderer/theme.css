@@ -581,3 +581,31 @@ pre.code {
   margin: 9px 0 0; padding: 9px 12px; border: 1px solid var(--line);
   color: var(--muted); font-size: 12px; display: flex; gap: 12px; align-items: center;
 }
+
+/* ---------------------------------------------------------------- coming back to things
+ *
+ * The missed list and the remediation offer. Both live on the course page and nowhere
+ * else: no count on the home screen, no badge, no due date.
+ */
+.mrow {
+  display: grid; gap: 3px; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 10px 10px 10px 0; color: var(--ink);
+}
+.mrow:hover { background: var(--said-bg); }
+.mrow:hover .mq { color: var(--amber); }
+.mq { font-size: 13px; }
+
+/* An offer, never an intervention. It is outlined rather than filled, and it says what it
+   will cost before it is pressed. */
+.offer {
+  margin-top: 20px; padding: 12px 14px; border: 1px solid var(--line);
+  display: grid; gap: 7px; justify-items: start; max-width: 62ch;
+}
+.offer b { font-weight: 600; }
+.offer span { color: var(--muted); font-size: 12.5px; }
+
+/* The missed block's header carries a control, so its label and its button need room
+   between them. `.mh` on its own is a module heading and has no button in it. */
+.mhead { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.mhead .quiet { padding: 4px 11px; }

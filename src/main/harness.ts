@@ -1,10 +1,11 @@
 import { app } from 'electron'
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { MARK, readEnvironment } from '../shared/environment'
 import { claudeAdapter } from '../shared/claude'
 import { readRegistry } from '../shared/harness'
 import type { Adapter, Harness, Moment, SpawnRequest } from '../shared/harness'
@@ -83,6 +84,48 @@ function widePath(): string {
   return [...already, ...usual.filter((dir) => !already.includes(dir))].join(delimiter)
 }
 
+/**
+ * The environment a harness would have had in the user's own terminal.
+ *
+ * The PATH widening below exists because an app launched from Finder inherits a bare
+ * environment. The rest of that environment is missing for the same reason and matters just
+ * as much: `~/.zshrc` is read by an interactive shell and by nothing else, so a harness
+ * configured to take its key from `$OPENROUTER_API_KEY` finds nothing, says it is not
+ * authenticated, and the app has no idea why.
+ *
+ * That is exactly how this was found. A check run from a non-interactive shell reported no
+ * credential for a provider that was working perfectly well in the user's terminal.
+ *
+ * So the login shell is asked once, and what it exports is merged under anything the app
+ * set itself. It reflects the user's machine, which PLAN 3.13 already says is the default:
+ * Whetstone launches a CLI the user installed and logged into themselves.
+ */
+let fromLogin: Record<string, string> | undefined
+function loginEnvironment(): Record<string, string> {
+  if (fromLogin) return fromLogin
+  const shell = process.env['SHELL']
+  if (!shell) {
+    fromLogin = {}
+    return fromLogin
+  }
+
+  try {
+    // A login, interactive shell, because that is the one that reads the file the variable
+    // is usually in.
+    const printed = execFileSync(shell, ['-ilc', `printf '${MARK.replace(/\0/g, '\\0')}'; env -0`], {
+      encoding: 'utf8',
+      timeout: 5000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    fromLogin = readEnvironment(printed)
+  } catch {
+    // A shell that will not start, or takes too long, is not a reason to refuse to run a
+    // harness. It only means a harness needing a key from that file will say so itself.
+    fromLogin = {}
+  }
+  return fromLogin
+}
+
 /** Is this harness's command actually on the machine? Settings greys out one that is not. */
 export function installed(harness: Harness): boolean {
   if (harness.command.includes('/')) return existsSync(harness.command)
@@ -123,7 +166,9 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
 
   const child = spawn(request.harness.command, adapter.argv(request), {
     cwd: request.profile.cwd,
-    env: { ...process.env, PATH: widePath() },
+    // The user's own environment first, then this process's, so anything Electron set
+    // deliberately wins. Nothing here is ever logged.
+    env: { ...loginEnvironment(), ...process.env, PATH: widePath() },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 

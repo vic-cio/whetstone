@@ -87,8 +87,16 @@ describe('test 9 — progress is one tick per page', () => {
     // attempt total, or an ability estimate must not reach the renderer at all.
     expect(Object.keys(view)).toEqual([
       'slug', 'id', 'title', 'subject', 'summary', 'ladder', 'modules',
-      'pageCount', 'pagesDone', 'lessons', 'tests', 'resources',
+      'pageCount', 'pagesDone', 'lessons', 'missed', 'struggling', 'tests', 'resources',
     ])
+
+    // `missed` and `struggling` were added for phase 5 and are both lists of things that
+    // plainly happened, never numbers about the reader. That is the line: pages done out of
+    // pages total is the only figure the app has, and these two must not become a second one.
+    expect(Array.isArray(view.missed)).toBe(true)
+    expect(Array.isArray(view.struggling)).toBe(true)
+    const figures = Object.entries(view).filter(([, value]) => typeof value === 'number')
+    expect(figures.map(([key]) => key).sort()).toEqual(['pageCount', 'pagesDone'])
     const page = view.modules[0]?.pages[1]
     expect(Object.keys(page ?? {}).sort()).toEqual(
       ['checks', 'depths', 'id', 'taskCount', 'ticked', 'title', 'type'],

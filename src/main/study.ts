@@ -1,3 +1,4 @@
+import { missed, strugglingWith } from '../shared/again'
 import { answerDeterministic } from '../shared/grade'
 import { publicTask, publicTry } from '../shared/format'
 import type {
@@ -10,6 +11,7 @@ import type {
   PublicTry,
   Resource,
   Task,
+  Test,
 } from '../shared/format'
 import type { Outcome } from '../shared/grade'
 import type { Progress } from './progress'
@@ -75,10 +77,39 @@ export interface CourseView {
   lessons: Record<string, LessonView>
   tests: Record<string, TestView>
   resources: Record<string, Resource>
+  /**
+   * What the reader got wrong and has not since got right. A list, reachable from the
+   * Course page and nowhere else. No count on the home screen and no due date (PLAN 3.15).
+   */
+  missed: MissedView[]
+  /** Objectives with three fails and no pass since. An offer, never an intervention. */
+  struggling: { id: string; title: string }[]
+}
+
+export interface MissedView {
+  taskId: string
+  /** The Test it lives in, so the list can send the reader to the question itself. */
+  testId: string
+  title: string
+  prompt: string
 }
 
 export function courseView(slug: string, course: Course, progress: Progress): CourseView {
   const ticks = progress.ticks(slug)
+  const seen = progress.attemptsFor(slug)
+
+  const testOf = new Map<string, Test>()
+  for (const test of Object.values(course.tests)) for (const id of test.tasks) testOf.set(id, test)
+
+  const missedNow: MissedView[] = []
+  for (const taskId of missed(seen)) {
+    const task = course.tasks[taskId]
+    const test = testOf.get(taskId)
+    if (task && test) missedNow.push({ taskId, testId: test.id, title: test.title, prompt: task.prompt })
+  }
+
+  const objectives = new Map(course.objectives.map((objective) => [objective.id, objective.title]))
+  const struggling = strugglingWith(course, seen).map((id) => ({ id, title: objectives.get(id) ?? id }))
 
   const modules: ModuleView[] = course.modules.map((module) => ({
     id: module.id,
@@ -152,6 +183,8 @@ export function courseView(slug: string, course: Course, progress: Progress): Co
     pageCount: modules.reduce((total, module) => total + module.pages.length, 0),
     pagesDone: progress.pagesDone(slug),
     lessons,
+    missed: missedNow,
+    struggling,
     tests,
     resources: course.resources,
   }

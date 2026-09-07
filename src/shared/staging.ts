@@ -205,6 +205,41 @@ export function moveIn(staging: string, root: string, slug: string): string {
 }
 
 /**
+ * Put a revised Course back over the one it was made from.
+ *
+ * `add-rung` and `remediate` change a Course that already exists and that somebody has
+ * progress against. The old folder is moved aside rather than deleted, and only removed
+ * once the new one is in place, so a failure in the middle leaves the Course where it was
+ * rather than leaving a hole in the library.
+ *
+ * Progress survives because ids are stable: the Constructor is told never to reuse or
+ * rewrite one, and the parser refuses a folder whose ids collide with the version before it.
+ */
+export function moveOver(staging: string, root: string, slug: string): string {
+  rmSync(join(staging, BRIEF), { recursive: true, force: true })
+  rmSync(join(staging, HOUSE), { recursive: true, force: true })
+
+  const target = join(root, slug)
+  const landing = join(root, `.incoming-${Date.now()}`)
+  const aside = join(root, `.was-${Date.now()}`)
+  rmSync(landing, { recursive: true, force: true })
+
+  try {
+    cpSync(staging, landing, { recursive: true })
+    if (existsSync(target)) renameSync(target, aside)
+    renameSync(landing, target)
+  } catch (cause) {
+    rmSync(landing, { recursive: true, force: true })
+    // Put the old one back if it had already been moved aside.
+    if (existsSync(aside) && !existsSync(target)) renameSync(aside, target)
+    throw cause
+  }
+  rmSync(aside, { recursive: true, force: true })
+  rmSync(staging, { recursive: true, force: true })
+  return target
+}
+
+/**
  * Lay out a staging folder before the Run starts.
  *
  * The toolkit is copied in by the app rather than by the Constructor. A Course carries the

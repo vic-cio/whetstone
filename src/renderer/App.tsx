@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { Course } from './Course'
 import { NewCourse } from './NewCourse'
+import { Review } from './Review'
 import { Tutor } from './Tutor'
 import { Lesson } from './Lesson'
 import { Test } from './Test'
@@ -21,6 +22,7 @@ type Route =
   | { at: 'home' }
   | { at: 'new' }
   | { at: 'course'; slug: string }
+  | { at: 'review'; slug: string }
   | { at: 'page'; slug: string; pageId: string }
 
 export function App(): React.JSX.Element {
@@ -32,6 +34,8 @@ export function App(): React.JSX.Element {
   const [failed, setFailed] = useState<CourseError[]>([])
   const [railOpen, setRailOpen] = useState(true)
   const [tutorOpen, setTutorOpen] = useState(false)
+  /** A revision run in flight. It costs money, so the page says so while it runs. */
+  const [revising, setRevising] = useState('')
 
   /**
    * Which harness answers the questions the host cannot. One choice for the Tutor and the
@@ -164,7 +168,7 @@ export function App(): React.JSX.Element {
       ) : (
         <button type="button" className="stub" onClick={() => setRailOpen(true)}>
           <b>☰</b>
-          <span>{route.at === 'course' || route.at === 'page' ? 'Contents' : 'Courses'}</span>
+          <span>{route.at === 'home' || route.at === 'new' ? 'Courses' : 'Contents'}</span>
         </button>
       )}
 
@@ -203,7 +207,38 @@ export function App(): React.JSX.Element {
                 .setTick(route.slug, entry.id, entry.type, !entry.ticked)
                 .then(setCourse)
             }}
+            onReview={() => setRoute({ at: 'review', slug: route.slug })}
+            onRemediate={(objective) => {
+              setRevising(objective.title)
+              void window.whetstone.course
+                .revise(route.slug, agent.harnessId, agent.model, {
+                  kind: 'remediate',
+                  objective: objective.id,
+                  title: objective.title,
+                })
+                .then((result) => {
+                  setRevising('')
+                  if (result.at === 'revised') openCourse(route.slug)
+                  else window.alert(result.at === 'trouble' ? result.message : 'The course could not be changed.')
+                })
+            }}
           />
+        )}
+
+        {route.at === 'review' && (
+          <Review
+            slug={route.slug}
+            onDone={() => openCourse(route.slug)}
+            onAnswered={() => {
+              void window.whetstone.courses.open(route.slug).then((result) => {
+                if (result.ok) setCourse(result.course)
+              })
+            }}
+          />
+        )}
+
+        {revising !== '' && (
+          <p className="empty">Writing another run at “{revising}”. This takes a few minutes.</p>
         )}
 
         {route.at === 'page' && course && page?.type === 'lesson' && course.lessons[page.id] && (

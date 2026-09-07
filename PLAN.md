@@ -747,8 +747,16 @@ Two decisions taken without asking. A Tutor turn is written to the `runs` ledger
 
 One thing is left, and it is a format gap rather than an omission. **A reviewed Mini-app has no Task to be judged against.** Section 3.10's example is "mark the inflection point on this curve", with the Mini-app emitting a coordinate and a screenshot, but `check: model` is `short-answer` with an `answerGuide` and carries no `app`. So the host holds the review and there is nothing to send it to. Adding that kind is a change to the format and to the parser, and it belongs with the next change to either.
 
-**Phase 5. Non-linear study.**
-Review sessions. The missed list. `add-rung` and `remediate` runs. The remediation offer after repeated fails on one Objective.
+**Phase 5. Non-linear study. Done.**
+Review sessions, the missed list, `add-rung` and `remediate` runs, and the remediation offer after repeated fails on one Objective. 226 assertions in all.
+
+Three things settled during the build.
+
+- **The missed list is derived, not stored.** Section 3.4 gave it a table of its own, and it does not need one: a Task is missed when its most recent Attempt that was not voided is a fail, and that reads off the record that already has to be right. Two records of one fact drift, and the drift would show up as the app accusing somebody of getting wrong a question they since got right.
+- **An upheld defect report voids the Attempt itself.** It does not add a row saying so. Getting that backwards leaves a Task on the missed list on the strength of a question the app has already agreed was broken. The test that caught it was mine and it was the test that was wrong.
+- **A revision goes through the same gate as a build.** `add-rung` and `remediate` copy the Course into staging, work there, and go back over the original only if the parser accepts it, because a Course somebody is part way through is the last thing that should be edited in place by an agent. The old folder is moved aside rather than deleted, so a failure halfway leaves the Course where it was rather than leaving a hole in the library.
+
+**A bug found on the way, and it was not in this phase.** A harness spawned by the app got the app's environment, which on a Mac launched from Finder is almost nothing. `~/.zshrc` is read by an interactive shell and by nothing else, so a harness configured to take its key from `$OPENROUTER_API_KEY` found nothing, reported itself unauthenticated, and the app had no way to know why. This is the same class of problem as the PATH widening that was already there, and the PATH widening exists precisely because of it, so the environment was the half that was missed. The app now asks the login shell once for what it exports and merges it under anything Electron set. Found by measuring rather than by reasoning: a credential check run from a non-interactive shell disagreed with the same check in Victor's own terminal.
 
 **Phase 6. More harnesses.**
 Codex and pi adapters. Settings shows every harness and the models it declares. Verify each CLI's headless output format, tool restriction flags, structured-output support, and cost reporting from its own documentation at this point, not before. Where a CLI cannot restrict tools, the content hash from 3.14 is the only guard, and that must be stated in its registry entry.

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+import type { Seen } from '../shared/again'
 import type { Check, Depth, PageType } from '../shared/format'
 
 /**
@@ -79,6 +80,13 @@ export interface Progress {
   earnTick(courseSlug: string, pageId: string, pageType: PageType): void
   recordAttempt(attempt: AttemptRecord): string
   attemptedTaskIds(courseSlug: string): Set<string>
+  /** Every Attempt against this Course, for the missed list and a review draw. */
+  attemptsFor(courseSlug: string): Seen[]
+  /**
+   * Void every Attempt against one Task. This is what upholding a defect report does: it
+   * takes the Attempts off the record because the question was broken. It never rescores.
+   */
+  voidAttempts(courseSlug: string, taskId: string): void
   /** Open a Run's row. It is written before the spawn, so a crash still leaves a trace. */
   startRun(run: RunRecord): string
   endRun(id: string, usd: number, status: 'ok' | 'failed' | 'cancelled'): void
@@ -172,6 +180,10 @@ export function openProgress(file: string): Progress {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   const selectAttempted = db.prepare('SELECT DISTINCT taskId FROM attempts WHERE courseSlug = ?')
+  const selectSeen = db.prepare(
+    'SELECT taskId, outcome, submittedAt AS at FROM attempts WHERE courseSlug = ? ORDER BY submittedAt',
+  )
+  const voidThem = db.prepare("UPDATE attempts SET outcome = 'voided' WHERE courseSlug = ? AND taskId = ?")
   const openRun = db.prepare(`
     INSERT INTO runs (id, kind, courseSlug, harness, model, usd, status, startedAt)
     VALUES (?, ?, ?, ?, ?, 0, 'running', ?)
@@ -235,6 +247,12 @@ export function openProgress(file: string): Progress {
     attemptedTaskIds(courseSlug) {
       const rows = selectAttempted.all(courseSlug) as { taskId: string }[]
       return new Set(rows.map((row) => row.taskId))
+    },
+    attemptsFor(courseSlug) {
+      return selectSeen.all(courseSlug) as unknown as Seen[]
+    },
+    voidAttempts(courseSlug, taskId) {
+      voidThem.run(courseSlug, taskId)
     },
     startRun(run) {
       const id = randomUUID()

@@ -11,10 +11,16 @@ export function Course({
   course,
   onOpen,
   onTick,
+  onReview,
+  onRemediate,
 }: {
   course: CourseView
   onOpen: (pageId: string) => void
   onTick: (page: PageView) => void
+  /** Start a review session: a handful of questions drawn at random, offline and free. */
+  onReview: () => void
+  /** Ask for another run at one Objective. An offer, and pressing it costs money. */
+  onRemediate: (objective: { id: string; title: string }) => void
 }): React.JSX.Element {
   return (
     <>
@@ -81,6 +87,50 @@ export function Course({
               </span>
             </div>
           ))}
+        </div>
+      ))}
+
+      {/*
+        What the reader got wrong and has not since got right. Reachable here and nowhere
+        else: no count on the home screen, no due date, and no schedule, because that is
+        the machinery that turns study into homework (PLAN 3.15).
+      */}
+      {course.missed.length > 0 && (
+        <div className="mod">
+          <div className="mh mhead">
+            <span className="lname">Missed</span>
+            <button type="button" className="quiet" onClick={onReview}>
+              Review
+            </button>
+          </div>
+          {course.missed.map((entry) => (
+            <button key={entry.taskId} type="button" className="mrow" onClick={() => onOpen(entry.testId)}>
+              <span className="mq">{entry.prompt}</span>
+              <span className="cmeta">{entry.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {course.missed.length === 0 && (
+        <p className="onward">
+          <button type="button" className="quiet" onClick={onReview}>
+            Review a few at random
+          </button>
+        </p>
+      )}
+
+      {/* Three fails on one objective with no pass since. An offer, never an intervention. */}
+      {course.struggling.map((objective) => (
+        <div key={objective.id} className="offer">
+          <b>{objective.title}</b>
+          <span>
+            This one has gone wrong three times. The course can take another run at it, in a
+            different shape. That builds new pages and costs money.
+          </span>
+          <button type="button" className="quiet" onClick={() => onRemediate(objective)}>
+            Teach it differently
+          </button>
         </div>
       ))}
     </>

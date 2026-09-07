@@ -6,7 +6,9 @@ import type { BrokenCourse, CourseSummary, OpenResult } from '../main/courseStor
 import type { Moment } from '../shared/harness'
 import type { Answered } from '../main/answering'
 import type { Ground, Thread } from '../main/progress'
+import type { PublicTask } from '../shared/format'
 import type { Removal } from '../shared/remove'
+import type { Revision } from '../main/revise'
 import type { TutorReply } from '../main/tutor'
 import type { Outcome } from '../shared/grade'
 import type { PageType } from '../shared/format'
@@ -90,6 +92,22 @@ const api = {
       harnessId: string,
       model: string,
     ): Promise<TutorReply> => ipcRenderer.invoke('tutor:ask', slug, pageId, question, harnessId, model),
+  },
+
+  /** Coming back to things. Both of these are offline and free (PLAN 3.15). */
+  review: {
+    draw: (slug: string): Promise<{ testId: string; task: PublicTask }[]> =>
+      ipcRenderer.invoke('review:draw', slug),
+  },
+
+  course: {
+    /** Add a Rung, or write a remediation block. A Constructor run against a Course. */
+    revise: (
+      slug: string,
+      harnessId: string,
+      model: string,
+      work: { kind: 'add-rung'; depth: string } | { kind: 'remediate'; objective: string; title: string },
+    ): Promise<Revision> => ipcRenderer.invoke('course:revise', slug, harnessId, model, work),
   },
 
   defects: {

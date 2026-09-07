@@ -17,6 +17,9 @@ import {
 } from './newCourse'
 import { removeCourse } from '../shared/remove'
 import { answer } from './answering'
+import { publicTask } from '../shared/format'
+import { reviewSession } from '../shared/again'
+import { revise } from './revise'
 import { ask, attach, attached, newChat } from './tutor'
 import type { Ground } from './progress'
 import { fileInCourse } from '../shared/courseFile'
@@ -269,6 +272,43 @@ app.whenReady().then(() => {
         store.saveThread(slug, pageId, thread)
       }
       return reply
+    },
+  )
+
+  // A review session. Deterministic Tasks only, drawn at random from Objectives the reader
+  // has already touched, so it runs offline and free (PLAN 3.15).
+  ipcMain.handle('review:draw', (_event, slug: string) => {
+    const course = loadCourse(slug)
+    const seen = progress().attemptsFor(slug)
+    const testOf = new Map<string, string>()
+    for (const test of Object.values(course.tests)) for (const id of test.tasks) testOf.set(id, test.id)
+
+    return reviewSession(course, seen).flatMap((task) => {
+      const testId = testOf.get(task.id)
+      return testId === undefined ? [] : [{ testId, task: publicTask(task) }]
+    })
+  })
+
+  // Adding a Rung, or writing a remediation block for an Objective that keeps going wrong.
+  // Both copy the Course into staging and go through the parser, exactly as a build does.
+  ipcMain.handle(
+    'course:revise',
+    (
+      event,
+      slug: string,
+      harnessId: string,
+      model: string,
+      work: { kind: 'add-rung'; depth: string } | { kind: 'remediate'; objective: string; title: string },
+    ) => {
+      const course = loadCourse(slug)
+      const run = progress().startRun({ kind: work.kind, courseSlug: slug, harness: harnessId, model })
+      return revise(
+        { slug, courseDir: course.path, root: coursesRoot(), harnessId, model, work },
+        report(event),
+      ).then((result) => {
+        progress().endRun(run, result.usd, result.at === 'revised' ? 'ok' : 'failed')
+        return result
+      })
     },
   )
 
