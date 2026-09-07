@@ -39,6 +39,29 @@ A frame with four buttons that asks which one is right is a multiple-choice ques
 took an afternoon to build. Write the question instead, and spend the afternoon on an
 activity that could not be a question.
 
+## Sound, and anything else the browser can do on its own
+
+The frame has no network. It does have the whole browser: Web Audio, canvas, timers,
+`requestAnimationFrame`. So a course about live coding, synthesis or music can put a real
+instrument in front of the reader, and the only thing it cannot do is fetch a sample pack.
+
+- **Synthesise.** `new AudioContext()`, an oscillator and a gain envelope give you notes,
+  basses and pads with no files at all. A noise burst through a short decay is a hat; a
+  sine sweeping down fast is a kick.
+- **Inline what you cannot synthesise.** A short percussive hit is a few tens of kilobytes
+  as a base64 `data:` URI, decoded with `decodeAudioData`. Three of those is a drum kit.
+  A library of full-length samples is not, and must not be attempted.
+- **Start the context on a press.** A browser will not make a sound before the reader has
+  clicked something. `Kit.bridge.action` is a press; use it, or resume the context in your
+  own button's handler.
+- **Put the engine in `lib/`.** A pattern player, a synth, a sequencer: written by you,
+  listed under `library`, and shared by every Mini-app in the Course. That is what
+  `docs/adr/0019` exists for, and it is how the reader gets an editor with a run button
+  rather than a picture of one.
+
+The same reasoning holds anywhere else: the frame is a whole browser with the outside world
+taken away. Anything that runs on the reader's machine alone is available to you.
+
 Two rules cover most mistakes.
 
 - **A Mini-app reports; it never decides.** Nothing in the toolkit returns a pass or a fail.

@@ -85,6 +85,11 @@ describe('what the app hands a harness', () => {
     const app = readFileSync(join(SKILLS, 'writing-a-mini-app', 'SKILL.md'), 'utf8')
     expect(app).toContain('A playable version of the subject')
     expect(app).toContain('multiple-choice question that')
+    // The frame has no network and a whole browser. Both halves have to be said, or a
+    // course about sound comes out as a picture of a sequencer.
+    expect(app).toContain('The frame has no network. It does have the whole browser')
+    expect(app).toContain('Synthesise')
+    expect(app).toContain('base64')
   })
 
   it('says the Course’s own guidance outranks whatever is on the machine', () => {
