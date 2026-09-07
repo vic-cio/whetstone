@@ -46,6 +46,8 @@ tests/         vitest, run against the fixtures
   marker derive from `check` alone. `docs/adr/0002`.
 - **A Lesson records nothing.** Recorded Tasks live in a Test. A Lesson's `try` blocks are
   a different thing and never become an Attempt. `docs/adr/0013`.
+- **A Test holds its results.** A checked question shows nothing until every question in
+  the Test has been checked. Immediate feedback belongs to a Try. `docs/adr/0022`.
 - **Most study needs no model.** Nothing spawns on navigation. A harness starts only when
   the user builds a Course, sends a chat message, submits work, or presses Review.
   `docs/adr/0012`.

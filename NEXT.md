@@ -155,17 +155,9 @@ Write these before the code. They are the parts that fail quietly.
 6. A removed Module leaves the Course parsing, and every Attempt under it voided.
 7. Nothing in the app displays a score, a percentage or an average. This is the rule most likely to be broken by accident while building the reveal screen.
 
-## 9. Why the results are held, and what was rejected
+## 9. Why the results are held
 
-**Settled.** You press Check on each question, the run happens then in the background, the result is held, and the last check reveals everything at once. This is section 3.1 and it is not open.
-
-It is written down here because the rejected option is the one the app does today, and it is the one somebody will re-propose the first time the reveal screen feels awkward to build.
-
-**The rejected option: show the result the moment you check.** It is free, because it is the current behaviour. It puts the correction at the moment of most attention, while you are still thinking about the question. It lets you catch a misunderstanding before it spoils the next question.
-
-**Why it lost.** Every answer after the first would be informed by how the last one went, so the sitting stops measuring what you can do unaided, which is the one thing a Test does that a Lesson does not. With another go offered, a multiple-choice question becomes a guessing loop. And a cross on question two changes how you answer question three.
-
-**The argument that decided it.** The app already has a place for immediate feedback and it is the Lesson. A Try answers in place, records nothing, and offers another go. `docs/adr/0013` split those two on purpose. Holding the results does not lose immediate feedback. It leaves it where the design already put it, and lets the Test be the other thing. Showing at once would collapse them back together and make a Try redundant.
+**Settled, and written up as `docs/adr/0022`.** Read that rather than this section. It holds the reasoning, the two rejected options, and the reason a mark at the top of the reveal is the thing most likely to creep back in.
 
 ## 10. Order of work
 
