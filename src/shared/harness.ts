@@ -204,4 +204,19 @@ const ANSI = /\u001b\[[0-9;?]*[ -\/]*[@-~]/g
 export const plain = (text: string): string => text.replace(ANSI, '')
 
 /** Just the file's name. A path from inside a run is the machine's business, not the reader's. */
-export const named = (path: string): string => path.split('/').filter(Boolean).pop() ?? ''
+/**
+ * A file name that a name is enough to identify by.
+ *
+ * A run reads five skills and writes a Mini-app per activity, and every one of those files
+ * is called the same thing. "Reading SKILL.md" five times says nothing; the folder is the
+ * part carrying the information, so these keep it.
+ */
+const SAYS_NOTHING = new Set(['SKILL.md', 'index.html', 'index.md', 'index.js', 'index.ts'])
+
+/** The end of a path, as much of it as identifies the file and no more. */
+export const named = (path: string): string => {
+  const parts = path.split('/').filter(Boolean)
+  const file = parts[parts.length - 1] ?? ''
+  const folder = parts[parts.length - 2]
+  return SAYS_NOTHING.has(file) && folder !== undefined ? `${folder}/${file}` : file
+}

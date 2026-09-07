@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { claudeAdapter, denied } from '../src/shared/claude'
-import { newRunId, readRegistry } from '../src/shared/harness'
+import { named, newRunId, readRegistry } from '../src/shared/harness'
 import type { AgentProfile, Harness, Moment } from '../src/shared/harness'
 
 /**
@@ -301,5 +301,52 @@ describe('telling one run from another', () => {
   it('never gives two runs the same id', () => {
     const ids = Array.from({ length: 500 }, () => newRunId())
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+/**
+ * What the feed calls a file.
+ *
+ * The feed is the app's own words, so a file has to be named by the part that identifies
+ * it. A run reads five skills and writes a Mini-app per activity, and every one of those
+ * files is called `SKILL.md` or `index.html`: five identical lines say nothing about what
+ * the run is doing.
+ */
+describe('naming a file in the feed', () => {
+  it('keeps the folder when the file name alone says nothing', () => {
+    expect(named('/tmp/staging/.whetstone/skills/course-format/SKILL.md')).toBe('course-format/SKILL.md')
+    expect(named('apps/slope-explorer/index.html')).toBe('slope-explorer/index.html')
+  })
+
+  it('is the file name alone everywhere else', () => {
+    expect(named('/courses/gradients/tasks/tsk-slope-of-flat.json')).toBe('tsk-slope-of-flat.json')
+    expect(named('course.json')).toBe('course.json')
+    expect(named('')).toBe('')
+  })
+
+  it('does not invent a folder that is not there', () => {
+    expect(named('SKILL.md')).toBe('SKILL.md')
+  })
+
+  it('reaches the phrase each adapter builds', () => {
+    const read = claudeAdapter.reader()
+    read(JSON.stringify({ type: 'system', subtype: 'init', tools: [], session_id: 's' }))
+    const moment = read(
+      JSON.stringify({
+        type: 'assistant',
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: 't1',
+              name: 'Read',
+              input: { file_path: '/staging/.whetstone/skills/writing-a-task/SKILL.md' },
+            },
+          ],
+        },
+      }),
+    )
+    expect(moment?.at).toBe('doing')
+    if (moment?.at === 'doing') expect(moment.what).toBe('Reading writing-a-task/SKILL.md')
   })
 })
