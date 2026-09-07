@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 
 import { Answer } from './Answer'
 import { MiniApp } from './MiniApp'
-import { Prose } from './Prose'
+import { Prose, Run } from './Prose'
+import { parseInline } from '../shared/markdown'
 import type { LessonView } from '../main/study'
 import type { Resource } from '../shared/format'
 
@@ -63,8 +64,11 @@ export function Lesson({
 
           case 'callout':
             return (
+              // The text goes through the inline parser like any other prose. It was
+              // dropped in raw before, so a callout could hold neither bold nor code nor a
+              // link, and maths is what finally made that visible.
               <div key={index} className="pull">
-                <b>{block.kind}.</b> {block.markdown}
+                <b>{block.kind}.</b> <Run inline={parseInline(block.markdown)} />
               </div>
             )
 
@@ -72,7 +76,11 @@ export function Lesson({
             return (
               <figure key={index} className="figure">
                 <img src={`whetstone-course://${slug}/${block.src}`} alt={block.alt} />
-                {block.alt !== '' && <figcaption>{block.alt}</figcaption>}
+                {block.alt !== '' && (
+                  <figcaption>
+                    <Run inline={parseInline(block.alt)} />
+                  </figcaption>
+                )}
               </figure>
             )
 

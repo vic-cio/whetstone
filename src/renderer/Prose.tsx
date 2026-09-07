@@ -1,5 +1,6 @@
+import { Maths } from './Maths'
 import { parseMarkdown } from '../shared/markdown'
-import type { Inline, MdBlock } from '../shared/markdown'
+import type { Align, Inline, MdBlock } from '../shared/markdown'
 
 /**
  * Lesson prose. The parser hands over data, and this turns it into elements, so there is
@@ -33,8 +34,43 @@ function Block({ block }: { block: MdBlock }): React.JSX.Element {
       ) : (
         <ul>{block.items.map((item, index) => <li key={index}><Run inline={item} /></li>)}</ul>
       )
+    case 'math':
+      return <Maths text={block.text} display />
+    case 'table':
+      return (
+        // A table can be wider than the column, so it scrolls inside its own box rather
+        // than making the whole page scroll sideways.
+        <div className="tablebox">
+          <table>
+            <thead>
+              <tr>
+                {block.head.map((cell, index) => (
+                  <th key={index} style={{ textAlign: lined(block.align[index]) }}>
+                    <Run inline={cell} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, index) => (
+                    <td key={index} style={{ textAlign: lined(block.align[index]) }}>
+                      <Run inline={cell} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
   }
 }
+
+/** The parser's word for a column's alignment, in the one CSS understands. */
+const lined = (align: Align | undefined): 'left' | 'right' | 'center' =>
+  align === 'right' ? 'right' : align === 'centre' ? 'center' : 'left'
 
 export function Run({ inline }: { inline: Inline[] }): React.JSX.Element {
   return (
@@ -49,6 +85,7 @@ export function Run({ inline }: { inline: Inline[] }): React.JSX.Element {
             </a>
           )
         }
+        if (piece.math === true) return <Maths key={index} text={piece.text} />
         if (piece.code === true) return <code key={index}>{piece.text}</code>
         if (piece.strong === true) return <strong key={index}>{piece.text}</strong>
         if (piece.em === true) return <em key={index}>{piece.text}</em>

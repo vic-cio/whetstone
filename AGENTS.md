@@ -149,6 +149,15 @@ tests/         vitest, run against the fixtures
 - **Lesson prose becomes data, never markup.** `src/shared/markdown.ts` returns a tree and
   the renderer builds elements from it. Nothing in a Course may become HTML in the host
   window, which is the window holding the preload bridge.
+  Maths is the one exception and it is a narrow one: a Lesson holds the *expression* as a
+  string, and `src/renderer/Maths.tsx` hands that to KaTeX, whose output grammar is its own
+  and not the Course's. `trust: false` is load-bearing, `katex.render` writes into a node so
+  there is no `dangerouslySetInnerHTML` anywhere in the app, and `tests/markdown.test.ts`
+  checks that no expression can produce an anchor, an `href=`, an `<img>` or an `on…=`.
+- **Course text is prose everywhere it appears, not only in a Lesson body.** A callout, a
+  figure's caption, a Task's prompt, a multiple-choice option, a Rubric criterion and an
+  explanation all go through `parseInline`. They did not, for three phases, so a callout
+  could hold neither bold nor code nor a link; maths is what finally made it visible.
 
 ## Toolchain, and four things that will waste your afternoon
 

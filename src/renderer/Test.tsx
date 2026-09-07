@@ -1,6 +1,8 @@
 import { useState } from 'react'
 
 import { Answer } from './Answer'
+import { Run } from './Prose'
+import { parseInline } from '../shared/markdown'
 import type { RubricVerdict } from '../shared/verdict'
 import type { TestView } from '../main/study'
 
@@ -48,11 +50,11 @@ export function Test({
             <span className={`chip depth-${task.depth}`}>{task.depth}</span>
             <span className="chip k">{task.check === 'deterministic' ? '⚡ instant' : '✦ needs a model'}</span>
           </div>
-          <p className="q">{task.prompt}</p>
+          <p className="q"><Run inline={parseInline(task.prompt)} /></p>
           {task.rubric !== undefined && (
             <ul className="rubric">
               {task.rubric.map((criterion) => (
-                <li key={criterion.id}>{criterion.criterion}</li>
+                <li key={criterion.id}><Run inline={parseInline(criterion.criterion)} /></li>
               ))}
             </ul>
           )}
@@ -104,7 +106,7 @@ function Scored({
         const line = said.get(criterion.id)
         return (
           <li key={criterion.id} className={line?.met ? 'met' : 'unmet'}>
-            <b>{criterion.criterion}</b>
+            <b><Run inline={parseInline(criterion.criterion)} /></b>
             {line && <span className="ev">{line.evidence}</span>}
             {line && line.missing.toLowerCase() !== 'nothing' && <span className="ms">{line.missing}</span>}
           </li>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 
 import { Answer } from './Answer'
+import { Run } from './Prose'
+import { parseInline } from '../shared/markdown'
 import type { PublicTask } from '../shared/format'
 
 /**
@@ -59,7 +61,7 @@ export function Review({
             <span className="ptype">{String(index + 1).padStart(2, '0')}</span>
             <span className={`chip depth-${task.depth}`}>{task.depth}</span>
           </div>
-          <p className="q">{task.prompt}</p>
+          <p className="q"><Run inline={parseInline(task.prompt)} /></p>
           <Answer
             question={task}
             slug={slug}

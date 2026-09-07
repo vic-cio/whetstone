@@ -36,6 +36,40 @@ Say the thing. A paragraph should carry an idea, not announce one.
 
 Prose becomes data, not HTML. Markup you write appears as characters.
 
+## Maths and tables
+
+Both are ordinary prose and need no block of their own.
+
+**Maths** is LaTeX between dollars. `$f'(x)$` sets an expression inside a sentence, and a
+`$$` line opens and closes a displayed equation:
+
+```markdown
+The transform is defined as
+
+$$
+\hat{x}(f) = \int_{-\infty}^{\infty} x(t)\, e^{-i 2\pi f t}\, dt
+$$
+```
+
+It is typeset by KaTeX, so use KaTeX's commands. An expression that will not parse is shown
+in red rather than breaking the page, which means a mistake is visible to the reader, so
+check what you write. A single `$` against a space stays a dollar sign, and money is safe.
+
+Maths works in a callout, in a task's prompt, in an option, and in an explanation, because
+all of those go through the same parser. Use it wherever the notation is clearer than words.
+
+**A table** is the usual pipe form, and the rule under the header sets the alignment:
+
+```markdown
+| Kind | What the reader does | What the app checks |
+| --- | --- | :---: |
+| `numeric` | Enters a number | Within a tolerance |
+| `ordering` | Arranges steps | Sequence equality |
+```
+
+A cell holds inline markup, so it can carry code, a link, or an expression. Reach for a
+table when the content really is a grid; two columns of prose is a list.
+
 ## The blocks
 
 **`:::callout{kind=insight}`** one idea worth stopping on. `kind` is `insight`, `warning`,

@@ -1,5 +1,8 @@
 import { useState } from 'react'
 
+import { Run } from './Prose'
+import { parseInline } from '../shared/markdown'
+
 import { MiniApp } from './MiniApp'
 
 import type { PublicTask, PublicTry } from '../shared/format'
@@ -75,7 +78,7 @@ export function Answer({
               }}
             >
               <i />
-              <span>{option}</span>
+              <span><Run inline={parseInline(option)} /></span>
             </button>
           ))}
           <Verdict outcome={outcome} trouble={trouble} onAgain={again} />
@@ -286,7 +289,11 @@ function Verdict({
           ))}
         </ul>
       )}
-      {outcome.explanation !== undefined && <span>{outcome.explanation}</span>}
+      {outcome.explanation !== undefined && (
+        <span>
+          <Run inline={parseInline(outcome.explanation)} />
+        </span>
+      )}
       {failed && (
         <button type="button" className="again" onClick={onAgain}>
           Try again

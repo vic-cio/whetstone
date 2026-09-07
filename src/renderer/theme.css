@@ -633,3 +633,30 @@ pre.code {
 
 /* Two things to do with a course row, revealed together by hovering it. */
 .crowdo { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; display: flex; gap: 10px; }
+
+/* ---------------------------------------------------------------- maths and tables */
+
+/* An equation on its own line. It scrolls rather than pushing the column wide, because a
+   long derivation is a long line and the prose around it should keep its measure. */
+.mathblock {
+  display: block; margin: 18px 0; overflow-x: auto; overflow-y: hidden;
+  padding-bottom: 2px; text-align: left;
+}
+.math { white-space: nowrap; }
+/* KaTeX sizes display maths at 1.21em, which is a shout next to 13px prose. */
+.prose .katex { font-size: 1.06em; }
+.prose .katex-display { margin: 0; }
+/* A broken expression is shown as itself, and this is the one red thing in a lesson. */
+.prose .katex-error { color: var(--fail); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+.tablebox { overflow-x: auto; margin: 18px 0; }
+.prose table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.prose th, .prose td {
+  padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top;
+}
+.prose th {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  border-bottom-color: var(--frame); white-space: nowrap;
+}
+.prose tbody tr:last-child td { border-bottom: 0; }

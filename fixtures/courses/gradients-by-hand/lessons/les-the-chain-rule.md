@@ -14,8 +14,22 @@ Backpropagation is the chain rule applied in reverse order, once per layer, reus
 what it already computed.
 :::
 
+Written out, for $f(x) = g(h(x))$:
+
+$$
+\frac{df}{dx} = \frac{dg}{dh} \cdot \frac{dh}{dx}
+$$
+
 Each layer contributes one factor. Multiply the factors and you have the gradient for
 the whole composition.
+
+| Layer | What it contributes | Evaluated at |
+| --- | --- | --- |
+| Outer, $g$ | $dg/dh$ | $h(x)$, not $x$ |
+| Inner, $h$ | $dh/dx$ | $x$ |
+
+The right-hand column is where most mistakes live: the outer derivative is evaluated at
+the inner function's output, not at the input you started with.
 
 :::try{id=try-inner-derivative}
 {
