@@ -90,7 +90,12 @@ export function Lesson({
                 <div className="prow">
                   <span className="ptype">Try it</span>
                 </div>
-                <p className="q">{block.question.prompt}</p>
+                {/*
+                  Course text is prose everywhere it appears, and a Try's prompt is Course
+                  text. It was the one prompt in the app that skipped the parser, so a Try
+                  could hold neither code nor bold nor maths while the Task beside it could.
+                */}
+                <p className="q"><Run inline={parseInline(block.question.prompt)} /></p>
                 <Answer
                   question={block.question}
                   slug={slug}

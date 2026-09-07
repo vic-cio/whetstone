@@ -35,8 +35,16 @@ const CAP = { short: 0.1, rubric: 1 }
  * the verdict has to arrive as a file. That write is confined to the Attempt folder, which
  * is the run's working directory and holds nothing but this one Attempt.
  */
-function graderProfile(cwd: string, budgetUsd: number, writeFile: boolean): AgentProfile {
-  const profile = readerProfile('grader', cwd, budgetUsd, [])
+function graderProfile(cwd: string, budgetUsd: number, writeFile: boolean, attempt: string): AgentProfile {
+  /*
+   * The state folder is keyed to the Attempt, not shared across all of them.
+   *
+   * A Grader run is one turn and never resumes, so it has no session to keep. Sharing one
+   * folder meant every Attempt ever judged piled its state into the same place, with the
+   * harness free to find a session there that belongs to somebody else's question. The
+   * Grader is amnesiac by design, and this is that design in the filesystem.
+   */
+  const profile = readerProfile('grader', cwd, budgetUsd, [], attempt)
   return writeFile ? { ...profile, can: ['read', 'write'], restricted: false } : profile
 }
 
@@ -96,7 +104,7 @@ export async function judge(
     {
       harness,
       model,
-      profile: graderProfile(folder, task.check === 'rubric' ? CAP.rubric : CAP.short, writeFile),
+      profile: graderProfile(folder, task.check === 'rubric' ? CAP.rubric : CAP.short, writeFile, id),
       prompt: graderPrompt({
         rubric: task.check === 'rubric',
         skills: furnished.skills,

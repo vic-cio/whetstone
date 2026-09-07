@@ -11,10 +11,11 @@
 
 There are two pieces of work and they are not the same size.
 
-- **Part A** is a bug sweep. Eleven defects, found by reading the whole of `src/`. All 266 tests pass and `tsc --noEmit` is clean, so no test catches any of them. Part A is about a morning.
+- **Part A** was a bug sweep. Eleven defects, found by reading the whole of `src/`. When it was written all 266 tests passed and `tsc --noEmit` was clean, so no test caught any of them. It is now done.
 - **Part B** is a phase. It reworks the Test, adds Projects, adds a fourth role, and turns defect reports into Constructor runs. Part B is weeks.
 
-Do part A first. The app currently tells the reader that the Grader "arrives with the tutor", and the tutor arrived in phase 4. Every hour part B waits is an hour the app is lying on screen.
+**Part A is done.** Findings 1 to 5 and 8 to 11 are fixed, with 6 and 7 left to part B as
+planned. Start at part B, section 4, the format changes.
 
 Read `PLAN.md` for the design and `CONTEXT.md` for the vocabulary. Use those words exactly. `HANDOFF.md` is the original design handoff and is historical.
 
@@ -33,10 +34,10 @@ Read `PLAN.md` for the design and `CONTEXT.md` for the vocabulary. Use those wor
 | ~~5~~ | ~~One moment channel carries every run~~ **done** | `src/preload/index.ts`, `src/main/index.ts` |
 | 6 | A defect report can be filed and never read | `src/main/progress.ts` |
 | 7 | `add-rung` has no button | `src/main/revise.ts` |
-| 8 | A Try's prompt skips the inline parser | `src/renderer/Lesson.tsx:93` |
-| 9 | `coursesRoot()` re-hashes the samples on every call | `src/main/courseStore.ts:56` |
-| 10 | An outside drag reorders an ordering list | `src/renderer/Answer.tsx:122` |
-| 11 | The Grader shares one state folder across attempts | `src/main/workspace.ts` |
+| ~~8~~ | ~~A Try's prompt skips the inline parser~~ **done** | `src/renderer/Lesson.tsx` |
+| ~~9~~ | ~~`coursesRoot()` re-hashes the samples on every call~~ **done** | `src/main/courseStore.ts` |
+| ~~10~~ | ~~An outside drag reorders an ordering list~~ **done** | `src/renderer/Answer.tsx` |
+| ~~11~~ | ~~The Grader shares one state folder across attempts~~ **done** | `src/main/workspace.ts`, `src/main/grader.ts` |
 
 A twelfth was found and dismissed. The spend cap never fires for `pi`, because `pi` reports its cost once, at `agent_settled`, after the run is over. Worse, when the cap does trip the app kills a process that has already exited and reports a run that finished as failed, discarding work already paid for. **Victor is handling limits at the provider portals, so this is not being fixed.** If it is ever picked up, the fix is a per-turn cost moment from `pi` and a cap that kills on a running total. The false sentence at `src/main/harness.ts:273` is the part worth removing even now.
 
@@ -85,6 +86,17 @@ the run is over and the Moments arrive while it is going. `brief.watch` became
 The original note follows.
 
 **5. The moment channel.** `run:moment` is global. `Tutor` and `NewCourse` both subscribe. This is quiet only because of finding 1. Once a Task can be graded, grading one with the tutor panel open puts the Grader's words into the tutor's reply, and a Grader failure sets the tutor's error line. Give every run an id and put it on each `Moment`. A panel draws its own run and ignores the rest.
+
+## 2a. The rest of the sweep, in one line each
+
+- **8.** A Try's prompt goes through `parseInline`, like every other prompt in the app.
+- **9.** The samples are seeded once per process. The app cannot ship a newer one while it
+  is running, so once is all it can usefully be.
+- **10.** A drop is taken only from a drag one of these rows started, and only for a row
+  that exists. The list is not a drop target for anything else.
+- **11.** The Grader's state folder is keyed to the Attempt. A Grader run is one turn and
+  never resumes, so it has no session to keep, and sharing one folder let a harness find a
+  session belonging to somebody else's question.
 
 **6 and 7** are covered by part B and should be left alone until then. Do not delete `voidAttempts`; part B calls it.
 
@@ -188,7 +200,7 @@ Write these before the code. They are the parts that fail quietly.
 
 ## 10. Order of work
 
-1. Part A. **1 to 5 are done.** 8 to 11 remain. Leave 6 and 7 for part B.
+1. ~~Part A.~~ **Done, except 6 and 7, which part B covers.** Do not delete `voidAttempts`.
 2. The format changes in section 4, in one pass, with the authoring skills updated in the same commit.
 3. The Test as a sitting: held answers, check, reveal, feedback, retake.
 4. Defect reports and the revision work kinds, including module scale.

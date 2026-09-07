@@ -118,11 +118,18 @@ export function Answer({
     case 'ordering': {
       const locked = outcome !== undefined
       const drop = (event: React.DragEvent, to: number): void => {
-        // The row being carried is read back off the drag itself rather than out of state.
-        // State is a render behind while the drag is in flight, and the handler that runs
-        // on the drop closes over the value from before it started.
+        /*
+         * The row being carried is read back off the drag itself rather than out of state.
+         * State is a render behind while the drag is in flight, and the handler that runs
+         * on the drop closes over the value from before it started.
+         *
+         * Only a drag this list started counts. Anything can be dragged onto a page, and a
+         * drag carrying the text "2" would otherwise reorder the answer under the reader's
+         * hands. `held` is what says the drag began on one of these rows.
+         */
+        if (held === undefined) return
         const from = Number(event.dataTransfer.getData('text/plain'))
-        if (Number.isInteger(from)) setOrder(lift(order, from, to))
+        if (Number.isInteger(from) && from >= 0 && from < order.length) setOrder(lift(order, from, to))
         setHeld(undefined)
         setOver(undefined)
       }
@@ -143,7 +150,9 @@ export function Answer({
                   setHeld(position)
                 }}
                 onDragOver={(event) => {
-                  if (locked) return
+                  // Not a drop target for a drag from outside: without this the browser
+                  // offers the drop, and refusing it only once it lands looks like a bug.
+                  if (locked || held === undefined) return
                   event.preventDefault()
                   event.dataTransfer.dropEffect = 'move'
                   setOver(position)

@@ -47,16 +47,27 @@ export function progress(): Progress {
   return db
 }
 
+/**
+ * Seeding walks every sample and digests it, and `coursesRoot()` is called by almost every
+ * handler, so leaving this out meant hashing both shipped Courses on every tick, every
+ * page open and every answer. Once per process is all it can usefully be: the app cannot
+ * ship a newer sample while it is running.
+ */
+let seeded = false
+
 export function coursesRoot(): string {
   const fromEnv = process.env['WHETSTONE_COURSES']
   if (fromEnv) return fromEnv
 
   const root = join(app.getPath('userData'), 'courses')
   mkdirSync(root, { recursive: true })
-  seedSamples(
-    root,
-    SAMPLES.map((name) => ({ name, from: samplePath(name) })),
-  )
+  if (!seeded) {
+    seeded = true
+    seedSamples(
+      root,
+      SAMPLES.map((name) => ({ name, from: samplePath(name) })),
+    )
+  }
   return root
 }
 
