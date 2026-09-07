@@ -66,12 +66,22 @@ export function NewCourse({
 
   useEffect(() => {
     void window.whetstone.brief.start()
-    void window.whetstone.brief.harnesses().then((found) => {
-      setHarnesses(found.harnesses)
-      const first = found.harnesses.find((entry) => entry.installed) ?? found.harnesses[0]
-      if (first) setPick({ harnessId: first.id, model: first.models[0] ?? '' })
-      if (found.errors.length > 0) setTrouble(found.errors[0] as string)
-    })
+    /*
+     * The Constructor's row from Settings, not the first harness that happens to be
+     * installed. This is the role whose model matters most, and the setting could not reach
+     * it: a build always ran on whatever came first in the registry. The row is still a
+     * starting point rather than a lock, because the picker below is right here.
+     */
+    void Promise.all([window.whetstone.brief.harnesses(), window.whetstone.settings.roles()]).then(
+      ([found, roles]) => {
+        setHarnesses(found.harnesses)
+        const named = found.harnesses.find((entry) => entry.id === roles.constructor.harnessId)
+        const first = found.harnesses.find((entry) => entry.installed) ?? found.harnesses[0]
+        if (named) setPick({ harnessId: named.id, model: roles.constructor.model || (named.models[0] ?? '') })
+        else if (first) setPick({ harnessId: first.id, model: first.models[0] ?? '' })
+        if (found.errors.length > 0) setTrouble(found.errors[0] as string)
+      },
+    )
     return window.whetstone.runs.watch((run, moment) => {
       if (run !== mine.current) return
       setLog((lines) => [...lines, describe(moment)])

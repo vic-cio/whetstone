@@ -27,9 +27,9 @@ Read `PLAN.md` for the design and `CONTEXT.md` for the vocabulary. Use those wor
 | # | What | Where |
 |---|---|---|
 | ~~1~~ | ~~The Grader cannot be reached from the interface~~ **done** | `src/renderer/Answer.tsx` |
-| 2 | The tutor's Attach button can never be pressed | `src/main/index.ts:239`, `src/renderer/Tutor.tsx:50` |
-| 3 | Settings' Constructor row is never read | `src/renderer/NewCourse.tsx`, `src/renderer/App.tsx:255` |
-| 4 | A sentence with a pipe in it is eaten as a table | `src/shared/markdown.ts:105` |
+| ~~2~~ | ~~The tutor's Attach button can never be pressed~~ **done** | `src/main/index.ts`, `src/renderer/Tutor.tsx` |
+| ~~3~~ | ~~Settings' Constructor row is never read~~ **done** | `src/renderer/NewCourse.tsx`, `src/renderer/App.tsx` |
+| ~~4~~ | ~~A sentence with a pipe in it is eaten as a table~~ **done** | `src/shared/markdown.ts` |
 | ~~5~~ | ~~One moment channel carries every run~~ **done** | `src/preload/index.ts`, `src/main/index.ts` |
 | 6 | A defect report can be filed and never read | `src/main/progress.ts` |
 | 7 | `add-rung` has no button | `src/main/revise.ts` |
@@ -51,9 +51,22 @@ no Attempt. The original note follows.
 
 **1. The Grader cannot be reached.** `Answer.tsx` renders a phase 3 placeholder for `short-answer` and `submission`. `gradients-by-hand` ships one of each, so a Course that ships with the app has two questions nobody can answer. Everything behind the placeholder is built and correct: `answering.ts` routes to `judge()`, `Test.tsx` already passes the grader's harness and already draws the rubric and the `Scored` component. What is missing is two input controls. Part B replaces this whole screen, so build the controls in a shape part B keeps.
 
+**2. The tutor's Attach. Done.** `tutor:thread` returns the real list, and `tutor:ask`
+returns the thread id once a turn has been saved, so a panel that has just started a
+conversation can attach to it. The original note follows.
+
 **2. The tutor's Attach.** Two bugs make one dead feature. `tutor:thread` returns `attached: []` hardcoded, so a reopened conversation never lists its files. And `Tutor.tsx` takes `chatId` only from that read, while `tutor:ask` returns no id, so after the first question the button is still disabled. Return the real list, and return the thread id from `ask`.
 
+**3. The Constructor row. Done.** `NewCourse` starts from the Constructor's row and falls
+back to the first installed harness only when nobody set one. A remediation run uses the
+Constructor's row rather than the tutor's. The original note follows.
+
 **3. The Constructor row.** Settings writes `constructor.harness` and `constructor.model`. `NewCourse` picks the first installed harness by itself, and a remediation run uses the **tutor's** row. The role whose model matters most is the one the setting cannot reach.
+
+**4. The markdown table. Done.** A thematic break is a block of its own, and a header and
+its rule must agree on how many columns there are. `snake_case` in prose keeps its
+underscores. The code span inside bold is left, with a comment saying so. The original note
+follows.
 
 **4. The markdown table.** `markdown.ts:105` takes any line holding a pipe when the next line looks like a rule. There is no thematic break rule, so `---` under a sentence qualifies. Measured:
 
@@ -175,7 +188,7 @@ Write these before the code. They are the parts that fail quietly.
 
 ## 10. Order of work
 
-1. Part A. **1 and 5 are done.** 2, 3, 4 and 8 to 11 remain. Leave 6 and 7 for part B.
+1. Part A. **1 to 5 are done.** 8 to 11 remain. Leave 6 and 7 for part B.
 2. The format changes in section 4, in one pass, with the authoring skills updated in the same commit.
 3. The Test as a sitting: held answers, check, reveal, feedback, retake.
 4. Defect reports and the revision work kinds, including module scale.

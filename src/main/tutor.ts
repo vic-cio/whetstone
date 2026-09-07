@@ -37,6 +37,15 @@ export interface TutorReply {
   ok: boolean
   text: string
   usd: number
+  /**
+   * The conversation this turn belongs to, once there is one to belong to.
+   *
+   * A conversation exists from the first answer, not from the first question, so this is
+   * absent until a turn has been saved. It is what the Attach button needs: before it was
+   * returned, a panel that had just started a conversation had no id and the button stayed
+   * disabled for the whole of it.
+   */
+  chatId?: string
   /** Said when the run changed the Course and it was put back. Almost always absent. */
   reverted?: string
   message?: string

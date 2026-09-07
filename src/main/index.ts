@@ -257,10 +257,12 @@ app.whenReady().then(() => {
   //
   // Nothing here runs on its own. A conversation starts cold when the reader sends the
   // first message and ends when they close it (PLAN 3.5).
-  ipcMain.handle('tutor:thread', (_event, slug: string, pageId: string) => ({
-    thread: progress().thread(slug, pageId),
-    attached: [] as string[],
-  }))
+  // A reopened conversation lists what was shown to it. This read is the only place the
+  // panel learns that, so an empty list here meant a file attached last week was invisible.
+  ipcMain.handle('tutor:thread', (_event, slug: string, pageId: string) => {
+    const thread = progress().thread(slug, pageId)
+    return { thread, attached: thread === undefined ? [] : attached(thread.id) }
+  })
 
   ipcMain.handle('tutor:attach', async (_event, chatId: string) => {
     const picked = await dialog.showOpenDialog({
@@ -312,12 +314,13 @@ app.whenReady().then(() => {
 
       store.endRun(row, reply.usd, reply.ok ? 'ok' : 'failed')
 
-      if (reply.ok && reply.text !== '') {
-        thread.messages.push({ who: 'you', text: question }, { who: 'tutor', text: reply.text })
-        if (reply.session !== '') thread.session = reply.session
-        store.saveThread(slug, pageId, thread)
-      }
-      return reply
+      // A conversation exists from the first answer, so the id goes back only once there
+      // is a saved thread to attach anything to.
+      if (!(reply.ok && reply.text !== '')) return reply
+      thread.messages.push({ who: 'you', text: question }, { who: 'tutor', text: reply.text })
+      if (reply.session !== '') thread.session = reply.session
+      store.saveThread(slug, pageId, thread)
+      return { ...reply, chatId: thread.id }
     },
   )
 

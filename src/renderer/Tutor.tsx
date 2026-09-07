@@ -93,6 +93,9 @@ export function Tutor({
     typing.current = ''
     setLive('')
     if (reply.text !== '') setSaid((all) => [...all, { who: 'tutor', text: reply.text }])
+    // The first answer is what makes a conversation, and until this the panel learned the
+    // id from the thread read alone, so Attach stayed disabled for the whole of a new one.
+    if (reply.chatId !== undefined) setChatId(reply.chatId)
     // A Course that was changed and put back is worth saying out loud. It should never
     // happen, and the day it does the reader should not be the last to know (PLAN 3.14).
     if (reply.reverted !== undefined) setTrouble(reply.reverted)

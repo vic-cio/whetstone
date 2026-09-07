@@ -41,12 +41,14 @@ export function App(): React.JSX.Element {
   const [revising, setRevising] = useState('')
 
   /**
-   * Which harness answers the questions the host cannot. One choice for the Tutor and the
-   * Grader, taken from the registry, until Settings gives each role a row of its own
-   * (PLAN 3.12). Reading the registry starts no process and costs nothing.
+   * Which harness answers the questions the host cannot. One row per role, from Settings,
+   * falling back to the registry for a row nobody has set (PLAN 3.12). Reading the registry
+   * starts no process and costs nothing.
    */
   const [agent, setAgent] = useState({ harnessId: '', model: '' })
   const [grader, setGrader] = useState({ harnessId: '', model: '' })
+  /** The Constructor's row. A remediation run is a Constructor run, so it uses this. */
+  const [builder, setBuilder] = useState({ harnessId: '', model: '' })
   useEffect(() => {
     void Promise.all([window.whetstone.brief.harnesses(), window.whetstone.settings.roles()]).then(
       ([found, roles]) => {
@@ -59,6 +61,7 @@ export function App(): React.JSX.Element {
         }
         setAgent(roles.tutor.harnessId === '' ? fallback : roles.tutor)
         setGrader(roles.grader.harnessId === '' ? fallback : roles.grader)
+        setBuilder(roles.constructor.harnessId === '' ? fallback : roles.constructor)
       },
     )
   }, [route.at])
@@ -253,7 +256,7 @@ export function App(): React.JSX.Element {
             onRemediate={(objective) => {
               setRevising(objective.title)
               void window.whetstone.course
-                .revise(newRunId(), route.slug, agent.harnessId, agent.model, {
+                .revise(newRunId(), route.slug, builder.harnessId, builder.model, {
                   kind: 'remediate',
                   objective: objective.id,
                   title: objective.title,

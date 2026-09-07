@@ -108,6 +108,54 @@ describe('tables', () => {
     // Otherwise a sentence with a pipe in it becomes a one-row table.
     expect(parseMarkdown('a | b is a choice')[0]?.type).toBe('p')
   })
+
+  /*
+   * Measured. A sentence holding a pipe, with `---` under it, was read as a table's
+   * alignment rule and the sentence was split across two headers. The prose was destroyed,
+   * not misdrawn, so this is the one in this file worth keeping forever.
+   */
+  it('is not a table when the header and the rule disagree on how many columns there are', () => {
+    const blocks = parseMarkdown('Use a | b to pipe.\n---')
+    expect(blocks.map((block) => block.type)).toEqual(['p', 'rule'])
+    const [prose] = blocks
+    if (prose?.type !== 'p') return
+    expect(prose.inline.map((piece) => piece.text).join('')).toBe('Use a | b to pipe.')
+  })
+
+  it('reads a bare marker line as a thematic break', () => {
+    for (const marker of ['---', '***', '___', '- - -']) {
+      expect(parseMarkdown(`Before.\n\n${marker}\n\nAfter.`).map((block) => block.type)).toEqual([
+        'p',
+        'rule',
+        'p',
+      ])
+    }
+  })
+
+  it('still reads a one-column table, whose rule looks like a break', () => {
+    const [block] = parseMarkdown('| a |\n| --- |\n| 1 |')
+    expect(block?.type).toBe('table')
+  })
+})
+
+describe('an identifier in prose', () => {
+  /*
+   * A Course about code is full of `snake_case`, and a single underscore inside a word is
+   * not emphasis. CommonMark says so and this file did not, so `some_var_name` came out as
+   * some*var*name in a Lesson.
+   */
+  it('keeps its underscores', () => {
+    expect(parseInline('the some_var_name field')).toEqual([{ text: 'the some_var_name field' }])
+    expect(parseInline('call read_file() first')).toEqual([{ text: 'call read_file() first' }])
+  })
+
+  it('does not stop a real emphasis', () => {
+    expect(parseInline('a _slanted_ word')).toEqual([
+      { text: 'a ' },
+      { text: 'slanted', em: true },
+      { text: ' word' },
+    ])
+  })
 })
 
 describe('maths', () => {

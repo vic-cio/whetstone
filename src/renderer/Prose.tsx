@@ -36,6 +36,8 @@ function Block({ block }: { block: MdBlock }): React.JSX.Element {
       )
     case 'math':
       return <Maths text={block.text} display />
+    case 'rule':
+      return <hr className="pbreak" />
     case 'table':
       return (
         // A table can be wider than the column, so it scrolls inside its own box rather

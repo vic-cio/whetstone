@@ -39,6 +39,8 @@ export type MdBlock =
   /** A displayed equation, on its own line. `text` is the expression. */
   | { type: 'math'; text: string }
   | { type: 'table'; align: Align[]; head: Inline[][]; rows: Inline[][][] }
+  /** A thematic break: `---`, `***` or `___` on a line of its own. */
+  | { type: 'rule' }
 
 export function parseMarkdown(source: string): MdBlock[] {
   const blocks: MdBlock[] = []
@@ -99,10 +101,32 @@ export function parseMarkdown(source: string): MdBlock[] {
       continue
     }
 
-    // A table, in the usual pipe form: a header row, a rule that sets the alignment, then
-    // the body. The rule is what tells a table from a paragraph that happens to have a
-    // pipe in it, so both lines have to be there before this takes the block.
-    if (line.includes('|') && isRule(lines[index + 1] ?? '')) {
+    /*
+     * A thematic break. Without this, `---` under a line of prose was read as a table's
+     * alignment rule, and any sentence above it holding a pipe was eaten:
+     *
+     *     Use a | b to pipe.
+     *     ---
+     *
+     * became a two-column table with no rows, and the sentence was split across the two
+     * headers. The prose was destroyed rather than misdrawn, which is why this is a rule
+     * of its own rather than a tightening of the one below.
+     */
+    if (isBreak(line)) {
+      flush()
+      blocks.push({ type: 'rule' })
+      index += 1
+      continue
+    }
+
+    /*
+     * A table, in the usual pipe form: a header row, a rule that sets the alignment, then
+     * the body. Both lines have to be there, and they have to agree on how many columns
+     * there are. The agreement is the second half of the fix above: a sentence with one
+     * pipe in it makes two cells, and `---` under it makes one, so it is not a table.
+     */
+    const ruled = isRule(lines[index + 1] ?? '')
+    if (line.includes('|') && ruled && cells(line).length === alignments(lines[index + 1] ?? '').length) {
       flush()
       const align = alignments(lines[index + 1] ?? '')
       const head = cells(line).map((cell) => parseInline(cell))
@@ -169,6 +193,13 @@ export function parseMarkdown(source: string): MdBlock[] {
   return blocks
 }
 
+/**
+ * A thematic break, as CommonMark has it: three or more of one marker, spaces allowed
+ * between them, and nothing else on the line. A table's rule holds pipes, so it is never
+ * one of these.
+ */
+const isBreak = (line: string): boolean => /^ {0,3}([-*_])(?:\s*\1){2,}\s*$/.test(line)
+
 /** The `|---|:--:|` line under a table's header, which is what makes it a table. */
 const isRule = (line: string): boolean => /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(line) && line.includes('-')
 
@@ -188,9 +219,22 @@ function alignments(rule: string): Align[] {
   })
 }
 
-/** `code` wins over the rest, because a span of code means what it literally says. */
+/**
+ * `code` wins over the rest, because a span of code means what it literally says.
+ *
+ * The single `_` is fenced off from the letters and digits either side of it, so
+ * `snake_case_name` in prose stays what it says rather than becoming snake*case*name. That
+ * is CommonMark's own rule for an underscore, and it is the one that matters here because
+ * a Course about code is full of identifiers. `*` is deliberately not fenced: an asterisk
+ * inside a word does emphasise, in CommonMark and here.
+ *
+ * Known and left alone: emphasis holds plain text only, so a code span inside bold, as in
+ * `**the `id` field**`, shows its backticks. Nesting would mean this scanner returning a
+ * tree instead of a list, and the shallow case is not worth that. Write the code span
+ * outside the bold.
+ */
 const INLINE =
-  /(`[^`]+`)|(\$[^$\n]+\$)|(\[[^\]]+\]\([^)\s]+\))|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*]+\*)|(_[^_]+_)/
+  /(`[^`]+`)|(\$[^$\n]+\$)|(\[[^\]]+\]\([^)\s]+\))|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*]+\*)|((?<![A-Za-z0-9])_[^_]+_(?![A-Za-z0-9]))/
 
 export function parseInline(text: string): Inline[] {
   const out: Inline[] = []

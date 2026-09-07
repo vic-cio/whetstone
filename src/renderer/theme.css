@@ -364,6 +364,9 @@ pre.code {
 .entry input:focus { outline: 0; border-color: var(--amber); }
 .entry .units { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }
 
+/* A thematic break in Lesson prose. A pause, not a divider between sections. */
+.pbreak { border: 0; border-top: 1px solid var(--line); margin: 22px auto; width: 40%; }
+
 /*
  * The two kinds a Grader judges: a written answer, and work handed in as files. Both are a
  * box, a button and nothing else, because the question is on the page above them.
