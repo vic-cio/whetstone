@@ -286,6 +286,16 @@ export function App(): React.JSX.Element {
                   else window.alert(result.at === 'trouble' ? result.message : 'The course could not be changed.')
                 })
             }}
+            onAddRung={(depth) => {
+              setRevising(`${depth} questions`)
+              void window.whetstone.course
+                .revise(newRunId(), route.slug, builder.harnessId, builder.model, { kind: 'add-rung', depth })
+                .then((result) => {
+                  setRevising('')
+                  if (result.at === 'revised') openCourse(route.slug)
+                  else window.alert(result.at === 'trouble' ? result.message : 'The course could not be changed.')
+                })
+            }}
             onRemediate={(objective) => {
               setRevising(objective.title)
               void window.whetstone.course

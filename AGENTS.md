@@ -24,14 +24,17 @@ src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade
                harness.ts (what a Harness is, and the Moment union), claude.ts (the CLI
                adapter), staging.ts (the gate into the library), remove.ts (deleting)
 src/main/      Electron main process. Node lives here and nowhere else. harness.ts spawns,
-               build.ts runs a build, newCourse.ts holds one Brief, tutor.ts and grader.ts
-               are the other two roles, answering.ts routes a Task to whichever judges it,
+               build.ts runs a build, newCourse.ts holds one Brief, tutor.ts, grader.ts,
+               reviewer.ts (a Project) and defect.ts (a report) are the other roles,
+               answering.ts routes a Task to whichever judges it and holds the sitting,
+               study.ts owns the sitting and the tick rules, revise.ts changes a Course,
                workspace.ts owns the folders a run is given
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
 toolkit/       the toolkit this build ships. See docs/toolkit.md
 agent/         what the app hands a Harness: harnesses.json, roles/ (the instruction file
-               per role), skills/ (copied into the run's own folder, never a plugin)
+               per role, and one per way the Constructor is spawned: brief, build, defect),
+               skills/ (copied into the run's own folder, never a plugin)
 scripts/       things run by hand. prove-refusal.mjs spawns a real harness and spends money
 fixtures/courses/        hand-written Courses the tests run against, and the sample the
                          app seeds a fresh library with
@@ -52,6 +55,17 @@ tests/         vitest, run against the fixtures
   until the last question is checked, so the window cannot show early what it never held.
   A held answer is written down as the reader types, and a retake writes fresh Attempts
   under a new `sittingId` with both sittings left in the record.
+- **A defect report is answered, never filed away.** Reporting a Task as broken starts a run
+  that reads the Task and the note and either agrees or names what was missed. It settles
+  nothing: the reader upholds the report or drops it, and overriding a Constructor that
+  disagrees is theirs. Upholding is the only call that touches the record, and what it does
+  is void the Attempts against that question. `docs/adr/0024`.
+- **A Project is read once and answered in prose.** One written response, in the register of
+  a senior colleague, organised around criteria the reader had before they started. No mark,
+  no thread, no tutor panel, and nowhere in the database for a score. Projects are a
+  top-level array rather than a Page type, so they reach neither the rail nor the tick rules.
+  A removal that would empty a Test is refused; a replacement is written instead.
+  `docs/adr/0023`.
 - **Most study needs no model.** Nothing spawns on navigation. A harness starts only when
   the user builds a Course, sends a chat message, submits work, or presses Review.
   `docs/adr/0012`.

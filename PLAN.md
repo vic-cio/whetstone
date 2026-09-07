@@ -514,7 +514,13 @@ Three layers, strongest first.
 
 **Rubric.** Only at `project` depth, and only when the user submits. The Grader returns a score, a line of evidence, and a line of what was missing per criterion, plus an overall outcome. Every field is required, and a partial object is recorded as an error, never as a fail.
 
-**Defect report.** Filed from any Verdict on exactly three grounds. The app says "report a broken task", never "appeal". Upholding one voids the Attempt and queues a `remediate` run. It never changes a score.
+**A Test is a sitting.** A checked question shows nothing until every question in the Test has been checked, and the reveal is a list of ticks and crosses with no number on it. Answers are held as the reader works, so a half-answered Test survives a closed window, and a retake writes fresh Attempts under a new sitting id. A Task may name the Tasks it `follows`, and is then marked on the reader's own earlier answers rather than the correct ones. `docs/adr/0022`.
+
+**Defect report.** Filed on exactly three grounds. The app says "report a broken task", never "appeal". Filing one starts a run: the Constructor reads the Task and the note and either agrees or names something that may have been missed, and it settles nothing. The reader upholds the report or drops it, and overriding a Constructor that disagrees is theirs to do. A report that stands voids the Attempts against that Task and sends it back to be mended or removed. It never changes a score. `docs/adr/0024`.
+
+**Revision at module scale.** A defect report is the small case. A whole Module can be rebuilt or removed, from the Course page, starting from the reader writing down what is wrong. A removal that would empty a Test is refused and a replacement is written instead, and removing a Module voids every Attempt under it.
+
+**Projects.** A Course may carry Projects, below the last Module. The work is done outside the app with ordinary tools and comes back as a folder and some links, and it gets one written response from the Reviewer, in the register of a senior colleague. No mark, no thread, and no tutor panel on the page. `docs/adr/0023`.
 
 **Review session.** A handful of Tasks drawn at random from Objectives the user has already touched. Deterministic only, so it runs offline and free. That is the whole feature: no weighting by ability, no scheduling.
 
@@ -786,6 +792,13 @@ The skills a role is given already reach any harness, because they are files the
 Dark mode was built in phase 0 and has been captured in both themes on every screen since. Keyboard navigation in the reader is left and right along the Course's Pages and escape back to the contents, with nothing bound to an action that spends money or records an Attempt, because a key pressed by accident should do neither. The spend view reads the `runs` table, by kind, in the app's own words: it is the only number in the app that is about the app rather than about the reader, which is why it is allowed to be a number. Export writes a zip of the Course folder, which is the whole of what sharing a Course is.
 
 The icon is a whetstone with an edge being sharpened on it, in the app's own two colours, drawn in HTML and captured through the same mechanism that takes every other screenshot in this repository. A signed build is what remains, and signing needs an Apple developer identity, which is Victor's to provide.
+
+**Phase 8. The sitting, the projects, and revision that reaches a module. Done.**
+A Test became a sitting: check as you go, every result held until the last question, and a reveal that is ticks and crosses with no number. The window is not trusted to keep the secret, which is the rule that keeps a Task's answer out of the renderer applied to its result: the view carries no results at all until the sitting is revealed. Answers are written down as the reader works.
+
+Two things were found by running it rather than by reading it. The first sitting's id had to be a fixed string rather than a minted one, because a minted id changed between the read that opened the Test and the write that held the first answer, and split one sitting in two. And the capture harness was photographing a page that had stopped existing seconds earlier: the compositor holds the last frame for a window that is not in front, so the shot now turns background throttling off and invalidates first. Every screenshot check in this repository was reading a stale page, quietly.
+
+The format moved in one pass: `tags`, `small` and `projects` on the manifest, `follows` on a Task, `minutes` on a Test, with the parser, the authoring skills and the Constructor's instructions in the same commit. A defect report now brings the Constructor in, and `revise.ts` gained four work kinds, two of which take something away and needed their own wording. Projects arrived with a fourth role, the Reviewer, which reads a folder and answers in prose.
 
 ---
 

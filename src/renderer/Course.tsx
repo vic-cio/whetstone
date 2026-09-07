@@ -15,6 +15,7 @@ export function Course({
   onTick,
   onReview,
   onProject,
+  onAddRung,
   onRemediate,
   onModule,
 }: {
@@ -27,6 +28,8 @@ export function Course({
   onProject: (projectId: string) => void
   /** Ask for another run at one Objective. An offer, and pressing it costs money. */
   onRemediate: (objective: { id: string; title: string }) => void
+  /** Ask for Tasks at a Rung this Course does not use. Also an offer, and also money. */
+  onAddRung: (depth: string) => void
   /**
    * A whole Module is irrelevant or badly written. Rebuilding it costs money, and removing
    * it voids every Attempt under it, so both start from the reader saying what is wrong.
@@ -40,6 +43,8 @@ export function Course({
   /** Which Module the reader is writing about, if any. One at a time. */
   const [saying, setSaying] = useState('')
   const [note, setNote] = useState('')
+  /** A Rung the Course does not use, that the reader has pressed. An offer, not an order. */
+  const [wanting, setWanting] = useState('')
   return (
     <>
       <div className="head">
@@ -55,6 +60,12 @@ export function Course({
         <p>{course.summary}</p>
       </div>
 
+      {/*
+        The Ladder, with the Rungs this Course does not use drawn dashed beside the ones it
+        does. A dashed one is a button: this is the only place in the app that could say
+        "there could be harder questions here", because it is the only place that draws the
+        rungs that are missing.
+      */}
       <div className="ladder">
         {DEPTHS.map((depth) =>
           course.ladder.includes(depth) ? (
@@ -62,12 +73,45 @@ export function Course({
               {depth}
             </span>
           ) : (
-            <span key={depth} className="off">
+            <button
+              key={depth}
+              type="button"
+              className="off"
+              title={`This course has no ${depth} questions. Ask for some.`}
+              onClick={() => setWanting(wanting === depth ? '' : depth)}
+            >
               {depth}
-            </span>
+            </button>
           ),
         )}
       </div>
+
+      {wanting !== '' && (
+        <div className="offer">
+          <b>Questions at {wanting} depth</b>
+          <span>
+            This course does not use that rung. The constructor can write tasks at it for
+            every objective and add them to the tests they belong in. That builds new
+            questions and costs money.
+          </span>
+          <div className="acts">
+            <button type="button" className="quiet" onClick={() => setWanting('')}>
+              Never mind
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                const depth = wanting
+                setWanting('')
+                onAddRung(depth)
+              }}
+            >
+              Add them
+            </button>
+          </div>
+        </div>
+      )}
 
       {course.modules.map((module, index) => (
         <div key={module.id} className="mod">

@@ -230,7 +230,15 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
   padding: 3px 7px; border-right: 1px solid var(--surface);
 }
 .ladder span:last-child { border-right: 0; }
-.ladder span.off { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+/* A rung the course does not use. It is a button, and it looks exactly like the span it
+   replaced: what it offers is one press further on, in a box that says what it costs. */
+.ladder span.off, .ladder button.off {
+  background: transparent; border: 1px dashed var(--line); color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 7px; cursor: pointer;
+}
+.ladder button.off:hover { border-color: var(--frame); color: var(--ink); }
 
 /* Depth is a fixed scale, so its tints are identical in both themes. */
 .depth-recall { background: var(--d1); color: var(--on-d-light); }
