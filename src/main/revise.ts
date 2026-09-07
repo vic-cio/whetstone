@@ -72,6 +72,7 @@ export type Work =
   | { kind: 'remove-task'; taskId: string; note: string }
   | { kind: 'rebuild-module'; moduleId: string; title: string; note: string }
   | { kind: 'remove-module'; moduleId: string; title: string; note: string }
+  | { kind: 'add-project'; note: string }
 
 export async function revise(
   request: ReviseRequest,
@@ -172,6 +173,21 @@ function instruction(request: ReviseRequest, skills: string[]): string {
             'the smallest case first, or the two ideas introduced in the other order. Add it as a',
             'Page in the Module that Objective lives in, and write two or three new Tasks for it.',
             'Do not repeat the lesson that is already there in different words.',
+          ],
+        }
+      case 'add-project':
+        return {
+          keep: addOnly,
+          lines: [
+            'Add one Project to this course. The reader asked for it and said this:',
+            '',
+            request.work.note,
+            '',
+            'A Project is open-ended work done outside the app with ordinary tools, and it',
+            'comes back as a folder and some links. Write it into the `projects` array in',
+            'course.json, with an id, a title, a brief in prose, and the criteria it is read',
+            'for. The criteria are what makes the work finishable, so write them with the',
+            'brief. Never add one to a course marked `small`.',
           ],
         }
       case 'fix-task':

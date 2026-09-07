@@ -19,6 +19,7 @@ import {
 import { removeCourse } from '../shared/remove'
 import { answer, check } from './answering'
 import { evaluate } from './defect'
+import { review } from './reviewer'
 import { publicTask } from '../shared/format'
 import { reviewSession } from '../shared/again'
 import { revise } from './revise'
@@ -500,6 +501,55 @@ app.whenReady().then(() => {
       answerTry(loadCourse(slug), lessonId, tryId, given),
   )
 
+  // ---------------------------------------------------------------- projects
+  //
+  // A Project is done outside the app with ordinary tools and comes back as a folder and a
+  // list of links. Submitting one starts a Reviewer run, which writes one response in the
+  // register of a senior colleague. No mark, no score, and no thread.
+
+  ipcMain.handle('projects:pick', async () => {
+    const picked = await dialog.showOpenDialog({
+      title: 'The folder your project is in',
+      properties: ['openDirectory'],
+    })
+    return picked.canceled ? undefined : picked.filePaths[0]
+  })
+
+  ipcMain.handle('projects:list', (_event, slug: string, projectId: string) =>
+    progress().submissionsFor(slug, projectId),
+  )
+
+  ipcMain.handle(
+    'projects:submit',
+    async (
+      event,
+      run: string,
+      slug: string,
+      projectId: string,
+      folder: string | undefined,
+      links: string[],
+      harnessId: string,
+      model: string,
+    ) => {
+      const course = loadCourse(slug)
+      const project = course.projects.find((entry) => entry.id === projectId)
+      if (!project) return { at: 'trouble' as const, message: 'That project is not in this course.' }
+
+      const row = progress().startRun({ kind: 'review', courseSlug: slug, harness: harnessId, model })
+      const done = await review(
+        { project, ...(folder === undefined ? {} : { folder }), links, harnessId, model },
+        report(event, run),
+      )
+      progress().endRun(row, done.usd, done.at === 'reviewed' ? 'ok' : 'failed')
+      if (done.at === 'trouble') return { at: 'trouble' as const, message: done.message }
+
+      // Every response is kept, because it is text and it is cheap. The folder is not:
+      // storing past work is the reader's own business.
+      progress().recordSubmission({ courseSlug: slug, projectId, links, responseText: done.text })
+      return { at: 'reviewed' as const, submissions: progress().submissionsFor(slug, projectId) }
+    },
+  )
+
   // ---------------------------------------------------------------- building a course
 
   ipcMain.handle('harnesses:list', () => harnesses())
@@ -513,7 +563,12 @@ app.whenReady().then(() => {
       harnessId: store.setting(`${role}.harness`) ?? '',
       model: store.setting(`${role}.model`) ?? '',
     })
-    return { constructor: read('constructor'), tutor: read('tutor'), grader: read('grader') }
+    return {
+      constructor: read('constructor'),
+      tutor: read('tutor'),
+      grader: read('grader'),
+      reviewer: read('reviewer'),
+    }
   })
   ipcMain.handle('settings:setRole', (_event, role: string, harnessId: string, model: string) => {
     progress().setSetting(`${role}.harness`, harnessId)

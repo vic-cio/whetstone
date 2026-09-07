@@ -86,8 +86,8 @@ describe('test 9 — progress is one tick per page', () => {
     // The count is the only progress figure anywhere. Anything resembling a score, an
     // attempt total, or an ability estimate must not reach the renderer at all.
     expect(Object.keys(view)).toEqual([
-      'slug', 'id', 'title', 'subject', 'summary', 'ladder', 'modules',
-      'pageCount', 'pagesDone', 'lessons', 'missed', 'struggling', 'tests', 'resources',
+      'slug', 'id', 'title', 'subject', 'summary', 'ladder', 'tags', 'small', 'projects',
+      'modules', 'pageCount', 'pagesDone', 'lessons', 'missed', 'struggling', 'tests', 'resources',
     ])
 
     // `missed` and `struggling` were added for phase 5 and are both lists of things that

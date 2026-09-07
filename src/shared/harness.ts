@@ -66,7 +66,7 @@ export function readRegistry(text: string): { ok: true; harnesses: Harness[] } |
   return { ok: true, harnesses: result.data.harnesses }
 }
 
-export const ROLES = ['constructor', 'tutor', 'grader'] as const
+export const ROLES = ['constructor', 'tutor', 'grader', 'reviewer'] as const
 export type Role = (typeof ROLES)[number]
 
 /**

@@ -5,7 +5,7 @@ import type { Answer, BuildResult } from '../main/build'
 import type { BrokenCourse, CourseSummary, OpenResult } from '../main/courseStore'
 import type { Moment } from '../shared/harness'
 import type { Answered, Checked } from '../main/answering'
-import type { DefectReport, Ground, Thread } from '../main/progress'
+import type { DefectReport, Ground, Submission, Thread } from '../main/progress'
 import type { PublicTask } from '../shared/format'
 import type { Removal } from '../shared/remove'
 import type { Evaluation } from '../shared/defect'
@@ -157,8 +157,30 @@ const api = {
     ): Promise<Revision> => ipcRenderer.invoke('course:revise', run, slug, harnessId, model, work),
   },
 
+  /**
+   * A Project. Done outside the app, brought back as a folder and some links, and answered
+   * with one written response. There is no thread and no mark (PLAN 3.15, phase 6).
+   */
+  projects: {
+    pick: (): Promise<string | undefined> => ipcRenderer.invoke('projects:pick'),
+    list: (slug: string, projectId: string): Promise<Submission[]> =>
+      ipcRenderer.invoke('projects:list', slug, projectId),
+    submit: (
+      run: string,
+      slug: string,
+      projectId: string,
+      folder: string | undefined,
+      links: string[],
+      harnessId: string,
+      model: string,
+    ): Promise<{ at: 'reviewed'; submissions: Submission[] } | { at: 'trouble'; message: string }> =>
+      ipcRenderer.invoke('projects:submit', run, slug, projectId, folder, links, harnessId, model),
+  },
+
   settings: {
-    roles: (): Promise<Record<'constructor' | 'tutor' | 'grader', { harnessId: string; model: string }>> =>
+    roles: (): Promise<
+      Record<'constructor' | 'tutor' | 'grader' | 'reviewer', { harnessId: string; model: string }>
+    > =>
       ipcRenderer.invoke('settings:roles'),
     setRole: (role: string, harnessId: string, model: string): Promise<void> =>
       ipcRenderer.invoke('settings:setRole', role, harnessId, model),

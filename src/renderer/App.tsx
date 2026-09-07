@@ -7,6 +7,7 @@ import { Settings } from './Settings'
 import { Tutor } from './Tutor'
 import { Lesson } from './Lesson'
 import { Test } from './Test'
+import { Project } from './Project'
 import { newRunId } from '../shared/harness'
 import type { BrokenCourse, CourseSummary } from '../main/courseStore'
 import type { CourseView, PageView } from '../main/study'
@@ -27,6 +28,8 @@ type Route =
   | { at: 'review'; slug: string }
   | { at: 'settings' }
   | { at: 'page'; slug: string; pageId: string }
+  /** A Project: below the last Module, outside the reading order, and no tutor panel. */
+  | { at: 'project'; slug: string; projectId: string }
 
 export function App(): React.JSX.Element {
   const [courses, setCourses] = useState<CourseSummary[]>([])
@@ -47,6 +50,8 @@ export function App(): React.JSX.Element {
    */
   const [agent, setAgent] = useState({ harnessId: '', model: '' })
   const [grader, setGrader] = useState({ harnessId: '', model: '' })
+  /** The Reviewer's row. It reads a folder rather than a file, so it is worth more. */
+  const [reviewer, setReviewer] = useState({ harnessId: '', model: '' })
   /** The Constructor's row. A remediation run is a Constructor run, so it uses this. */
   const [builder, setBuilder] = useState({ harnessId: '', model: '' })
   useEffect(() => {
@@ -61,6 +66,7 @@ export function App(): React.JSX.Element {
         }
         setAgent(roles.tutor.harnessId === '' ? fallback : roles.tutor)
         setGrader(roles.grader.harnessId === '' ? fallback : roles.grader)
+        setReviewer(roles.reviewer.harnessId === '' ? fallback : roles.reviewer)
         setBuilder(roles.constructor.harnessId === '' ? fallback : roles.constructor)
       },
     )
@@ -111,6 +117,8 @@ export function App(): React.JSX.Element {
   )
 
   const page = route.at === 'page' ? findPage(course, route.pageId) : undefined
+  const projectHere =
+    route.at === 'project' ? course?.projects.find((entry) => entry.id === route.projectId) : undefined
 
   // What to read after this one. A Course is a list of Pages in the order the Constructor
   // put them in, so the next Page is simply the next one along.
@@ -253,6 +261,7 @@ export function App(): React.JSX.Element {
                 .then(setCourse)
             }}
             onReview={() => setRoute({ at: 'review', slug: route.slug })}
+            onProject={(projectId) => setRoute({ at: 'project', slug: route.slug, projectId })}
             onModule={(module, kind, note) => {
               // Removing a Module takes its Attempts off the record first. An Attempt
               // against a question that no longer exists is a mark for something nobody
@@ -293,6 +302,19 @@ export function App(): React.JSX.Element {
             }}
           />
         )}
+
+        {/*
+          A Project has no tutor panel, and it gets one by being outside `route.at ===
+          'page'` rather than by a flag. A project id that no longer exists, because the
+          Course was rebuilt under it, draws the empty line rather than nothing at all.
+        */}
+        {route.at === 'project' &&
+          course &&
+          (projectHere ? (
+            <Project slug={route.slug} project={projectHere} reviewing={reviewer} />
+          ) : (
+            <p className="empty">That project is no longer in this course.</p>
+          ))}
 
         {route.at === 'review' && (
           <Review

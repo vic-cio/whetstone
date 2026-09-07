@@ -29,6 +29,9 @@ export const chatDir = (id: string): string => under('chats', id)
 /** One Attempt's folder: the Task, what the reader did, and the Rubric to score it by. */
 export const attemptDir = (id: string): string => under('attempts', id)
 
+/** One submitted Project's folder: the brief, the criteria, the work, and the links. */
+export const projectDir = (id: string): string => under('projects', id)
+
 /** Where a Course is copied to before a run, so it can be put back after one. */
 export const shadowDir = (id: string): string => under('shadow', id)
 

@@ -29,6 +29,32 @@
     "calculus",
     "machine-learning"
   ],
+  "small": false,
+  "projects": [
+    {
+      "id": "prj-two-layer-by-hand",
+      "title": "A two-layer network, by hand and in code",
+      "brief": "Pick a small dataset. Work one forward and backward pass through a two-layer network on paper, with real numbers. Then write the same pass in code and check the two agree to the digit. Say where they first disagreed, if they did.",
+      "criteria": [
+        {
+          "id": "cri-by-hand-first",
+          "criterion": "Derives the backward pass on paper before writing any code, and the working is legible."
+        },
+        {
+          "id": "cri-the-two-agree",
+          "criterion": "Shows the hand figures and the code figures side by side, and says where they differ."
+        },
+        {
+          "id": "cri-names-the-shapes",
+          "criterion": "States the shape of every matrix at every step, and the shapes are right."
+        }
+      ],
+      "accepts": [
+        "folder",
+        "links"
+      ]
+    }
+  ],
   "modules": [
     {
       "id": "mod-1",

@@ -270,6 +270,9 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
   color: transparent; background: none;
 }
 .tick.on { background: var(--amber); border-color: var(--amber); color: var(--on-amber); }
+/* A project has no tick. The column is held so the row lines up with the pages above it,
+   and it is empty because the tick counts Pages and a project is not one. */
+.tick.off { border-color: transparent; }
 
 .ptype {
   font-family: "IBM Plex Mono", ui-monospace, monospace;

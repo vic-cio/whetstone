@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
  * the reader guessing why the thing they read about is not there.
  */
 
-type Role = 'constructor' | 'tutor' | 'grader'
+type Role = 'constructor' | 'tutor' | 'grader' | 'reviewer'
 
 /** A run's kind, in the app's words rather than in the ledger's. */
 const WHAT: Record<string, string> = {
@@ -21,6 +21,8 @@ const WHAT: Record<string, string> = {
   tutor: 'Asking the tutor',
   grade: 'Marking an answer',
   remediate: 'Teaching something differently',
+  review: 'Reading a project',
+  defect: 'Reading a report of a broken task',
   'add-rung': 'Adding harder questions',
 }
 
@@ -28,6 +30,7 @@ const ROLES: { id: Role; title: string; what: string }[] = [
   { id: 'constructor', title: 'Building a course', what: 'Runs for minutes and writes the whole course. Worth the strongest model.' },
   { id: 'tutor', title: 'The tutor', what: 'One turn per question, inside the course. A mid-tier model is enough.' },
   { id: 'grader', title: 'Marking an answer', what: 'Short and frequent, except a rubric, which is somebody’s work.' },
+  { id: 'reviewer', title: 'Reading a project', what: 'Reads a folder rather than a file, and writes one response. Rare, and worth more.' },
 ]
 
 interface Entry {
@@ -43,6 +46,7 @@ export function Settings({ onDone }: { onDone: () => void }): React.JSX.Element 
     constructor: { harnessId: '', model: '' },
     tutor: { harnessId: '', model: '' },
     grader: { harnessId: '', model: '' },
+    reviewer: { harnessId: '', model: '' },
   })
   const [trouble, setTrouble] = useState('')
   const [spent, setSpent] = useState<{ kind: string; runs: number; usd: number }[]>([])

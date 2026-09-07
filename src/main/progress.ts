@@ -103,6 +103,14 @@ export interface DefectReport {
   overridden: boolean
 }
 
+/** One go at a Project, and the one written response it got. There is no mark in here. */
+export interface Submission {
+  id: string
+  submittedAt: string
+  links: string[]
+  responseText: string
+}
+
 /** One execution of a Harness. Every Run is recorded, spend included (PLAN 3.4). */
 export interface RunRecord {
   kind: string
@@ -161,6 +169,14 @@ export interface Progress {
   /** The conversation about one Page, if there has been one. */
   thread(courseSlug: string, pageId: string): Thread | undefined
   saveThread(courseSlug: string, pageId: string, thread: Thread): void
+  /**
+   * A submitted Project and the response it got. Every response is kept, because it is text
+   * and it is cheap. The folder is not kept: storing past work is the reader's own business
+   * (PLAN 3.15, phase 6).
+   */
+  recordSubmission(row: { courseSlug: string; projectId: string; links: string[]; responseText: string }): string
+  submissionsFor(courseSlug: string, projectId: string): Submission[]
+
   /** File a defect report. It records a claim; it never changes an outcome. */
   fileDefect(report: { courseSlug: string; taskId: string; ground: Ground; note: string }): string
   defectsFor(courseSlug: string): DefectReport[]
@@ -262,6 +278,14 @@ export function openProgress(file: string): Progress {
       note       TEXT NOT NULL,
       status     TEXT NOT NULL,
       filedAt    TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS project_submissions (
+      id           TEXT PRIMARY KEY,
+      courseSlug   TEXT NOT NULL,
+      projectId    TEXT NOT NULL,
+      submittedAt  TEXT NOT NULL,
+      links        TEXT NOT NULL,
+      responseText TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,
@@ -369,6 +393,15 @@ export function openProgress(file: string): Progress {
   const writeEvaluation = db.prepare('UPDATE defect_reports SET status = ?, evaluation = ? WHERE id = ?')
   const upholdIt = db.prepare("UPDATE defect_reports SET status = 'upheld', overridden = ? WHERE id = ?")
   const dropIt = db.prepare("UPDATE defect_reports SET status = 'dropped' WHERE id = ?")
+  const insertSubmission = db.prepare(`
+    INSERT INTO project_submissions (id, courseSlug, projectId, submittedAt, links, responseText)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `)
+  const selectSubmissions = db.prepare(`
+    SELECT id, submittedAt, links, responseText FROM project_submissions
+    WHERE courseSlug = ? AND projectId = ? ORDER BY submittedAt DESC
+  `)
+  const dropSubmissions = db.prepare('DELETE FROM project_submissions WHERE courseSlug = ?')
   const readSetting = db.prepare('SELECT value FROM settings WHERE key = ?')
   const writeSetting = db.prepare(
     'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
@@ -482,6 +515,32 @@ export function openProgress(file: string): Progress {
         new Date().toISOString(),
       )
     },
+    recordSubmission(row) {
+      const id = randomUUID()
+      insertSubmission.run(
+        id,
+        row.courseSlug,
+        row.projectId,
+        new Date().toISOString(),
+        JSON.stringify(row.links),
+        row.responseText,
+      )
+      return id
+    },
+    submissionsFor(courseSlug, projectId) {
+      const rows = selectSubmissions.all(courseSlug, projectId) as {
+        id: string
+        submittedAt: string
+        links: string
+        responseText: string
+      }[]
+      return rows.map((row) => ({
+        id: row.id,
+        submittedAt: row.submittedAt,
+        links: JSON.parse(row.links) as string[],
+        responseText: row.responseText,
+      }))
+    },
     fileDefect(report) {
       const id = randomUUID()
       insertDefect.run(id, report.courseSlug, report.taskId, report.ground, report.note, new Date().toISOString())
@@ -522,6 +581,7 @@ export function openProgress(file: string): Progress {
       dropTicks.run(courseSlug)
       dropAttempts.run(courseSlug)
       dropHeld.run(courseSlug)
+      dropSubmissions.run(courseSlug)
       dropThreads.run(courseSlug)
       dropDefects.run(courseSlug)
     },

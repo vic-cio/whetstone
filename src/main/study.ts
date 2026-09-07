@@ -11,6 +11,7 @@ import type {
   PageType,
   PublicTask,
   PublicTry,
+  Project,
   Resource,
   Task,
   Test,
@@ -76,6 +77,11 @@ export interface CourseView {
   subject: string
   summary: string
   ladder: Depth[]
+  /** What the library filters on, and whether this is a short Course with no Project. */
+  tags: string[]
+  small: boolean
+  /** Below the last Module on the Course page, and nowhere else (PLAN 3.15, phase 6). */
+  projects: Project[]
   modules: ModuleView[]
   pageCount: number
   pagesDone: number
@@ -185,6 +191,9 @@ export function courseView(slug: string, course: Course, progress: Progress): Co
     subject: course.subject,
     summary: course.summary,
     ladder: course.ladder,
+    tags: course.tags,
+    small: course.small,
+    projects: course.projects,
     modules,
     pageCount: modules.reduce((total, module) => total + module.pages.length, 0),
     pagesDone: progress.pagesDone(slug),

@@ -14,6 +14,7 @@ export function Course({
   onOpen,
   onTick,
   onReview,
+  onProject,
   onRemediate,
   onModule,
 }: {
@@ -22,6 +23,8 @@ export function Course({
   onTick: (page: PageView) => void
   /** Start a review session: a handful of questions drawn at random, offline and free. */
   onReview: () => void
+  /** Open a Project. It is a page of its own and it carries no tutor panel. */
+  onProject: (projectId: string) => void
   /** Ask for another run at one Objective. An offer, and pressing it costs money. */
   onRemediate: (objective: { id: string; title: string }) => void
   /**
@@ -155,6 +158,29 @@ export function Course({
           ))}
         </div>
       ))}
+
+      {/*
+        Projects, below the last Module. A section rather than a Page type, so it reaches
+        neither the rail, the tick rules, nor the next-page logic. Most Courses have none,
+        and a small Course cannot have one (PLAN 3.15, phase 6).
+      */}
+      {course.projects.length > 0 && (
+        <div className="mod">
+          <div className="mh">Projects</div>
+          {course.projects.map((project) => (
+            <div key={project.id} className="lrow2">
+              <span className="tick off" aria-hidden="true" />
+              <button type="button" className="lname" onClick={() => onProject(project.id)}>
+                <span className="ptype">Project</span> {project.title}
+                <small>{project.criteria.length} criteria</small>
+              </button>
+              <span className="prow end">
+                <span className="chip depth-project">outside the app</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/*
         What the reader got wrong and has not since got right. Reachable here and nowhere
