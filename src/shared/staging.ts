@@ -181,11 +181,14 @@ export function repairPrompt(errors: CourseError[]): string {
  * because a rename inside one folder is atomic and a copy is not. A half-copied folder is
  * therefore never a thing the library can see, whatever happens in the middle.
  */
-export function moveIn(staging: string, root: string, slug: string): string {
+export function moveIn(staging: string, root: string, slug: string, litter: string[] = []): string {
   // What the Constructor read stays behind. The tray is the user's material and the house
   // folder is the app's own instructions, and a Course is neither.
   rmSync(join(staging, BRIEF), { recursive: true, force: true })
   rmSync(join(staging, HOUSE), { recursive: true, force: true })
+  // And what the harness left for itself. A Course carries no trace of what built it
+  // beyond the line in course.json that says so.
+  for (const name of litter) rmSync(join(staging, name), { recursive: true, force: true })
 
   mkdirSync(root, { recursive: true })
   const target = join(root, slug)
@@ -215,9 +218,10 @@ export function moveIn(staging: string, root: string, slug: string): string {
  * Progress survives because ids are stable: the Constructor is told never to reuse or
  * rewrite one, and the parser refuses a folder whose ids collide with the version before it.
  */
-export function moveOver(staging: string, root: string, slug: string): string {
+export function moveOver(staging: string, root: string, slug: string, litter: string[] = []): string {
   rmSync(join(staging, BRIEF), { recursive: true, force: true })
   rmSync(join(staging, HOUSE), { recursive: true, force: true })
+  for (const name of litter) rmSync(join(staging, name), { recursive: true, force: true })
 
   const target = join(root, slug)
   const landing = join(root, `.incoming-${Date.now()}`)

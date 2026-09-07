@@ -262,3 +262,30 @@ describe('the brief’s tray', () => {
     expect(existsSync(join(target, BRIEF))).toBe(false)
   })
 })
+
+describe('what a harness leaves behind', () => {
+  it('does not travel into the course', () => {
+    // Found by running one. `pi` keeps `.pi/` beside whatever it is working on, and
+    // `--session-dir` moves only the sessions, so the rest would ship inside the Course.
+    const { root, staging } = scene()
+    mkdirSync(join(staging, '.pi', 'tasks'), { recursive: true })
+    writeFileSync(join(staging, '.pi', 'tasks', 'session-1'), 'not the course')
+
+    const target = moveIn(staging, root, 'gradients-by-hand', ['.pi'])
+    expect(existsSync(join(target, '.pi'))).toBe(false)
+    expect(existsSync(join(target, 'course.json'))).toBe(true)
+  })
+
+  it('is taken out by name, never by guessing', () => {
+    // A Course's own `.claude/skills/` is content the Constructor was told to write
+    // (PLAN 3.8). A rule that stripped every dotted folder would take it with the litter.
+    const { root, staging } = scene()
+    mkdirSync(join(staging, '.pi'), { recursive: true })
+    mkdirSync(join(staging, '.claude', 'skills', 'the-notation'), { recursive: true })
+    writeFileSync(join(staging, '.claude', 'skills', 'the-notation', 'SKILL.md'), '---\nname: x\n---\n')
+
+    const target = moveIn(staging, root, 'gradients-by-hand', ['.pi'])
+    expect(existsSync(join(target, '.pi'))).toBe(false)
+    expect(existsSync(join(target, '.claude', 'skills', 'the-notation', 'SKILL.md'))).toBe(true)
+  })
+})

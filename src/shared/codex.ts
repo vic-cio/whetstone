@@ -37,6 +37,7 @@ const WRITES = new Set(['write_file', 'apply_patch'])
 
 export const codexAdapter: Adapter = {
   id: 'codex',
+  litter: ['.codex'],
 
   argv(request: SpawnRequest): string[] {
     const { profile, model } = request

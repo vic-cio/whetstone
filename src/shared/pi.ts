@@ -45,6 +45,7 @@ const SAYING: Record<string, (input: Record<string, unknown>) => string> = {
 
 export const piAdapter: Adapter = {
   id: 'pi',
+  litter: ['.pi'],
 
   argv(request: SpawnRequest): string[] {
     const { profile, model, harness } = request

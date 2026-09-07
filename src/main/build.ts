@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { TOOLKIT_VERSION } from '../shared/miniapp'
 import { BRIEF, inspect, moveIn, offerSkills, prepare, repairPrompt, stamp, trayContents } from '../shared/staging'
-import { agentDir, registry, roleFile, start } from './harness'
+import { adapterFor, agentDir, registry, roleFile, start } from './harness'
 import { stateFor } from './workspace'
 import type { AgentProfile, Harness, Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
@@ -37,6 +37,15 @@ export function stopLive(): void {
   live?.cancel()
   live = undefined
 }
+
+/**
+ * A conversation's name, taken from its own folder.
+ *
+ * The Brief and the build it becomes are one conversation, so they must share the place the
+ * harness keeps its sessions. Keying that to the spawn instead produced a build that asked
+ * to resume the Brief and was told "no session found", every time.
+ */
+const conversation = (folder: string): string => folder.split('/').filter(Boolean).pop() ?? 'once'
 
 /** The toolkit this build ships, which the app copies into staging before the Run starts. */
 function toolkitDir(): string {
@@ -81,7 +90,7 @@ export function harnessById(id: string): Harness | undefined {
  * It writes nothing. A conversation about what to learn has no reason to put a file
  * anywhere, and a role that cannot write cannot half-build a Course out of a question.
  */
-function answering(cwd: string, capUsd: number): AgentProfile {
+function answering(cwd: string, capUsd: number, conversation: string): AgentProfile {
   return {
     role: 'constructor',
     cwd,
@@ -95,12 +104,12 @@ function answering(cwd: string, capUsd: number): AgentProfile {
     restricted: false,
     instructions: roleFile('constructor-brief'),
     alsoRead: [],
-    stateDir: stateFor(`brief-${Date.now()}`),
+    stateDir: stateFor(conversation),
   }
 }
 
 /** The Constructor building. It writes files, and it still runs nothing and sends nothing. */
-function building(cwd: string, capUsd: number): AgentProfile {
+function building(cwd: string, capUsd: number, conversation: string): AgentProfile {
   return {
     role: 'constructor',
     cwd,
@@ -110,7 +119,7 @@ function building(cwd: string, capUsd: number): AgentProfile {
     restricted: false,
     instructions: roleFile('constructor-build'),
     alsoRead: [],
-    stateDir: stateFor(`build-${Date.now()}`),
+    stateDir: stateFor(conversation),
   }
 }
 
@@ -142,7 +151,7 @@ export async function say(
   const request = {
     harness,
     model: choice.model,
-    profile: answering(folder, choice.capUsd),
+    profile: answering(folder, choice.capUsd, conversation(folder)),
     prompt,
     ...(resume === undefined ? {} : { resume }),
   }
@@ -201,7 +210,7 @@ export async function build(
     const request = {
       harness,
       model: choice.model,
-      profile: building(folder, choice.capUsd),
+      profile: building(folder, choice.capUsd, conversation(folder)),
       prompt,
       ...(session === undefined ? {} : { resume: session }),
     }
@@ -226,7 +235,7 @@ export async function build(
     stamp(folder, harness.id, choice.model)
     const gate = inspect(folder, root)
     if (gate.ok) {
-      moveIn(folder, root, gate.slug)
+      moveIn(folder, root, gate.slug, adapterFor(harness)?.litter ?? [])
       return { ok: true, slug: gate.slug, folder, errors: [], attempts: attempt, usd }
     }
     errors = gate.errors

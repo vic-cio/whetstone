@@ -2,7 +2,7 @@ import { cpSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { inspect, moveOver, offerSkills, repairPrompt, seedSkills, stamp } from '../shared/staging'
-import { agentDir, roleFile, start } from './harness'
+import { adapterFor, agentDir, roleFile, start } from './harness'
 import { harnessById } from './build'
 import { stagingRoot } from './build'
 import { stateFor } from './workspace'
@@ -33,7 +33,7 @@ export type Revision =
   | { at: 'refused'; usd: number; attempts: number; errors: CourseError[]; folder: string }
   | { at: 'trouble'; usd: number; message: string }
 
-function reviser(cwd: string): AgentProfile {
+function reviser(cwd: string, conversation: string): AgentProfile {
   return {
     role: 'constructor',
     cwd,
@@ -43,7 +43,7 @@ function reviser(cwd: string): AgentProfile {
     restricted: false,
     instructions: roleFile('constructor-build'),
     alsoRead: [],
-    stateDir: stateFor(`build-${Date.now()}`),
+    stateDir: stateFor(conversation),
   }
 }
 
@@ -78,7 +78,7 @@ export async function revise(
       {
         harness,
         model: request.model,
-        profile: reviser(folder),
+        profile: reviser(folder, folder.split('/').filter(Boolean).pop() ?? 'once'),
         prompt: attempt === 1 ? instruction(request, offerSkills(folder)) : repairPrompt(errors),
         ...(session === undefined ? {} : { resume: session }),
       },
@@ -94,7 +94,7 @@ export async function revise(
     stamp(folder, harness.id, request.model)
     const gate = inspect(folder, request.root)
     if (gate.ok) {
-      moveOver(folder, request.root, request.slug)
+      moveOver(folder, request.root, request.slug, adapterFor(harness)?.litter ?? [])
       return { at: 'revised', usd, attempts: attempt }
     }
     errors = gate.errors

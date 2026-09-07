@@ -117,7 +117,7 @@ export async function ask(
       {
         harness,
         model: options.model,
-        profile: readerProfile('tutor', options.courseDir, CAP, [folder]),
+        profile: readerProfile('tutor', options.courseDir, CAP, [folder], options.chatId),
         prompt: tutorPrompt({
           folder,
           skills: furnished.skills,

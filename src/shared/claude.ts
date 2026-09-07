@@ -80,6 +80,7 @@ const WRITES = new Set(WRITERS)
 
 export const claudeAdapter: Adapter = {
   id: 'claude',
+  litter: [],
 
   argv(request: SpawnRequest): string[] {
     const { profile, model } = request

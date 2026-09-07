@@ -61,7 +61,18 @@ export function furnish(dir: string, set: string, live: Live): { skills: string[
  * both fail is the point of PLAN 3.14, and because a recorded run proved that the second
  * one catches a call the first never offered.
  */
-export function readerProfile(role: Role, cwd: string, budgetUsd: number, alsoRead: string[]): AgentProfile {
+export function readerProfile(
+  role: Role,
+  cwd: string,
+  budgetUsd: number,
+  alsoRead: string[],
+  /**
+   * Keyed to the conversation rather than to the spawn. A new folder per spawn means the
+   * next turn looks for its own session in a directory that has never seen one, and the
+   * harness says "no session found matching ..." and starts again.
+   */
+  conversation = 'once',
+): AgentProfile {
   return {
     role,
     cwd,
@@ -71,6 +82,6 @@ export function readerProfile(role: Role, cwd: string, budgetUsd: number, alsoRe
     restricted: true,
     instructions: roleFile(role),
     alsoRead,
-    stateDir: stateFor(`${role}-${Date.now()}`),
+    stateDir: stateFor(`${role}-${conversation}`),
   }
 }

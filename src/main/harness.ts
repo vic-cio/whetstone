@@ -29,6 +29,9 @@ const ADAPTERS: Record<string, Adapter> = {
   pi: piAdapter,
 }
 
+/** The adapter for a harness, for the few things a caller needs to know about its CLI. */
+export const adapterFor = (harness: Harness): Adapter | undefined => ADAPTERS[harness.adapter]
+
 /** Where the files the app hands a harness live: the registry, the roles, the bundles. */
 export function agentDir(): string {
   const packaged = join(process.resourcesPath ?? '', 'agent')

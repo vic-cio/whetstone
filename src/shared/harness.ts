@@ -144,6 +144,16 @@ export type Moment =
 
 export interface Adapter {
   id: string
+  /**
+   * Folders this CLI writes into its working directory whatever it is told.
+   *
+   * `pi` keeps `.pi/` beside whatever it is working on, and `--session-dir` moves only the
+   * sessions. A working directory is a Course being built or a Course being read, so
+   * anything left there would ship inside the Course or trip the guard in PLAN 3.14. The
+   * gate takes these out by name, because guessing at what is litter and what is content
+   * would eventually take out a Course's own `.claude/skills/`.
+   */
+  litter: string[]
   /** The whole argument list, prompt included. */
   argv(request: SpawnRequest): string[]
   /**
