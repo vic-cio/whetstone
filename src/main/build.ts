@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { TOOLKIT_VERSION } from '../shared/miniapp'
 import { BRIEF, inspect, moveIn, offerSkills, prepare, repairPrompt, stamp, trayContents } from '../shared/staging'
 import { adapterFor, agentDir, registry, roleFile, start } from './harness'
+import { tagsInLibrary } from './courseStore'
 import { stateFor } from './workspace'
 import type { AgentProfile, Harness, Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
@@ -258,6 +259,23 @@ export function open(folder: string, tray: Tray): void {
   prepare(folder, toolkitDir(), join(agentDir(), 'skills', 'authoring'), tray)
 }
 
+/**
+ * The tags already in the library.
+ *
+ * Free tags alone drift into `ml`, `machine-learning` and `ML`, and three spellings of one
+ * tag filter nothing. A fixed vocabulary would be wrong for the next niche Course, so the
+ * run is shown what is there and told to reuse one that fits (PLAN 3.15, phase 6).
+ */
+function tagLine(): string[] {
+  const tags = tagsInLibrary()
+  return tags.length === 0
+    ? ['Tag the course in `tags`. There is nothing in the library yet, so pick your own.']
+    : [
+        `The library already uses these tags: ${tags.join(', ')}.`,
+        'Reuse the ones that fit before inventing a new one. A tag is lowercase and hyphenated.',
+      ]
+}
+
 function firstPrompt(folder: string, brief: string): string {
   const tray = trayContents(folder)
   const attached =
@@ -288,6 +306,8 @@ function firstPrompt(folder: string, brief: string): string {
     '3. The tasks and the tests.',
     '4. Any mini-apps, and `resources.json`.',
     '5. `AGENTS.md`, last, when you know what you have written.',
+    '',
+    ...tagLine(),
     '',
     `The toolkit is already there and is version ${TOOLKIT_VERSION}. Put exactly that string`,
     'in `toolkitVersion` in course.json, and do not write or read anything under `toolkit/`:',

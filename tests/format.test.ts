@@ -457,3 +457,18 @@ describe('test 4 — tags, small, and projects', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 })
+
+/**
+ * Part B, section 6. The library filters on tags, so the tags have to be worth filtering
+ * on: one spelling each, and a list the Constructor is shown before it writes another.
+ */
+describe('test 4 — the library’s tags', () => {
+  it('ships a tagged sample, so the first course built has something to reuse', () => {
+    const result = parseCourse(FIXTURE)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.course.tags.length).toBeGreaterThan(0)
+      for (const tag of result.course.tags) expect(tag).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+    }
+  })
+})

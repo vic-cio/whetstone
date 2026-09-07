@@ -418,6 +418,16 @@ function Home({
   onNew: () => void
   onRemove: (slug: string, title: string) => void
 }): React.JSX.Element {
+  /** The tag the library is filtered by, or nothing. One at a time, and never a search. */
+  const [tag, setTag] = useState('')
+
+  // Every tag in the library, most used first. The list is drawn from the Courses
+  // themselves, so a tag disappears when the last Course carrying it does.
+  const counts = new Map<string, number>()
+  for (const entry of courses) for (const one of entry.tags) counts.set(one, (counts.get(one) ?? 0) + 1)
+  const tags = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  const shown = tag === '' ? courses : courses.filter((entry) => entry.tags.includes(tag))
+
   return (
     <>
       <div className="head">
@@ -427,12 +437,36 @@ function Home({
         </button>
       </div>
 
-      {courses.map((entry) => (
+      {tags.length > 0 && (
+        <div className="tags">
+          <button
+            type="button"
+            className={`tag${tag === '' ? ' on' : ''}`}
+            onClick={() => setTag('')}
+          >
+            All
+          </button>
+          {tags.map(([one]) => (
+            <button
+              key={one}
+              type="button"
+              className={`tag${tag === one ? ' on' : ''}`}
+              onClick={() => setTag(tag === one ? '' : one)}
+            >
+              {one}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {shown.map((entry) => (
         <div key={entry.slug} className="crow">
           <button type="button" className="cgo" onClick={() => onOpen(entry.slug)}>
             <span className="cname">{entry.title}</span>
             <span className="cmeta">
               {entry.subject} · {entry.moduleCount} {entry.moduleCount === 1 ? 'module' : 'modules'}
+              {entry.small && ' · small'}
+              {entry.tags.length > 0 && ` · ${entry.tags.join(', ')}`}
             </span>
           </button>
           <span className="cnt">
@@ -453,6 +487,10 @@ function Home({
         <p className="empty">
           No courses yet. Describe something you want to learn and one gets built for you.
         </p>
+      )}
+
+      {courses.length > 0 && shown.length === 0 && (
+        <p className="empty">Nothing in the library is tagged “{tag}” any more.</p>
       )}
 
       {broken.map((entry) => (

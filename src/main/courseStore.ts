@@ -23,6 +23,9 @@ export interface CourseSummary {
   pageCount: number
   /** Pages ticked. The only progress figure the app keeps. */
   pagesDone: number
+  /** What the library filters on, and whether this is a short Course. */
+  tags: string[]
+  small: boolean
 }
 
 export interface BrokenCourse {
@@ -112,11 +115,28 @@ export function listCourses(): { courses: CourseSummary[]; broken: BrokenCourse[
       moduleCount: course.modules.length,
       pageCount: course.modules.reduce((total, module) => total + module.pages.length, 0),
       pagesDone: progress().pagesDone(entry.name),
+      tags: course.tags,
+      small: course.small,
     })
   }
 
   courses.sort((a, b) => a.title.localeCompare(b.title))
   return { courses, broken }
+}
+
+/**
+ * Every tag already in the library, in the order they are used most.
+ *
+ * This is what the Constructor is shown before it writes a new one. Free tags alone drift
+ * into `ml`, `machine-learning` and `ML`, and three spellings of one tag filter nothing, so
+ * the run is told what is already here and to reuse a tag that fits (PLAN 3.15, phase 6).
+ */
+export function tagsInLibrary(): string[] {
+  const seen = new Map<string, number>()
+  for (const course of listCourses().courses) {
+    for (const tag of course.tags) seen.set(tag, (seen.get(tag) ?? 0) + 1)
+  }
+  return [...seen.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([tag]) => tag)
 }
 
 /** Read one Course fresh from disk, so an edit made outside the app is picked up. */

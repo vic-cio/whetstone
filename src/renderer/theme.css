@@ -589,6 +589,17 @@ pre.code {
   background: none; border-color: var(--rail-line); color: var(--rail-muted);
 }
 
+/* The library's filter. One tag at a time and never a search box: a library of a dozen
+   courses is read, not queried. */
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 4px; }
+.tag {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+  background: none; color: var(--muted); border: 1px solid var(--line); padding: 4px 9px;
+}
+.tag:hover { border-color: var(--frame); }
+.tag.on { background: var(--amber); border-color: var(--amber); color: var(--on-amber); }
+
 /* ---------------------------------------------------------------- a test is a sitting */
 
 /* How far through the sitting the reader is. A count, never a score: it says where they
