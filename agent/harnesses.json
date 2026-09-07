@@ -32,6 +32,20 @@
       "restrictsTools": true,
       "capsSpend": false,
       "validatesOutput": false
+    },
+    {
+      "id": "codex",
+      "label": "Codex",
+      "command": "codex",
+      "adapter": "codex",
+      "models": [
+        "gpt-5.6-luna",
+        "gpt-5.6",
+        "gpt-5.6-mini"
+      ],
+      "restrictsTools": true,
+      "capsSpend": false,
+      "validatesOutput": true
     }
   ]
 }

@@ -33,6 +33,16 @@ export const attemptDir = (id: string): string => under('attempts', id)
 export const shadowDir = (id: string): string => under('shadow', id)
 
 /**
+ * Where a harness may keep its own session state.
+ *
+ * Found by running one. `pi` writes a `.pi/` folder into its working directory unless it is
+ * told otherwise, and that directory is a Course or a Course being built: for a build it
+ * would travel into the library, and for a Tutor it would trip the guard that puts a
+ * changed Course back.
+ */
+export const stateFor = (id: string): string => under('harness-state', id)
+
+/**
  * Lay out a folder for a run: its skills, and the snapshot of what the reader is doing.
  *
  * Both are files the prompt names. Nothing here depends on a harness having a plugin
@@ -61,5 +71,6 @@ export function readerProfile(role: Role, cwd: string, budgetUsd: number, alsoRe
     restricted: true,
     instructions: roleFile(role),
     alsoRead,
+    stateDir: stateFor(`${role}-${Date.now()}`),
   }
 }

@@ -57,6 +57,9 @@ export const piAdapter: Adapter = {
     args.push('--tools', allowed.join(','))
 
     args.push('--append-system-prompt', profile.instructions)
+    // pi keeps sessions in `.pi/` under its working directory unless told otherwise, and
+    // that directory is a Course or a Course being built. Neither is pi's to write in.
+    args.push('--session-dir', profile.stateDir)
     // pi discovers AGENTS.md in the working directory by itself, which is exactly what a
     // Tutor inside a Course wants, so that discovery is left switched on.
     for (const bundle of profile.plugins) args.push('--extension', bundle)
@@ -135,7 +138,9 @@ function fromTurn(raw: unknown): Moment | undefined {
     const kind = String(part['type'] ?? '')
     if (kind !== 'toolCall' && kind !== 'tool_call' && kind !== 'tool_use') continue
     const tool = String(part['name'] ?? part['toolName'] ?? '')
-    const input = (part['input'] ?? part['args'] ?? {}) as Record<string, unknown>
+    // `arguments` is what pi actually emits. The other two are what a synthetic fixture
+    // guessed, and a real run is the only thing that could have told the difference.
+    const input = (part['arguments'] ?? part['input'] ?? part['args'] ?? {}) as Record<string, unknown>
 
     if (WRITES.has(tool)) {
       const file = named(String(input['path'] ?? input['file'] ?? ''))

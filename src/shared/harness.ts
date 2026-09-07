@@ -103,6 +103,15 @@ export interface AgentProfile {
   instructions: string
   /** Folders outside `cwd` the run may read, such as a conversation's attachments. */
   alsoRead: string[]
+  /**
+   * Where a harness may keep its own state.
+   *
+   * Found by running one: `pi` writes a `.pi/` folder into its working directory. For a
+   * build that folder would travel into the Course, and for a Tutor run, whose working
+   * directory is the Course, it would trip the guard that puts a changed Course back. So a
+   * harness that can be told where to put its state is told, and the place is the app's.
+   */
+  stateDir: string
 }
 
 export interface SpawnRequest {

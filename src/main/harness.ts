@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import { MARK, readEnvironment } from '../shared/environment'
 import { claudeAdapter } from '../shared/claude'
+import { codexAdapter } from '../shared/codex'
 import { piAdapter } from '../shared/pi'
 import { readRegistry } from '../shared/harness'
 import type { Adapter, Harness, Moment, SpawnRequest } from '../shared/harness'
@@ -22,7 +23,11 @@ import type { Adapter, Harness, Moment, SpawnRequest } from '../shared/harness'
  * an app failure and says one plain sentence (PLAN 3.6, rule 3).
  */
 
-const ADAPTERS: Record<string, Adapter> = { claude: claudeAdapter, pi: piAdapter }
+const ADAPTERS: Record<string, Adapter> = {
+  claude: claudeAdapter,
+  codex: codexAdapter,
+  pi: piAdapter,
+}
 
 /** Where the files the app hands a harness live: the registry, the roles, the bundles. */
 export function agentDir(): string {

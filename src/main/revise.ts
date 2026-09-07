@@ -5,6 +5,7 @@ import { inspect, moveOver, offerSkills, repairPrompt, seedSkills, stamp } from 
 import { agentDir, roleFile, start } from './harness'
 import { harnessById } from './build'
 import { stagingRoot } from './build'
+import { stateFor } from './workspace'
 import type { AgentProfile, Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
 
@@ -42,6 +43,7 @@ function reviser(cwd: string): AgentProfile {
     restricted: false,
     instructions: roleFile('constructor-build'),
     alsoRead: [],
+    stateDir: stateFor(`build-${Date.now()}`),
   }
 }
 

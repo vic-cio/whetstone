@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { TOOLKIT_VERSION } from '../shared/miniapp'
 import { BRIEF, inspect, moveIn, offerSkills, prepare, repairPrompt, stamp, trayContents } from '../shared/staging'
 import { agentDir, registry, roleFile, start } from './harness'
+import { stateFor } from './workspace'
 import type { AgentProfile, Harness, Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
 
@@ -94,6 +95,7 @@ function answering(cwd: string, capUsd: number): AgentProfile {
     restricted: false,
     instructions: roleFile('constructor-brief'),
     alsoRead: [],
+    stateDir: stateFor(`brief-${Date.now()}`),
   }
 }
 
@@ -108,6 +110,7 @@ function building(cwd: string, capUsd: number): AgentProfile {
     restricted: false,
     instructions: roleFile('constructor-build'),
     alsoRead: [],
+    stateDir: stateFor(`build-${Date.now()}`),
   }
 }
 

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { graderPrompt } from '../src/shared/prompts'
+import { codexAdapter } from '../src/shared/codex'
 import { piAdapter } from '../src/shared/pi'
 import { readRegistry } from '../src/shared/harness'
 import type { AgentProfile, Harness, Moment } from '../src/shared/harness'
@@ -43,6 +44,7 @@ const tutor: AgentProfile = {
   budgetUsd: 0.25,
   restricted: true,
   instructions: '/app/roles/tutor.md',
+  stateDir: '/data/harness-state/t1',
   alsoRead: [],
 }
 
@@ -94,7 +96,7 @@ describe('reading what pi emits', () => {
       type: 'message_end',
       message: {
         role: 'assistant',
-        content: [{ type: 'toolCall', name: 'read', input: { path: '/courses/x/lessons/les-one.md' } }],
+        content: [{ type: 'toolCall', id: 'toolu_2', name: 'read', arguments: { path: 'lessons/les-one.md' } }],
       },
     })
     expect(fresh(line)).toEqual({ at: 'doing', what: 'Reading les-one.md' })
@@ -113,7 +115,8 @@ describe('reading what pi emits', () => {
       type: 'message_end',
       message: {
         role: 'assistant',
-        content: [{ type: 'toolCall', name: 'write', input: { path: '/staging/x/course.json' } }],
+        // The shape a real run emits: `arguments`, not `input`. Taken from a recording.
+        content: [{ type: 'toolCall', id: 'toolu_1', name: 'write', arguments: { path: 'course.json' } }],
       },
     })
     expect(fresh(line)).toEqual({ at: 'wrote', file: 'course.json' })
@@ -204,5 +207,87 @@ describe('what the app has to make up for', () => {
     expect(asked).toContain('"kind":"rubric"')
     expect(asked).toContain('"evidence"')
     expect(asked).toContain('"missing"')
+  })
+})
+
+/**
+ * Codex, the third harness and the third mechanism.
+ *
+ * `codex-cli 0.153.0` restricts with an operating system sandbox rather than with a list of
+ * tools. That is stronger than either of the other two, because it does not depend on the
+ * tools being named correctly, and it is the finding phase 6 exists to produce: a
+ * restriction is not one idea with three spellings.
+ */
+describe('the codex adapter', () => {
+  const codex: Harness = {
+    id: 'codex',
+    label: 'Codex',
+    command: 'codex',
+    adapter: 'codex',
+    models: ['gpt-5.6-luna'],
+    restrictsTools: true,
+    capsSpend: false,
+    validatesOutput: true,
+  }
+
+  const argv = (can: AgentProfile['can']): string[] =>
+    codexAdapter.argv({
+      harness: codex,
+      model: 'gpt-5.6-luna',
+      profile: { ...tutor, can, restricted: can.length === 1 },
+      prompt: 'why?',
+    })
+
+  it('runs headless, structured, and outside a git repository', () => {
+    const args = argv(['read'])
+    expect(args[0]).toBe('exec')
+    expect(args).toContain('--json')
+    expect(args).toContain('--skip-git-repo-check')
+    // Codex takes its prompt as a positional argument, so it comes last.
+    expect(args[args.length - 1]).toBe('why?')
+  })
+
+  it('restricts with a sandbox, which the other two do not have', () => {
+    expect(argv(['read'])[argv(['read']).indexOf('--sandbox') + 1]).toBe('read-only')
+    const writing = argv(['read', 'write'])
+    expect(writing[writing.indexOf('--sandbox') + 1]).toBe('workspace-write')
+    // There is no tool list either way. The boundary is the filesystem.
+    expect(argv(['read'])).not.toContain('--tools')
+    expect(argv(['read'])).not.toContain('--allowedTools')
+  })
+
+  it('keeps the user’s own instructions out, in its own way', () => {
+    // `claude` has --setting-sources and Codex has this. Same job, PLAN 3.13.
+    expect(argv(['read'])).toContain('--ignore-user-config')
+  })
+
+  it('reads a cost and a session out of its own event names', () => {
+    const read = codexAdapter.reader()
+    expect(read(JSON.stringify({ type: 'thread.started', thread_id: 't1', model: 'gpt-5.6-luna' }))).toEqual({
+      at: 'started',
+      model: 'gpt-5.6-luna',
+      session: 't1',
+    })
+    expect(read(JSON.stringify({ type: 'turn.completed', usage: { cost_usd: 0.42 } }))).toEqual({
+      at: 'finished',
+      usd: 0.42,
+      ok: true,
+      denied: [],
+    })
+  })
+
+  it('says what it is doing while it writes, and claims the file only once it is there', () => {
+    // Two different claims. "Writing course.json" is what is happening now; a `wrote`
+    // moment says a file exists, and a sandbox that refuses the write must not produce one.
+    const read = codexAdapter.reader()
+    const asked = { type: 'item.started', item: { tool: 'write_file', arguments: { path: 'a/course.json' } } }
+    const done = { type: 'item.completed', item: { tool: 'write_file', arguments: { path: 'a/course.json' } } }
+    expect(read(JSON.stringify(asked))).toEqual({ at: 'doing', what: 'Writing course.json' })
+    expect(read(JSON.stringify(done))).toEqual({ at: 'wrote', file: 'course.json' })
+
+    // A write that was started and never completed says a thing was attempted, never that
+    // a file appeared.
+    const half = codexAdapter.reader()
+    expect(half(JSON.stringify(asked))?.at).toBe('doing')
   })
 })

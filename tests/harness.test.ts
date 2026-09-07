@@ -49,6 +49,7 @@ const tutor: AgentProfile = {
   budgetUsd: 0.25,
   restricted: true,
   instructions: '/app/roles/tutor.md',
+  stateDir: '/data/harness-state/t1',
   alsoRead: ['/data/chats/c1'],
 }
 
