@@ -14,6 +14,16 @@ import { useEffect, useState } from 'react'
 
 type Role = 'constructor' | 'tutor' | 'grader'
 
+/** A run's kind, in the app's words rather than in the ledger's. */
+const WHAT: Record<string, string> = {
+  brief: 'Planning a course',
+  build: 'Building a course',
+  tutor: 'Asking the tutor',
+  grade: 'Marking an answer',
+  remediate: 'Teaching something differently',
+  'add-rung': 'Adding harder questions',
+}
+
 const ROLES: { id: Role; title: string; what: string }[] = [
   { id: 'constructor', title: 'Building a course', what: 'Runs for minutes and writes the whole course. Worth the strongest model.' },
   { id: 'tutor', title: 'The tutor', what: 'One turn per question, inside the course. A mid-tier model is enough.' },
@@ -35,6 +45,7 @@ export function Settings({ onDone }: { onDone: () => void }): React.JSX.Element 
     grader: { harnessId: '', model: '' },
   })
   const [trouble, setTrouble] = useState('')
+  const [spent, setSpent] = useState<{ kind: string; runs: number; usd: number }[]>([])
 
   useEffect(() => {
     void window.whetstone.brief.harnesses().then((found) => {
@@ -42,6 +53,7 @@ export function Settings({ onDone }: { onDone: () => void }): React.JSX.Element 
       if (found.errors.length > 0) setTrouble(found.errors[0] as string)
     })
     void window.whetstone.settings.roles().then(setChosen)
+    void window.whetstone.settings.spending().then(setSpent)
   }, [])
 
   const set = (role: Role, harnessId: string, model: string): void => {
@@ -104,6 +116,34 @@ export function Settings({ onDone }: { onDone: () => void }): React.JSX.Element 
         stores no key of its own. A harness listed as not installed is one this machine does
         not have on its path.
       </p>
+
+      {/*
+        What has been spent. The only number in the app that is about the app rather than
+        about the reader, which is the reason it is allowed to be a number at all.
+      */}
+      {spent.length > 0 && (
+        <div className="spend-table">
+          <div className="mh">
+            <span className="lname">Spent</span>
+          </div>
+          {spent.map((row) => (
+            <div key={row.kind} className="sline">
+              <span>{WHAT[row.kind] ?? row.kind}</span>
+              <span className="cmeta">
+                {row.runs} {row.runs === 1 ? 'run' : 'runs'}
+              </span>
+              <span className="cmeta">${row.usd.toFixed(2)}</span>
+            </div>
+          ))}
+          <div className="sline total">
+            <span>All of it</span>
+            <span className="cmeta">
+              {spent.reduce((sum, row) => sum + row.runs, 0)} runs
+            </span>
+            <span className="cmeta">${spent.reduce((sum, row) => sum + row.usd, 0).toFixed(2)}</span>
+          </div>
+        </div>
+      )}
     </>
   )
 }

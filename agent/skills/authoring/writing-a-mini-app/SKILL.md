@@ -78,8 +78,19 @@ play control. `step(state)` returns the next state, `draw(context, state, size)`
 
 **`Kit.theme`** `color(name)` and `tint(depth)` for a value a style has to set from code.
 
-The signatures above are the whole toolkit. `toolkit/kit.js` is in the folder you are
-working in if you need to read one.
+## What the app does with what you send
+
+`Kit.bridge.answer(value)` posts the value and the app compares it with the Task. For an
+`app-result` Task the comparison is a deep equality against the `answer` in the Task, so
+send the same shape you wrote there, and keep it small: a number, a string, or a flat
+object. For an `assertions-pass` Task, send `{ passed: [...] }` from `code.run()`, and the
+app passes the Task only on the assertion names the Task itself declared.
+
+You never decide the outcome and you never need to. Report, and let the app judge.
+
+**The signatures above are the whole toolkit.** There is nothing else in it, and this page is
+the reference. Do not read `toolkit/kit.js`: it is nine hundred lines, reading it costs more
+than the mini-app you are writing, and it will tell you exactly what is written here.
 
 ## When the toolkit is missing something
 

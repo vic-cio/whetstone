@@ -28,6 +28,9 @@ const api = {
     open: (slug: string): Promise<OpenResult> => ipcRenderer.invoke('courses:open', slug),
     remove: (slug: string): Promise<Removal> => ipcRenderer.invoke('courses:remove', slug),
     reveal: (folder: string): Promise<void> => ipcRenderer.invoke('courses:reveal', folder),
+    /** Share a Course. It is a folder, so it is a zip of that folder and nothing else. */
+    export: (slug: string): Promise<{ ok: boolean; file?: string; message?: string }> =>
+      ipcRenderer.invoke('courses:export', slug),
   },
 
   /**
@@ -115,6 +118,8 @@ const api = {
       ipcRenderer.invoke('settings:roles'),
     setRole: (role: string, harnessId: string, model: string): Promise<void> =>
       ipcRenderer.invoke('settings:setRole', role, harnessId, model),
+    spending: (): Promise<{ kind: string; runs: number; usd: number }[]> =>
+      ipcRenderer.invoke('settings:spending'),
   },
 
   defects: {

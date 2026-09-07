@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, shell } from 'electron'
+import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
@@ -331,6 +332,7 @@ app.whenReady().then(() => {
 
   // Which harness and model each role uses. One row per role (PLAN 3.12), remembered, and
   // the model list belongs to the harness so switching one resets the other.
+  ipcMain.handle('settings:spending', () => progress().spending())
   ipcMain.handle('settings:roles', () => {
     const store = progress()
     const read = (role: string): { harnessId: string; model: string } => ({
@@ -375,6 +377,32 @@ app.whenReady().then(() => {
       (folder) => shell.trashItem(folder),
     ),
   )
+  /**
+   * Export a Course as a zip.
+   *
+   * A Course is a folder, so this is `zip` over that folder and nothing more. It is how a
+   * Course is shared, and everything that makes a shared Course behave the same is already
+   * inside it: the pinned toolkit, the library, the Course's own `AGENTS.md`. Nobody's
+   * progress and nobody's conversation is in there, because neither was ever written there.
+   */
+  ipcMain.handle('courses:export', async (_event, slug: string) => {
+    const course = loadCourse(slug)
+    const picked = await dialog.showSaveDialog({
+      title: 'Export course',
+      defaultPath: `${slug}.zip`,
+      filters: [{ name: 'Zip archive', extensions: ['zip'] }],
+    })
+    if (picked.canceled || picked.filePath === undefined) return { ok: false }
+    try {
+      // `-r` for the tree, `-q` to say nothing, `-X` to leave out the resource forks that
+      // would otherwise make a Course from a Mac look different from the same Course.
+      execFileSync('zip', ['-r', '-q', '-X', picked.filePath, '.'], { cwd: course.path })
+      return { ok: true, file: picked.filePath }
+    } catch (cause) {
+      return { ok: false, message: `The course could not be exported. ${(cause as Error).message}` }
+    }
+  })
+
   // A failed build leaves its folder where it is, so there has to be a way to open it.
   ipcMain.handle('courses:reveal', (_event, folder: string) => shell.showItemInFolder(folder))
 

@@ -120,7 +120,7 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
  * it takes the arrow's place rather than adding a column, so the row does not move.
  */
 .crow {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto 74px; gap: 16px; align-items: baseline;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 128px; gap: 16px; align-items: baseline;
   padding: 13px 10px 13px 0; border-bottom: 1px solid var(--line); width: 100%;
   color: var(--ink);
 }
@@ -146,6 +146,7 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
 }
 .crow:hover .cbin, .cbin:focus { opacity: 1; }
+.crowdo .cbin:first-child:hover, .crowdo .cbin:first-child:focus { color: var(--amber); }
 .cbin:hover, .cbin:focus { color: var(--fail); }
 .crow:hover { background: var(--said-bg); }
 .crow:hover .cname { color: var(--amber); }
@@ -620,3 +621,15 @@ pre.code {
 .srow span { color: var(--muted); font-size: 12px; }
 .srow select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 5px 7px; }
 .srow select:disabled { color: var(--muted); }
+
+/* What has been spent. The one number about the app rather than about the reader. */
+.spend-table { margin-top: 26px; }
+.sline {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 70px; gap: 14px;
+  padding: 7px 0; border-bottom: 1px solid var(--line);
+}
+.sline span:last-child { text-align: right; }
+.sline.total { border-bottom: 0; border-top: 1px solid var(--frame); font-weight: 600; }
+
+/* Two things to do with a course row, revealed together by hovering it. */
+.crowdo { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; display: flex; gap: 10px; }

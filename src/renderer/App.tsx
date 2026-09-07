@@ -113,6 +113,34 @@ export function App(): React.JSX.Element {
   const order = course ? course.modules.flatMap((module) => module.pages) : []
   const here = route.at === 'page' ? order.findIndex((entry) => entry.id === route.pageId) : -1
   const next = here >= 0 ? order[here + 1] : undefined
+  const previous = here > 0 ? order[here - 1] : undefined
+
+  /**
+   * Keyboard navigation in the reader.
+   *
+   * The Course is a list of Pages in the Constructor's order, so the keys are that order:
+   * left and right along it, and escape back to the contents. Nothing here is a shortcut
+   * for an action that spends money or records an Attempt, because a key pressed by
+   * accident should never do either.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (route.at !== 'page') return
+      const typing = event.target as HTMLElement | null
+      const tag = typing?.tagName ?? ''
+      // Somebody answering a question is using the same keys for something else.
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || typing?.isContentEditable) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+
+      if (event.key === 'ArrowRight' && next) openCourse(route.slug, next.id)
+      else if (event.key === 'ArrowLeft' && previous) openCourse(route.slug, previous.id)
+      else if (event.key === 'Escape') openCourse(route.slug)
+      else return
+      event.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [route, next, previous, openCourse])
 
   return (
     <div className={`app${railOpen ? '' : ' narrow'}${tutorOpen ? ' asking' : ''}`}>
@@ -359,9 +387,14 @@ function Home({
           <span className="cnt">
             {entry.pagesDone} of {entry.pageCount} pages
           </span>
-          <button type="button" className="cbin" onClick={() => onRemove(entry.slug, entry.title)}>
-            Delete
-          </button>
+          <span className="crowdo">
+            <button type="button" className="cbin" onClick={() => void window.whetstone.courses.export(entry.slug)}>
+              Export
+            </button>
+            <button type="button" className="cbin" onClick={() => onRemove(entry.slug, entry.title)}>
+              Delete
+            </button>
+          </span>
         </div>
       ))}
 

@@ -92,6 +92,11 @@ export interface Progress {
   endRun(id: string, usd: number, status: 'ok' | 'failed' | 'cancelled'): void
   /** What the last Run against this Course used, which is what a new one pre-fills from. */
   lastRun(courseSlug: string): { harness: string; model: string } | undefined
+  /**
+   * What has been spent, by kind. The one number the app keeps about itself rather than
+   * about the reader, which is why it is allowed to be a number (PLAN 3.4).
+   */
+  spending(): { kind: string; runs: number; usd: number }[]
   /** The conversation about one Page, if there has been one. */
   thread(courseSlug: string, pageId: string): Thread | undefined
   saveThread(courseSlug: string, pageId: string, thread: Thread): void
@@ -196,6 +201,9 @@ export function openProgress(file: string): Progress {
     VALUES (?, ?, ?, ?, ?, 0, 'running', ?)
   `)
   const closeRun = db.prepare('UPDATE runs SET usd = ?, status = ?, endedAt = ? WHERE id = ?')
+  const spend = db.prepare(
+    'SELECT kind, COUNT(*) AS runs, COALESCE(SUM(usd), 0) AS usd FROM runs GROUP BY kind ORDER BY usd DESC',
+  )
   const latestRun = db.prepare(
     "SELECT harness, model FROM runs WHERE courseSlug = ? AND status = 'ok' ORDER BY startedAt DESC LIMIT 1",
   )
@@ -272,6 +280,9 @@ export function openProgress(file: string): Progress {
     },
     endRun(id, usd, status) {
       closeRun.run(usd, status, new Date().toISOString(), id)
+    },
+    spending() {
+      return spend.all() as { kind: string; runs: number; usd: number }[]
     },
     lastRun(courseSlug) {
       return latestRun.get(courseSlug) as { harness: string; model: string } | undefined
