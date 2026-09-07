@@ -31,7 +31,7 @@ export function Answer({
    * What the host did with the answer. `trouble` is a Grader that could not judge: it is
    * not an outcome, nothing was recorded, and the question stays open (PLAN 3.15).
    */
-  send: (given: unknown) => Promise<Outcome | { trouble: string }>
+  send: (given: unknown, submission?: string[]) => Promise<Outcome | { trouble: string }>
   /** Needed only by the kinds a Mini-app answers, which read one from the Course folder. */
   slug?: string
 }): React.JSX.Element {
@@ -44,12 +44,14 @@ export function Answer({
   /** The row being dragged, and the row it is over, both as positions in the list. */
   const [held, setHeld] = useState<number | undefined>(undefined)
   const [over, setOver] = useState<number | undefined>(undefined)
+  /** The files chosen for a `submission` Task, held only until this answer is sent. */
+  const [files, setFiles] = useState<string[]>([])
 
-  const submit = async (given: unknown): Promise<void> => {
+  const submit = async (given: unknown, submission?: string[]): Promise<void> => {
     setBusy(true)
     setTrouble('')
     try {
-      const back = await send(given)
+      const back = await send(given, submission)
       if ('trouble' in back) setTrouble(back.trouble)
       else setOutcome(back)
     } finally {
@@ -218,19 +220,109 @@ export function Answer({
       )
     }
 
+    /**
+     * The two kinds a Grader judges. The control collects and sends, exactly as every other
+     * control here does; what makes these different is only where the outcome comes from,
+     * and that is `answering.ts`'s business rather than this file's.
+     *
+     * Marking one costs money and takes a while, so `busy` says so out loud. A press is
+     * what starts it: nothing here submits on its own.
+     */
     case 'short-answer':
-    case 'submission':
       return (
-        <div className="later">
-          <span className="ptype">Needs a model</span>
-          <p>This one is judged by a model, which arrives with the tutor.</p>
-        </div>
+        <>
+          <form
+            className="written"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (typed.trim() === '' || busy || outcome !== undefined) return
+              void submit(typed.trim())
+            }}
+          >
+            <textarea
+              rows={4}
+              value={typed}
+              disabled={outcome !== undefined || busy}
+              placeholder="Write your answer"
+              onChange={(event) => setTyped(event.target.value)}
+            />
+            <div className="acts">
+              {busy && <span className="waiting">Being marked</span>}
+              <button type="submit" className="btn" disabled={outcome !== undefined || busy || typed.trim() === ''}>
+                Answer
+              </button>
+            </div>
+          </form>
+          <Verdict outcome={outcome} trouble={trouble} onAgain={again} />
+        </>
       )
+
+    /**
+     * Work done outside the app, handed in as files.
+     *
+     * The paths never reach the Course and are held here only until the answer is sent: the
+     * Grader copies what it is given into the Attempt folder, and until Answer is pressed
+     * there is no Attempt. The note beside them is optional, because the work is the answer.
+     */
+    case 'submission': {
+      // A Try is never a submission, but the two share this component's type, so the field
+      // is read off the one shape that has it.
+      const accepts = 'accepts' in question ? (question.accepts ?? []) : []
+      return (
+        <>
+          <div className="handin">
+            {files.length > 0 && (
+              <ul className="tray">
+                {files.map((file) => (
+                  <li key={file}>{named(file)}</li>
+                ))}
+              </ul>
+            )}
+            <textarea
+              rows={3}
+              value={typed}
+              disabled={outcome !== undefined || busy}
+              placeholder="Anything the marker should know (optional)"
+              onChange={(event) => setTyped(event.target.value)}
+            />
+            <div className="acts">
+              {accepts.length > 0 && <span className="units">{accepts.join(' ')}</span>}
+              {busy && <span className="waiting">Being marked</span>}
+              <button
+                type="button"
+                className="quiet"
+                disabled={outcome !== undefined || busy}
+                onClick={() => {
+                  void window.whetstone.tasks
+                    .attach(accepts)
+                    .then((picked) => setFiles((all) => [...all, ...picked.filter((file) => !all.includes(file))]))
+                }}
+              >
+                Attach work
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={outcome !== undefined || busy || files.length === 0}
+                title={files.length === 0 ? 'Attach your work first' : 'Hand this in'}
+                onClick={() => void submit(typed.trim(), files)}
+              >
+                Answer
+              </button>
+            </div>
+          </div>
+          <Verdict outcome={outcome} trouble={trouble} onAgain={again} />
+        </>
+      )
+    }
 
     default:
       return <div className="later">Unknown task kind “{question.kind}”.</div>
   }
 }
+
+/** Just the file's name. Where it sits on the disk is not the reader's business. */
+const named = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
 
 /** Take a row out of the list and put it back at another place, closing the gap behind it. */
 function lift(order: number[], from: number, to: number): number[] {

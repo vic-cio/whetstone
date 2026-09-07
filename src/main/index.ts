@@ -185,8 +185,13 @@ app.whenReady().then(() => {
 
   // A Run reports as it goes, so the window draws an answer as it is typed. What crosses
   // is a `Moment`: the app's own words, never a raw event (PLAN 3.6).
-  const report = (event: Electron.IpcMainInvokeEvent) => (moment: unknown) =>
-    event.sender.send('run:moment', moment)
+  //
+  // Every run reports on the one channel, so each Moment is sent with the id of the run it
+  // came from and a panel draws only its own. The id is minted by the window and arrives
+  // with the call that started the run: it is known before the first Moment is sent, which
+  // an id returned at the end of a run would not be.
+  const report = (event: Electron.IpcMainInvokeEvent, run: string) => (moment: unknown) =>
+    event.sender.send('run:moment', run, moment)
 
   // One handler per thing the reader can do. Answering happens here rather than in the
   // renderer, so an answer never crosses the bridge and an Attempt cannot be skipped.
@@ -210,6 +215,7 @@ app.whenReady().then(() => {
     'tasks:answer',
     (
       event,
+      run: string,
       slug: string,
       testId: string,
       taskId: string,
@@ -226,9 +232,26 @@ app.whenReady().then(() => {
           model: grading?.model ?? '',
           ...(grading?.submission === undefined ? {} : { submission: grading.submission }),
         },
-        report(event),
+        report(event, run),
       ),
   )
+
+  /**
+   * The files a `submission` Task is answered with.
+   *
+   * A Task's `accepts` is a list of extensions the Constructor wrote, so the dialog offers
+   * exactly what the Task asks for. Nothing is copied here: the Grader copies what it is
+   * given into the Attempt folder, and until the reader presses Answer there is no Attempt.
+   */
+  ipcMain.handle('tasks:attach', async (_event, accepts: string[]) => {
+    const extensions = accepts.map((entry) => entry.replace(/^\./, '')).filter((entry) => entry !== '')
+    const picked = await dialog.showOpenDialog({
+      title: 'Your work for this task',
+      properties: ['openFile', 'multiSelections'],
+      ...(extensions.length === 0 ? {} : { filters: [{ name: 'Accepted', extensions }] }),
+    })
+    return picked.canceled ? [] : picked.filePaths
+  })
 
   // ---------------------------------------------------------------- the tutor
   //
@@ -251,6 +274,7 @@ app.whenReady().then(() => {
     'tutor:ask',
     async (
       event,
+      run: string,
       slug: string,
       pageId: string,
       question: string,
@@ -265,7 +289,7 @@ app.whenReady().then(() => {
 
       // A Tutor turn costs money, so it goes in the ledger. PLAN 3.4 names the Constructor
       // and the Grader only, which would leave the spend figure quietly wrong.
-      const run = store.startRun({ kind: 'tutor', courseSlug: slug, harness: harnessId, model })
+      const row = store.startRun({ kind: 'tutor', courseSlug: slug, harness: harnessId, model })
       const reply = await ask(
         {
           chatId: thread.id,
@@ -283,10 +307,10 @@ app.whenReady().then(() => {
             pageCount: pages.length,
           },
         },
-        report(event),
+        report(event, run),
       )
 
-      store.endRun(run, reply.usd, reply.ok ? 'ok' : 'failed')
+      store.endRun(row, reply.usd, reply.ok ? 'ok' : 'failed')
 
       if (reply.ok && reply.text !== '') {
         thread.messages.push({ who: 'you', text: question }, { who: 'tutor', text: reply.text })
@@ -317,18 +341,19 @@ app.whenReady().then(() => {
     'course:revise',
     (
       event,
+      run: string,
       slug: string,
       harnessId: string,
       model: string,
       work: { kind: 'add-rung'; depth: string } | { kind: 'remediate'; objective: string; title: string },
     ) => {
       const course = loadCourse(slug)
-      const run = progress().startRun({ kind: work.kind, courseSlug: slug, harness: harnessId, model })
+      const row = progress().startRun({ kind: work.kind, courseSlug: slug, harness: harnessId, model })
       return revise(
         { slug, courseDir: course.path, root: coursesRoot(), harnessId, model, work },
-        report(event),
+        report(event, run),
       ).then((result) => {
-        progress().endRun(run, result.usd, result.at === 'revised' ? 'ok' : 'failed')
+        progress().endRun(row, result.usd, result.at === 'revised' ? 'ok' : 'failed')
         return result
       })
     },
@@ -380,14 +405,14 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('brief:link', (_event, url: string) => addToTray([], [url]))
 
-  ipcMain.handle('brief:say', (event, text: string, harnessId: string, model: string) =>
-    sendMessage(text, harnessId, model, report(event)),
+  ipcMain.handle('brief:say', (event, run: string, text: string, harnessId: string, model: string) =>
+    sendMessage(text, harnessId, model, report(event, run)),
   )
-  ipcMain.handle('brief:outline', (event, harnessId: string, model: string) =>
-    sendMessage(OUTLINE, harnessId, model, report(event)),
+  ipcMain.handle('brief:outline', (event, run: string, harnessId: string, model: string) =>
+    sendMessage(OUTLINE, harnessId, model, report(event, run)),
   )
-  ipcMain.handle('brief:build', (event, harnessId: string, model: string, brief: string) =>
-    buildCourse(coursesRoot(), harnessId, model, brief, report(event)),
+  ipcMain.handle('brief:build', (event, run: string, harnessId: string, model: string, brief: string) =>
+    buildCourse(coursesRoot(), harnessId, model, brief, report(event, run)),
   )
 
   ipcMain.handle('courses:remove', (_event, slug: string) =>

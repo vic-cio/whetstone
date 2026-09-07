@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { newRunId } from '../shared/harness'
 import type { Moment } from '../shared/harness'
 
 /**
@@ -39,6 +40,11 @@ export function Tutor({
   const typing = useRef('')
   const [live, setLive] = useState('')
 
+  // The run this panel started. Every run in the window reports on one channel, so without
+  // this the Grader's words would land in the tutor's reply and a Grader failure would set
+  // the tutor's error line.
+  const mine = useRef('')
+
   // Reading a thread is a database read. It starts no process and costs nothing, which is
   // what test 15 is about: opening the panel is not asking a question.
   useEffect(() => {
@@ -54,7 +60,8 @@ export function Tutor({
 
   useEffect(
     () =>
-      window.whetstone.brief.watch((moment: Moment) => {
+      window.whetstone.runs.watch((run: string, moment: Moment) => {
+        if (run !== mine.current) return
         if (moment.at === 'says') {
           typing.current += moment.text
           setLive(typing.current)
@@ -74,7 +81,15 @@ export function Tutor({
     setLive('')
     setSaid((all) => [...all, { who: 'you', text: question }])
 
-    const reply = await window.whetstone.tutor.ask(slug, pageId, question, agent.harnessId, agent.model)
+    mine.current = newRunId()
+    const reply = await window.whetstone.tutor.ask(
+      mine.current,
+      slug,
+      pageId,
+      question,
+      agent.harnessId,
+      agent.model,
+    )
     typing.current = ''
     setLive('')
     if (reply.text !== '') setSaid((all) => [...all, { who: 'tutor', text: reply.text }])

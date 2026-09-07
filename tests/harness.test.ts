@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { claudeAdapter, denied } from '../src/shared/claude'
-import { readRegistry } from '../src/shared/harness'
+import { newRunId, readRegistry } from '../src/shared/harness'
 import type { AgentProfile, Harness, Moment } from '../src/shared/harness'
 
 /**
@@ -289,5 +289,17 @@ describe('the harness registry', () => {
     const bad = readRegistry(JSON.stringify({ harnesses: [{ id: 'x' }] }))
     expect(bad.ok).toBe(false)
     if (!bad.ok) expect(bad.message).toContain('harnesses.0')
+  })
+})
+
+/**
+ * Every run reports on one channel, so a panel tells its own run from anybody else's by an
+ * id. Two runs sharing one would put the Grader's words into the tutor's reply, which is
+ * the failure this id exists to stop.
+ */
+describe('telling one run from another', () => {
+  it('never gives two runs the same id', () => {
+    const ids = Array.from({ length: 500 }, () => newRunId())
+    expect(new Set(ids).size).toBe(ids.length)
   })
 })

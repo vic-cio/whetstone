@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { newRunId } from '../shared/harness'
 import type { Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
 
@@ -59,6 +60,10 @@ export function NewCourse({
   const typing = useRef('')
   const [live, setLive] = useState('')
 
+  // The run this page started. Every run in the window reports on one channel, so anything
+  // else going on at the same time, a Grader or the Tutor, is read and dropped here.
+  const mine = useRef('')
+
   useEffect(() => {
     void window.whetstone.brief.start()
     void window.whetstone.brief.harnesses().then((found) => {
@@ -67,7 +72,8 @@ export function NewCourse({
       if (first) setPick({ harnessId: first.id, model: first.models[0] ?? '' })
       if (found.errors.length > 0) setTrouble(found.errors[0] as string)
     })
-    return window.whetstone.brief.watch((moment) => {
+    return window.whetstone.runs.watch((run, moment) => {
+      if (run !== mine.current) return
       setLog((lines) => [...lines, describe(moment)])
       if (moment.at === 'says') {
         typing.current += moment.text
@@ -84,12 +90,12 @@ export function NewCourse({
 
   /** One exchange: the message goes up, the answer comes back as it is typed. */
   const exchange = useCallback(
-    async (mine: string | undefined, ask: () => Promise<{ ok: boolean; text: string; message?: string }>) => {
+    async (asked: string | undefined, ask: () => Promise<{ ok: boolean; text: string; message?: string }>) => {
       setBusy(true)
       setTrouble('')
       typing.current = ''
       setLive('')
-      if (mine !== undefined) setSaid((all) => [...all, { who: 'you', text: mine }])
+      if (asked !== undefined) setSaid((all) => [...all, { who: 'you', text: asked }])
 
       const answer = await ask()
       setLive('')
@@ -105,12 +111,14 @@ export function NewCourse({
     const text = draft.trim()
     if (text === '' || busy) return
     setDraft('')
-    void exchange(text, () => window.whetstone.brief.say(text, pick.harnessId, pick.model))
+    mine.current = newRunId()
+    void exchange(text, () => window.whetstone.brief.say(mine.current, text, pick.harnessId, pick.model))
   }
 
   const outline = (): void => {
     if (busy) return
-    void exchange(undefined, () => window.whetstone.brief.outline(pick.harnessId, pick.model))
+    mine.current = newRunId()
+    void exchange(undefined, () => window.whetstone.brief.outline(mine.current, pick.harnessId, pick.model))
   }
 
   const build = async (): Promise<void> => {
@@ -119,7 +127,8 @@ export function NewCourse({
     setFeed([])
     setTrouble('')
     const transcript = said.map((entry) => `${entry.who === 'you' ? 'User' : 'You'}: ${entry.text}`).join('\n\n')
-    const result = await window.whetstone.brief.build(pick.harnessId, pick.model, transcript)
+    mine.current = newRunId()
+    const result = await window.whetstone.brief.build(mine.current, pick.harnessId, pick.model, transcript)
     if (result.ok && result.slug !== undefined) {
       onOpen(result.slug)
       return

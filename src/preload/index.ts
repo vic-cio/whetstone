@@ -46,17 +46,27 @@ const api = {
     tray: (): Promise<string[]> => ipcRenderer.invoke('brief:tray'),
     attach: (): Promise<string[]> => ipcRenderer.invoke('brief:attach'),
     link: (url: string): Promise<string[]> => ipcRenderer.invoke('brief:link', url),
-    say: (text: string, harnessId: string, model: string): Promise<Answer> =>
-      ipcRenderer.invoke('brief:say', text, harnessId, model),
-    outline: (harnessId: string, model: string): Promise<Answer> =>
-      ipcRenderer.invoke('brief:outline', harnessId, model),
-    build: (harnessId: string, model: string, brief: string): Promise<BuildResult> =>
-      ipcRenderer.invoke('brief:build', harnessId, model, brief),
+    say: (run: string, text: string, harnessId: string, model: string): Promise<Answer> =>
+      ipcRenderer.invoke('brief:say', run, text, harnessId, model),
+    outline: (run: string, harnessId: string, model: string): Promise<Answer> =>
+      ipcRenderer.invoke('brief:outline', run, harnessId, model),
+    build: (run: string, harnessId: string, model: string, brief: string): Promise<BuildResult> =>
+      ipcRenderer.invoke('brief:build', run, harnessId, model, brief),
     cancel: (): Promise<void> => ipcRenderer.invoke('brief:cancel'),
     discard: (): Promise<void> => ipcRenderer.invoke('brief:discard'),
-    /** What a Run is doing, as it does it. Returns the way to stop listening. */
-    watch: (listen: (moment: Moment) => void): (() => void) => {
-      const relay = (_event: IpcRendererEvent, moment: Moment): void => listen(moment)
+  },
+
+  /**
+   * What a Run is doing, as it does it.
+   *
+   * Every run reports on one channel, so a listener is told which run each Moment came
+   * from and draws only its own. Without that, grading a Task with the tutor panel open
+   * puts the Grader's words into the tutor's reply and a Grader failure sets the tutor's
+   * error line. The id is the one the caller minted with `newRunId` and passed in.
+   */
+  runs: {
+    watch: (listen: (run: string, moment: Moment) => void): (() => void) => {
+      const relay = (_event: IpcRendererEvent, run: string, moment: Moment): void => listen(run, moment)
       ipcRenderer.on('run:moment', relay)
       return () => {
         ipcRenderer.off('run:moment', relay)
@@ -75,12 +85,20 @@ const api = {
      * which is most of the time it is not read at all.
      */
     answer: (
+      run: string,
       slug: string,
       testId: string,
       taskId: string,
       given: unknown,
       grading?: { harnessId: string; model: string; submission?: string[] },
-    ): Promise<Answered> => ipcRenderer.invoke('tasks:answer', slug, testId, taskId, given, grading),
+    ): Promise<Answered> =>
+      ipcRenderer.invoke('tasks:answer', run, slug, testId, taskId, given, grading),
+    /**
+     * Choose the files a `submission` Task is answered with. The dialog is filtered by the
+     * Task's own `accepts`. What comes back are paths, held by the page only until it
+     * submits them, because the Grader copies them into the Attempt folder itself.
+     */
+    attach: (accepts: string[]): Promise<string[]> => ipcRenderer.invoke('tasks:attach', accepts),
   },
 
   /** The Tutor. Every call here starts with the reader pressing something. */
@@ -89,12 +107,14 @@ const api = {
       ipcRenderer.invoke('tutor:thread', slug, pageId),
     attach: (chatId: string): Promise<string[]> => ipcRenderer.invoke('tutor:attach', chatId),
     ask: (
+      run: string,
       slug: string,
       pageId: string,
       question: string,
       harnessId: string,
       model: string,
-    ): Promise<TutorReply> => ipcRenderer.invoke('tutor:ask', slug, pageId, question, harnessId, model),
+    ): Promise<TutorReply> =>
+      ipcRenderer.invoke('tutor:ask', run, slug, pageId, question, harnessId, model),
   },
 
   /** Coming back to things. Both of these are offline and free (PLAN 3.15). */
@@ -106,11 +126,12 @@ const api = {
   course: {
     /** Add a Rung, or write a remediation block. A Constructor run against a Course. */
     revise: (
+      run: string,
       slug: string,
       harnessId: string,
       model: string,
       work: { kind: 'add-rung'; depth: string } | { kind: 'remediate'; objective: string; title: string },
-    ): Promise<Revision> => ipcRenderer.invoke('course:revise', slug, harnessId, model, work),
+    ): Promise<Revision> => ipcRenderer.invoke('course:revise', run, slug, harnessId, model, work),
   },
 
   settings: {

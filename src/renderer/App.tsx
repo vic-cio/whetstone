@@ -7,6 +7,7 @@ import { Settings } from './Settings'
 import { Tutor } from './Tutor'
 import { Lesson } from './Lesson'
 import { Test } from './Test'
+import { newRunId } from '../shared/harness'
 import type { BrokenCourse, CourseSummary } from '../main/courseStore'
 import type { CourseView, PageView } from '../main/study'
 import type { CourseError } from '../shared/format'
@@ -252,7 +253,7 @@ export function App(): React.JSX.Element {
             onRemediate={(objective) => {
               setRevising(objective.title)
               void window.whetstone.course
-                .revise(route.slug, agent.harnessId, agent.model, {
+                .revise(newRunId(), route.slug, agent.harnessId, agent.model, {
                   kind: 'remediate',
                   objective: objective.id,
                   title: objective.title,

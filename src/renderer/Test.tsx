@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { Answer } from './Answer'
 import { Run } from './Prose'
+import { newRunId } from '../shared/harness'
 import { parseInline } from '../shared/markdown'
 import type { RubricVerdict } from '../shared/verdict'
 import type { TestView } from '../main/study'
@@ -61,8 +62,15 @@ export function Test({
           <Answer
             question={task}
             slug={slug}
-            send={async (given) => {
-              const result = await window.whetstone.tasks.answer(slug, test.id, task.id, given, grading)
+            send={async (given, submission) => {
+              const result = await window.whetstone.tasks.answer(
+                newRunId(),
+                slug,
+                test.id,
+                task.id,
+                given,
+                { ...grading, ...(submission === undefined ? {} : { submission }) },
+              )
               if (result.at === 'trouble') return { trouble: result.message }
               onAnswered()
               if (result.verdict?.kind === 'rubric') {

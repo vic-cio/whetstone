@@ -26,11 +26,11 @@ Read `PLAN.md` for the design and `CONTEXT.md` for the vocabulary. Use those wor
 
 | # | What | Where |
 |---|---|---|
-| 1 | The Grader cannot be reached from the interface | `src/renderer/Answer.tsx:221` |
+| ~~1~~ | ~~The Grader cannot be reached from the interface~~ **done** | `src/renderer/Answer.tsx` |
 | 2 | The tutor's Attach button can never be pressed | `src/main/index.ts:239`, `src/renderer/Tutor.tsx:50` |
 | 3 | Settings' Constructor row is never read | `src/renderer/NewCourse.tsx`, `src/renderer/App.tsx:255` |
 | 4 | A sentence with a pipe in it is eaten as a table | `src/shared/markdown.ts:105` |
-| 5 | One moment channel carries every run | `src/preload/index.ts`, `src/main/index.ts` |
+| ~~5~~ | ~~One moment channel carries every run~~ **done** | `src/preload/index.ts`, `src/main/index.ts` |
 | 6 | A defect report can be filed and never read | `src/main/progress.ts` |
 | 7 | `add-rung` has no button | `src/main/revise.ts` |
 | 8 | A Try's prompt skips the inline parser | `src/renderer/Lesson.tsx:93` |
@@ -41,6 +41,13 @@ Read `PLAN.md` for the design and `CONTEXT.md` for the vocabulary. Use those wor
 A twelfth was found and dismissed. The spend cap never fires for `pi`, because `pi` reports its cost once, at `agent_settled`, after the run is over. Worse, when the cap does trip the app kills a process that has already exited and reports a run that finished as failed, discarding work already paid for. **Victor is handling limits at the provider portals, so this is not being fixed.** If it is ever picked up, the fix is a per-turn cost moment from `pi` and a cap that kills on a running total. The false sentence at `src/main/harness.ts:273` is the part worth removing even now.
 
 ## 2. The ones that need explaining
+
+**1. The Grader cannot be reached. Done.** Two controls were added to `Answer.tsx`: a
+textarea for `short-answer`, and for `submission` an Attach button, a tray of names, an
+optional note and an Answer button that stays disabled until work is attached. The picker is
+`tasks:attach`, filtered by the Task's own `accepts`. Nothing is copied at pick time: the
+Grader copies what it is given into the Attempt folder, and until Answer is pressed there is
+no Attempt. The original note follows.
 
 **1. The Grader cannot be reached.** `Answer.tsx` renders a phase 3 placeholder for `short-answer` and `submission`. `gradients-by-hand` ships one of each, so a Course that ships with the app has two questions nobody can answer. Everything behind the placeholder is built and correct: `answering.ts` routes to `judge()`, `Test.tsx` already passes the grader's harness and already draws the rubric and the `Scored` component. What is missing is two input controls. Part B replaces this whole screen, so build the controls in a shape part B keeps.
 
@@ -56,6 +63,13 @@ Use a | b to pipe.
 ```
 
 That becomes a two-column table with no rows, and the sentence is split across the headers. The prose is destroyed, not just misdrawn. Fix: add a thematic break rule, and require the header and the rule to agree on cell count. Two smaller ones in the same file: `snake_case` in prose becomes emphasis, and emphasis holds plain text only so a code span inside bold shows raw backticks. Fix the first. Leave the second, and say so in a comment.
+
+**5. The moment channel. Done.** Every call that starts a run now carries a run id the
+window mints with `newRunId()`, and `report(event, run)` sends it with each Moment. The id is
+minted by the window rather than returned by the main process, because a return arrives when
+the run is over and the Moments arrive while it is going. `brief.watch` became
+`runs.watch((run, moment) => ...)`, and `Tutor` and `NewCourse` each drop what is not theirs.
+The original note follows.
 
 **5. The moment channel.** `run:moment` is global. `Tutor` and `NewCourse` both subscribe. This is quiet only because of finding 1. Once a Task can be graded, grading one with the tutor panel open puts the Grader's words into the tutor's reply, and a Grader failure sets the tutor's error line. Give every run an id and put it on each `Moment`. A panel draws its own run and ignores the rest.
 
@@ -161,7 +175,7 @@ Write these before the code. They are the parts that fail quietly.
 
 ## 10. Order of work
 
-1. Part A, findings 1 to 5 and 8 to 11. Leave 6 and 7 for part B.
+1. Part A. **1 and 5 are done.** 2, 3, 4 and 8 to 11 remain. Leave 6 and 7 for part B.
 2. The format changes in section 4, in one pass, with the authoring skills updated in the same commit.
 3. The Test as a sitting: held answers, check, reveal, feedback, retake.
 4. Defect reports and the revision work kinds, including module scale.

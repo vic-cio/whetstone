@@ -142,6 +142,23 @@ export type Moment =
   | { at: 'finished'; usd: number; ok: boolean; denied: string[]; output?: unknown }
   | { at: 'failed'; message: string }
 
+/**
+ * An id for one run.
+ *
+ * The window mints it and passes it in with the call that starts the run, rather than the
+ * main process minting it and returning it. A return arrives when the run is over and the
+ * Moments arrive while it is going, so a panel has to know what to listen for before the
+ * first one lands.
+ *
+ * Unique among the runs one window has going, which is all a panel needs to tell its own
+ * from somebody else's.
+ */
+let counted = 0
+export function newRunId(): string {
+  counted += 1
+  return `run-${Date.now().toString(36)}-${counted.toString(36)}`
+}
+
 export interface Adapter {
   id: string
   /**

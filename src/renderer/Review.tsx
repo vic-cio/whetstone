@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { Answer } from './Answer'
 import { Run } from './Prose'
+import { newRunId } from '../shared/harness'
 import { parseInline } from '../shared/markdown'
 import type { PublicTask } from '../shared/format'
 
@@ -68,7 +69,7 @@ export function Review({
             send={async (given) => {
               // Recorded against the Test the Task lives in. A review Attempt is an
               // Attempt: getting one right here takes it off the missed list.
-              const result = await window.whetstone.tasks.answer(slug, testId, task.id, given)
+              const result = await window.whetstone.tasks.answer(newRunId(), slug, testId, task.id, given)
               if (result.at === 'trouble') return { trouble: result.message }
               onAnswered()
               return result.outcome

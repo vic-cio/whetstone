@@ -364,6 +364,27 @@ pre.code {
 .entry input:focus { outline: 0; border-color: var(--amber); }
 .entry .units { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }
 
+/*
+ * The two kinds a Grader judges: a written answer, and work handed in as files. Both are a
+ * box, a button and nothing else, because the question is on the page above them.
+ */
+.written, .handin { display: grid; gap: 7px; max-width: 62ch; margin-bottom: 8px; }
+/* A textarea takes its width from `cols`, which a grid track will not stretch away. */
+.written textarea, .handin textarea {
+  width: 100%; box-sizing: border-box; padding: 7px 9px; background: var(--surface);
+  color: var(--ink); border: 1px solid var(--line); font-size: 13px; resize: vertical;
+}
+.written textarea:focus, .handin textarea:focus { outline: 0; border-color: var(--amber); }
+.written textarea::placeholder, .handin textarea::placeholder { color: var(--muted); }
+/* Marking one of these costs money and takes a while, so the wait is said out loud. */
+.acts .waiting { color: var(--muted); font-style: italic; font-size: 12px; }
+/* What the Task accepts, in the Constructor's own words. Pushes the buttons to the right. */
+.handin .units {
+  margin-right: auto; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--muted);
+}
+.handin .tray { margin-top: 0; }
+
 .order { list-style: none; padding: 0; margin: 0 0 9px; }
 .order li {
   display: grid; grid-template-columns: 13px 16px minmax(0, 1fr) auto; gap: 9px;
