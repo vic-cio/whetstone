@@ -21,6 +21,10 @@ export type Depth = (typeof DEPTHS)[number]
 export const CHECKS = ['deterministic', 'model', 'rubric'] as const
 export type Check = (typeof CHECKS)[number]
 
+/** What a Project takes back. A closed set, unlike a Task's `accepts`, which is extensions. */
+export const PROJECT_ACCEPTS = ['folder', 'links'] as const
+export type ProjectAccepts = (typeof PROJECT_ACCEPTS)[number]
+
 const id = (prefix: string) =>
   z
     .string()
@@ -106,6 +110,16 @@ const taskCommon = z.object({
   depth: z.enum(DEPTHS),
   prompt: z.string().min(1),
   explanation: z.string().optional(),
+  /**
+   * The Tasks this one builds on, inside the same Test. The run marking this Task is shown
+   * those questions and the reader's own answers to them, not the correct ones, so a wrong
+   * part a followed by a right method in part b passes part b. This is the rule a real
+   * examiner uses, and without it one mistake costs two questions.
+   *
+   * The parser requires each id to sit earlier in the same Test, which is also what makes a
+   * cycle impossible.
+   */
+  follows: z.array(id('tsk')).optional(),
 })
 
 export const TaskSchema = z.union([
@@ -149,6 +163,8 @@ export const TestSchema = z.object({
   title: z.string().min(1),
   module: id('mod'),
   tasks: z.array(id('tsk')).min(1),
+  /** How long the Constructor thinks the sitting takes. Nothing counts down. */
+  minutes: z.number().int().positive().optional(),
 })
 export type Test = z.infer<typeof TestSchema>
 
@@ -214,6 +230,37 @@ const ObjectiveSchema = z.object({
 })
 export type Objective = z.infer<typeof ObjectiveSchema>
 
+/**
+ * A Project: an open-ended assignment covering a theme or the whole Course.
+ *
+ * The reader does it outside the app with ordinary tools, then comes back and submits a
+ * folder and a list of links. A Project is a top-level array in the manifest and not a
+ * Page type, because a Page type reaches into the Module, the rail, the tick rules, the
+ * next-page logic and the keyboard navigation, and a section below the last Module reaches
+ * none of them.
+ *
+ * The criteria are written with the brief, so they exist before the reader starts and the
+ * work is finishable.
+ */
+const ProjectSchema = z.object({
+  id: id('prj'),
+  title: z.string().min(1),
+  /** The assignment, in prose. */
+  brief: z.string().min(1),
+  criteria: z.array(rubricCriterion).min(1),
+  accepts: z.array(z.enum(PROJECT_ACCEPTS)).min(1),
+})
+export type Project = z.infer<typeof ProjectSchema>
+
+/**
+ * A tag the library filters on. Lowercase and hyphenated, because free text alone drifts
+ * into `ml`, `machine-learning` and `ML`, and three spellings of one tag filter nothing.
+ * The Constructor is shown the tags already in the library and told to reuse one that fits.
+ */
+const tag = z
+  .string()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'a tag is lowercase and hyphenated, such as "signals"')
+
 export const ManifestSchema = z.object({
   formatVersion: z.literal(1),
   id: z.string().min(1),
@@ -231,6 +278,14 @@ export const ManifestSchema = z.object({
   objectives: z.array(ObjectiveSchema).min(1),
   /** The Rungs this Course actually uses, drawn from the fixed scale. */
   ladder: z.array(z.enum(DEPTHS)).min(1),
+  /** What the library filters on. Free text, so that the next niche Course still fits. */
+  tags: z.array(tag).default([]),
+  /**
+   * A short Course. This is a field and not a tag, because it changes behaviour rather than
+   * describing the Course: a small Course carries no Projects.
+   */
+  small: z.boolean().default(false),
+  projects: z.array(ProjectSchema).default([]),
   modules: z.array(ModuleSchema).min(1),
   suggestedOrder: z.array(z.string()).default([]),
   builtBy: z

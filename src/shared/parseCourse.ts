@@ -131,6 +131,35 @@ export function parseCourse(dir: string): ParseResult {
     }
   }
 
+  // ---------------------------------------------------------------- tags and projects
+
+  const seenTags = new Set<string>()
+  for (const [index, name] of manifest.tags.entries()) {
+    if (seenTags.has(name)) fail('course.json', `tag "${name}" is listed twice`, `tags[${index}]`)
+    seenTags.add(name)
+  }
+
+  // `small` changes behaviour rather than describing the Course, and the behaviour it
+  // changes is this one. A manifest saying both is a Constructor that misread the Brief.
+  if (manifest.small && manifest.projects.length > 0) {
+    fail('course.json', 'is marked small, so it carries no projects', 'projects')
+  }
+
+  const seenProjects = new Set<string>()
+  for (const [index, project] of manifest.projects.entries()) {
+    const where = `projects[${index}]`
+    if (seenProjects.has(project.id)) fail('course.json', `project "${project.id}" appears more than once`, where)
+    seenProjects.add(project.id)
+
+    const seenCriteria = new Set<string>()
+    for (const [criterionIndex, criterion] of project.criteria.entries()) {
+      if (seenCriteria.has(criterion.id)) {
+        fail('course.json', `criterion "${criterion.id}" appears twice`, `${where}.criteria[${criterionIndex}]`)
+      }
+      seenCriteria.add(criterion.id)
+    }
+  }
+
   // ---------------------------------------------------------------- cross-references
 
   const objectiveIds = new Set(manifest.objectives.map((objective) => objective.id))
@@ -155,6 +184,38 @@ export function parseCourse(dir: string): ParseResult {
     const file = `tests/${id}.json`
     for (const taskId of test.tasks) {
       if (!tasks[taskId]) fail(file, `names a task that does not exist: "${taskId}"`, 'tasks')
+    }
+
+    // A Task that follows another is marked against the reader's own earlier answer, so the
+    // earlier answer has to exist by the time this question is checked. That is what "in the
+    // same Test, and earlier in it" means, and it is also why no cycle check is needed: a
+    // cycle would need one of its Tasks to follow a later one.
+    for (const [index, taskId] of test.tasks.entries()) {
+      const follows = tasks[taskId]?.follows ?? []
+      for (const earlier of follows) {
+        if (!tasks[earlier]) {
+          fail(`tasks/${taskId}.json`, `follows a task that does not exist: "${earlier}"`, 'follows')
+          continue
+        }
+        const at = test.tasks.indexOf(earlier)
+        if (at === -1) {
+          fail(`tasks/${taskId}.json`, `follows "${earlier}", which test "${id}" does not hold`, 'follows')
+        } else if (at >= index) {
+          fail(
+            `tasks/${taskId}.json`,
+            `follows "${earlier}", which comes later in test "${id}"; a task follows only what is already answered`,
+            'follows',
+          )
+        }
+      }
+    }
+  }
+
+  // A Task named by no Test is caught below, but one carrying `follows` would slip through
+  // the loop above without ever being checked, because that loop reads a Test.
+  for (const [id, task] of Object.entries(tasks)) {
+    if ((task.follows ?? []).length > 0 && !Object.values(tests).some((test) => test.tasks.includes(id))) {
+      fail(`tasks/${id}.json`, 'follows another task but belongs to no test', 'follows')
     }
   }
 

@@ -35,6 +35,7 @@ Lowercase, hyphenated, prefixed by type, stable forever.
 | Try | `try-` | `try-inner-derivative` |
 | Resource | `res-` | `res-3b1b-backprop` |
 | Rubric criterion | `cri-` | `cri-states-the-assumption` |
+| Project | `prj-` | `prj-classify-one-dataset` |
 
 A Mini-app's id is its folder name under `apps/`, with no prefix.
 
@@ -49,6 +50,9 @@ A Mini-app's id is its folder name under `apps/`, with no prefix.
   "summary": "One sentence on what the reader will be able to do.",
   "toolkitVersion": "1.1.0",
   "library": [],
+  "tags": ["calculus", "machine-learning"],
+  "small": false,
+  "projects": [],
   "objectives": [{ "id": "obj-chain-rule", "title": "Apply the chain rule to a composition" }],
   "ladder": ["recall", "apply", "construct"],
   "modules": [
@@ -69,6 +73,38 @@ A Mini-app's id is its folder name under `apps/`, with no prefix.
 `recall`, `apply`, `construct`, `transfer`, `project`, in that order. `library` lists file
 names inside `lib/`, never a path, and the app inlines them into every Mini-app in this
 Course in the order listed.
+
+`tags` is what the library filters on. Each tag is lowercase and hyphenated. You are shown
+the tags already in the library: reuse one that fits before you invent a new one, because
+`ml`, `machine-learning` and `ML` are three tags that filter nothing.
+
+`small` marks a short Course. A small Course carries no Projects, and the parser refuses a
+manifest that says both.
+
+## Projects
+
+A Project is an open-ended assignment covering a theme or the whole Course. The reader does
+it outside the app with ordinary tools, then comes back and submits a folder and a list of
+links. There is no Tutor panel on a Project, because the point is that it is a real setting.
+
+```json
+{
+  "id": "prj-classify-one-dataset",
+  "title": "Classify one dataset end to end",
+  "brief": "Pick a dataset, train a classifier, and write up what the errors tell you.",
+  "criteria": [
+    { "id": "cri-states-the-baseline", "criterion": "States a baseline before the model, and beats it." }
+  ],
+  "accepts": ["folder", "links"]
+}
+```
+
+`accepts` holds `folder`, `links`, or both, and nothing else. Write the criteria with the
+brief, so the reader knows before starting what the work is judged on. A Project gets one
+written response from a Reviewer, in the register of a senior colleague reading the work.
+There is no mark, no score and no pass.
+
+Write a Project only when the Brief asked for one. Most Courses carry none.
 
 ## A Lesson
 
@@ -120,8 +156,19 @@ Lesson prose becomes data, not HTML. Markup you write is shown as characters.
 ## A Test
 
 ```json
-{ "id": "tst-module-2", "title": "Module 2", "module": "mod-2", "tasks": ["tsk-one", "tsk-two"] }
+{
+  "id": "tst-module-2", "title": "Module 2", "module": "mod-2",
+  "minutes": 20,
+  "tasks": ["tsk-one", "tsk-two"]
+}
 ```
+
+`minutes` is optional and indicative. Nothing counts down and nothing is enforced: it tells
+the reader what size of sitting this is.
+
+A Test is a sitting. The reader answers a question and presses Check, and every result is
+held until the last question is checked. Order `tasks` the way the reader should meet them,
+because a Task that carries `follows` may only name a Task earlier in this same array.
 
 ## resources.json
 

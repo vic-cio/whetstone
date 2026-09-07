@@ -280,3 +280,180 @@ describe('test 3b — a Lesson holds no recorded Tasks', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 })
+
+/**
+ * Part B, section 4. Three format changes land together, because the parser, the authoring
+ * skills, the Constructor's instructions and every Course already written move as one.
+ */
+describe('test 4 — a task that follows another', () => {
+  /** Give `tsk-why-gradients-vanish` a `follows`, and read what the parser says. */
+  function withFollows(follows: string[]): ReturnType<typeof parseCourse> {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'tasks/tsk-why-gradients-vanish.json', (task) => {
+        task.follows = follows
+      })
+    })
+    const result = parseCourse(dir)
+    rmSync(dir, { recursive: true, force: true })
+    return result
+  }
+
+  it('accepts a task that follows one earlier in the same test', () => {
+    // tst-chain-rule holds sin-of-3x2, then why-gradients-vanish, then place-the-factors.
+    expect(withFollows(['tsk-sin-of-3x2']).ok).toBe(true)
+  })
+
+  it('refuses a task that follows one later in the same test, because that answer is not given yet', () => {
+    const result = withFollows(['tsk-place-the-factors'])
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /comes later/.test(e.message))).toBe(true)
+  })
+
+  it('refuses a task that follows one in another test', () => {
+    const result = withFollows(['tsk-slope-of-flat'])
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /does not hold/.test(e.message))).toBe(true)
+  })
+
+  it('refuses a task that follows one the course does not have', () => {
+    const result = withFollows(['tsk-nowhere'])
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /does not exist/.test(e.message))).toBe(true)
+  })
+
+  /**
+   * A cycle needs one of its Tasks to follow a later one, so the ordering rule already
+   * refuses it. This checks that, rather than a separate cycle pass that cannot fire.
+   */
+  it('refuses a pair that follow each other', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'tasks/tsk-sin-of-3x2.json', (task) => {
+        task.follows = ['tsk-why-gradients-vanish']
+      })
+      editJson(d, 'tasks/tsk-why-gradients-vanish.json', (task) => {
+        task.follows = ['tsk-sin-of-3x2']
+      })
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    rmSync(dir, { recursive: true, force: true })
+  })
+})
+
+describe('test 4 — a test says how long it should take', () => {
+  it('reads an indicative time, and needs none', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'tests/tst-chain-rule.json', (test) => {
+        test.minutes = 20
+      })
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.course.tests['tst-chain-rule']?.minutes).toBe(20)
+      expect(result.course.tests['tst-derivatives']?.minutes).toBeUndefined()
+    }
+    rmSync(dir, { recursive: true, force: true })
+  })
+})
+
+describe('test 4 — tags, small, and projects', () => {
+  const project = {
+    id: 'prj-two-layer-net',
+    title: 'Train a two-layer network by hand',
+    brief: 'Work through one network on paper, then check it in code.',
+    criteria: [{ id: 'cri-shows-the-backward-pass', criterion: 'Shows every backward step' }],
+    accepts: ['folder', 'links'],
+  }
+
+  it('defaults all three, so every course written before this still parses', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'course.json', (manifest) => {
+        delete manifest.tags
+        delete manifest.small
+        delete manifest.projects
+      })
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.course.tags).toEqual([])
+      expect(result.course.small).toBe(false)
+      expect(result.course.projects).toEqual([])
+    }
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('reads tags and a project', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'course.json', (manifest) => {
+        manifest.tags = ['machine-learning', 'calculus']
+        manifest.projects = [project]
+      })
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.course.tags).toEqual(['machine-learning', 'calculus'])
+      expect(result.course.projects[0]?.id).toBe('prj-two-layer-net')
+    }
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('refuses a tag that is not lowercase, because three spellings of one tag filter nothing', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'course.json', (manifest) => {
+        manifest.tags = ['ML']
+      })
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /lowercase and hyphenated/.test(e.message))).toBe(true)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('refuses the same tag twice', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'course.json', (manifest) => {
+        manifest.tags = ['calculus', 'calculus']
+      })
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /listed twice/.test(e.message))).toBe(true)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('refuses a small course that carries a project', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'course.json', (manifest) => {
+        manifest.small = true
+        manifest.projects = [project]
+      })
+    })
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /marked small/.test(e.message))).toBe(true)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('refuses a project that takes something the app cannot take back', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'course.json', (manifest) => {
+        manifest.projects = [{ ...project, accepts: ['.pdf'] }]
+      })
+    })
+    expect(parseCourse(dir).ok).toBe(false)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('refuses a project with no criteria, because the work would not be finishable', () => {
+    const dir = brokenCopy((d) => {
+      editJson(d, 'course.json', (manifest) => {
+        manifest.projects = [{ ...project, criteria: [] }]
+      })
+    })
+    expect(parseCourse(dir).ok).toBe(false)
+    rmSync(dir, { recursive: true, force: true })
+  })
+})

@@ -102,6 +102,25 @@ before starting.
 
 A criterion the reader can satisfy by restating the prompt is a bad criterion.
 
+## A question that follows another
+
+A Task may name the Tasks it builds on, inside the same Test.
+
+```json
+{ "id": "tsk-part-b", "follows": ["tsk-part-a"] }
+```
+
+The run marking `tsk-part-b` is then shown `tsk-part-a` **and the reader's own answer to
+it**, not the correct answer. So a wrong part a followed by a right method in part b passes
+part b. This is the error-carried-forward rule a real examiner uses, and without it one
+mistake costs two questions.
+
+Every id in `follows` must sit earlier in the same Test's `tasks` array. The parser refuses
+anything else, which is also what stops two Tasks following each other.
+
+Use it for a multi-part question and for nothing else. A Task that merely covers the same
+Objective does not follow another.
+
 ## The count
 
 When the Course is finished, count the Tasks whose Check is not `deterministic`. More than

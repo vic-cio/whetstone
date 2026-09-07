@@ -43,8 +43,8 @@ describe('what the app hands a harness', () => {
 
   it('carries every rule the plan says the Constructor prompt states', () => {
     const build = readFileSync(join(AGENT, 'roles', 'constructor-build.md'), 'utf8')
-    // Numbered 1 to 17, with 9b and 9c beside 9.
-    for (let rule = 1; rule <= 17; rule += 1) expect(build).toContain(`\n${rule}. `)
+    // Numbered 1 to 20, with 9b and 9c beside 9.
+    for (let rule = 1; rule <= 20; rule += 1) expect(build).toContain(`\n${rule}. `)
     expect(build).toContain('9b.')
     expect(build).toContain('9c.')
     // The two that were learned the hard way, rather than designed.

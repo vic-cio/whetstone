@@ -6,34 +6,70 @@
   "summary": "Work out gradients on paper before letting a framework do it, so that when training misbehaves you can tell what the numbers are doing.",
   "toolkitVersion": "1.1.0",
   "objectives": [
-    { "id": "obj-derivative", "title": "Explain what a derivative measures" },
-    { "id": "obj-chain-rule", "title": "Apply the chain rule to a composed function" },
-    { "id": "obj-backprop", "title": "Derive the gradient of a two-layer network by hand" }
+    {
+      "id": "obj-derivative",
+      "title": "Explain what a derivative measures"
+    },
+    {
+      "id": "obj-chain-rule",
+      "title": "Apply the chain rule to a composed function"
+    },
+    {
+      "id": "obj-backprop",
+      "title": "Derive the gradient of a two-layer network by hand"
+    }
   ],
-  "ladder": ["recall", "apply", "construct", "transfer"],
+  "ladder": [
+    "recall",
+    "apply",
+    "construct",
+    "transfer"
+  ],
+  "tags": [
+    "calculus",
+    "machine-learning"
+  ],
   "modules": [
     {
       "id": "mod-1",
       "title": "Derivatives refresher",
       "pages": [
-        { "type": "lesson", "id": "les-what-a-derivative-measures" },
-        { "type": "test", "id": "tst-derivatives" }
+        {
+          "type": "lesson",
+          "id": "les-what-a-derivative-measures"
+        },
+        {
+          "type": "test",
+          "id": "tst-derivatives"
+        }
       ]
     },
     {
       "id": "mod-2",
       "title": "The chain rule",
       "pages": [
-        { "type": "lesson", "id": "les-the-chain-rule" },
-        { "type": "test", "id": "tst-chain-rule" }
+        {
+          "type": "lesson",
+          "id": "les-the-chain-rule"
+        },
+        {
+          "type": "test",
+          "id": "tst-chain-rule"
+        }
       ]
     },
     {
       "id": "mod-3",
       "title": "Backprop by hand",
       "pages": [
-        { "type": "lesson", "id": "les-one-layer-at-a-time" },
-        { "type": "test", "id": "tst-backprop" }
+        {
+          "type": "lesson",
+          "id": "les-one-layer-at-a-time"
+        },
+        {
+          "type": "test",
+          "id": "tst-backprop"
+        }
       ]
     }
   ],

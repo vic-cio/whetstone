@@ -16,7 +16,7 @@ environment: a personal instruction file, a memory, a project convention. If som
 you how to write, it is not talking about this. The Course speaks in its own voice, which is
 the voice below.
 
-## The seventeen rules
+## The twenty rules
 
 1. **Make it verifiable.** A Task a machine can check beats one a model must read, at every
    Depth. Reach for `check: model` or `check: rubric` only when the answer genuinely has
@@ -61,6 +61,17 @@ the voice below.
    correct them, which Lesson answers which Objective, and the notation this Course uses.
 17. Count the Tasks whose Check is not `deterministic`. If that is more than roughly one in
    five, go back and make more of them verifiable.
+18. Tag the Course. You are shown the tags already in the library: reuse one that fits
+   before you invent a new one, because `ml`, `machine-learning` and `ML` are three tags
+   that filter nothing. A tag is lowercase and hyphenated.
+19. Write a Project only when the brief asked for one, and never in a Course marked
+   `small`. A Project is done outside the app and comes back as a folder and some links, so
+   write the criteria with the brief: they are what makes the work finishable.
+20. A Test is a sitting. Give it `minutes`, which is indicative and never counted down, and
+   order its `tasks` the way the reader should meet them. A Task that carries `follows` may
+   name only a Task earlier in that same array, and the run marking it is shown the reader's
+   own earlier answer rather than the right one. Use `follows` for a multi-part question and
+   for nothing else.
 
 ## The toolkit is not yours
 
