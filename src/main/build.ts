@@ -272,9 +272,26 @@ function firstPrompt(folder: string, brief: string): string {
         ]
 
   return [
-    'Write the course into this folder, which is empty apart from `toolkit/`.',
+    'Write a course into this folder. It is empty apart from `toolkit/`.',
+    '',
+    // Written in this order on purpose. A run told to produce a whole course at once reads
+    // everything before it commits to anything, and a run that then stops has left nothing
+    // at all. Asking for the manifest first buys an early, cheap write: the shape is
+    // settled, the ids exist, and a run that dies halfway leaves the repair loop something
+    // to work on. Measured: a first attempt made seventeen tool calls, all of them reads,
+    // and wrote nothing in thirteen minutes.
+    'Work in this order, and write each file as you finish it rather than at the end.',
+    '',
+    '1. `course.json`, first and on its own. Decide the objectives, the ladder and the',
+    '   modules, and write it. Everything after this refers to the ids you put in it.',
+    '2. The lessons, one file at a time.',
+    '3. The tasks and the tests.',
+    '4. Any mini-apps, and `resources.json`.',
+    '5. `AGENTS.md`, last, when you know what you have written.',
+    '',
     `The toolkit is already there and is version ${TOOLKIT_VERSION}. Put exactly that string`,
-    'in `toolkitVersion` in course.json, and do not write or change anything under `toolkit/`.',
+    'in `toolkitVersion` in course.json, and do not write or read anything under `toolkit/`:',
+    'the skill below is its reference and it is complete.',
     '',
     ...offerSkills(folder),
     '',

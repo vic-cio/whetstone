@@ -782,8 +782,29 @@ Two things did not survive contact, and both were found by running rather than b
 
 The skills a role is given already reach any harness, because they are files the prompt names rather than a plugin (section 3.9, decision record 0021). What is left for this phase is each CLI's own vocabulary: its tool names, which `denied()` in that CLI's adapter has to cover exhaustively, and its headless output, which its reader has to normalise into a `Moment`.
 
-**Phase 7. Finish.**
-Dark mode. Keyboard navigation in the reader. Spend dashboard from the `runs` table. Export a Course as a zip. App icon and signed build.
+**Phase 7. Finish. Mostly done: the icon and a signed build are left.**
+Dark mode was built in phase 0 and has been captured in both themes on every screen since. Keyboard navigation in the reader is left and right along the Course's Pages and escape back to the contents, with nothing bound to an action that spends money or records an Attempt, because a key pressed by accident should do neither. The spend view reads the `runs` table, by kind, in the app's own words: it is the only number in the app that is about the app rather than about the reader, which is why it is allowed to be a number. Export writes a zip of the Course folder, which is the whole of what sharing a Course is.
+
+An app icon and a signed build are what remain. Signing needs an Apple developer identity, which is Victor's to provide.
+
+---
+
+## The real build, and what four attempts of it taught
+
+Phase 3 shipped a Constructor that had never built a Course. Four live attempts on `pi` over OpenRouter, at about 25 cents each, have still not produced one that reached the library, and each one has been worth more than the last.
+
+**It works up to writing.** The first attempt's build screen showed the feed doing exactly what it should: reading the skills, looking through the files, writing. The capture window closed before the run finished.
+
+**Four bugs came out of it, none of which the unit tests could have found**, because in every case the test and the code agreed with each other and both were wrong about the world.
+
+- A spawned harness got the app's environment, which on a Mac launched from Finder is almost nothing, so a harness taking its key from `$OPENROUTER_API_KEY` found none.
+- `pi` writes `.pi/` into its working directory whatever it is told, so it would ship inside a Course.
+- The harness state folder was keyed to the spawn rather than the conversation, so a build resuming its Brief was told "no session found".
+- The build feed said "Writing" with no file name, because `pi` reports a tool call's arguments under `arguments` and the adapter read `input`. The fixture had guessed and agreed with itself.
+
+**And two things about the run rather than the app.** It read seven hundred lines of `toolkit/kit.js` because the skill said it was there "if you need to read one"; the skill is now the reference and says so. And told to write a whole Course at once it read for thirteen minutes without writing anything, so the instruction now names an order and asks for `course.json` first, which buys an early cheap write and leaves the repair loop something to work on when a run dies halfway.
+
+What is still unknown is the thing only a finished run can say: whether a Constructor's Course passes the gate. Driving a fifteen-minute flow through synthetic clicks is the fragile part now, not the app, so the next attempt should be a person pressing the button.
 
 ---
 
