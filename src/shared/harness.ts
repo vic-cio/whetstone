@@ -180,6 +180,16 @@ export interface Adapter {
    * a file that appeared.
    */
   reader(): Reader
+  /**
+   * How to ask this CLI what models it can reach, and how to read the answer.
+   *
+   * A registry entry lists a handful of models by hand, which is a guess made when the
+   * entry was written and goes stale the day the user connects something new. A CLI that
+   * can be asked is asked, and what it says is added to the list. A CLI that cannot is
+   * left with the handful, and the model can still be typed.
+   */
+  catalogArgv?: string[]
+  catalogModels?(stdout: string): string[]
 }
 
 /** One line of a harness's output, as a Moment, or nothing when it says nothing. */

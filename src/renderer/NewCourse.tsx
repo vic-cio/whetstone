@@ -29,7 +29,7 @@ interface Harnesses {
   installed: boolean
 }
 
-/** What a build costs at most. The CLI keeps this cap; the app only shows it. */
+/** What a build costs at most when nothing has been set. The main process holds the rule. */
 const CAP = 3
 
 export function NewCourse({
@@ -48,6 +48,8 @@ export function NewCourse({
   const [harnesses, setHarnesses] = useState<Harnesses[]>([])
   const [pick, setPick] = useState<{ harnessId: string; model: string }>({ harnessId: '', model: '' })
   const [changing, setChanging] = useState(false)
+  /** What a build may spend. The user's own number, and the main process keeps it. */
+  const [cap, setCap] = useState(CAP)
 
   const [building, setBuilding] = useState(false)
   const [feed, setFeed] = useState<string[]>([])
@@ -72,6 +74,7 @@ export function NewCourse({
      * it: a build always ran on whatever came first in the registry. The row is still a
      * starting point rather than a lock, because the picker below is right here.
      */
+    void window.whetstone.settings.buildCap().then(setCap)
     void Promise.all([window.whetstone.brief.harnesses(), window.whetstone.settings.roles()]).then(
       ([found, roles]) => {
         setHarnesses(found.harnesses)
@@ -177,7 +180,7 @@ export function NewCourse({
           {feed.length === 0 && <li className="waiting">Starting</li>}
         </ul>
         <p className="spend">
-          ${spent.toFixed(2)} of ${CAP.toFixed(2)}
+          ${spent.toFixed(2)} of ${cap.toFixed(2)}
         </p>
         <Log lines={log} />
       </>
@@ -275,7 +278,7 @@ export function NewCourse({
 
       <div className="onward">
         <p className="using">
-          {chosen?.label ?? 'No harness'} · {pick.model} · up to ${CAP.toFixed(2)}{' '}
+          {chosen?.label ?? 'No harness'} · {pick.model} · up to ${cap.toFixed(2)}{' '}
           <button type="button" className="link" onClick={() => setChanging(!changing)}>
             {changing ? 'done' : 'change'}
           </button>
@@ -298,13 +301,39 @@ export function NewCourse({
                 </option>
               ))}
             </select>
-            <select value={pick.model} onChange={(event) => setPick({ ...pick, model: event.target.value })}>
+            {/*
+              Typed, not only picked. The list is what the registry names plus whatever the
+              harness itself says it can reach, and it is still a list somebody wrote down:
+              a model connected this morning would not be on it, and this is the field that
+              does not care.
+            */}
+            <input
+              list="models"
+              value={pick.model}
+              placeholder="A model this harness can reach"
+              onChange={(event) => setPick({ ...pick, model: event.target.value })}
+            />
+            <datalist id="models">
               {(chosen?.models ?? []).map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
+                <option key={model} value={model} />
               ))}
-            </select>
+            </datalist>
+            <label className="capset">
+              up to $
+              <input
+                type="number"
+                min="0.1"
+                step="0.5"
+                value={cap}
+                onChange={(event) => {
+                  const wanted = Number(event.target.value)
+                  setCap(wanted)
+                  if (Number.isFinite(wanted) && wanted > 0) {
+                    void window.whetstone.settings.setBuildCap(wanted)
+                  }
+                }}
+              />
+            </label>
           </p>
         )}
         <div className="acts">

@@ -113,6 +113,17 @@ tests/         vitest, run against the fixtures
   `--disallowedTools` removed exactly what it named. So `denied()` in `src/shared/claude.ts`
   has to name every writer and every outward-facing tool, and a writer it misses survives.
   `fixtures/streams/README.md` and `tests/refusal.test.ts` carry the evidence. `PLAN.md` 3.14.
+- **The model list is a starting point, not the set of models.** A registry entry names a
+  handful by hand, which is a guess made the day it was written. A CLI that can say what it
+  reaches is asked once per session and its answer is added, and the field is typed rather
+  than picked, so a provider connected this morning is usable this morning. `pi` answers
+  `--list-models`; `claude` and `codex` have no such flag and keep their handful. The ask
+  is asynchronous and warmed at startup, because it takes seconds and the main process
+  holds the window.
+- **A model may name its own provider.** `pi --model opencode-go/muse-spark-1.3-contributor`
+  needs no `--provider`, and sending the registry's provider with it asks the wrong service.
+  The registry's own entries are `~` patterns, which name no provider and still need the
+  flag, so the test is a slash in a model that does not begin `~`.
 - **A profile names an ability, never a tool.** `AgentProfile.can` is `read`, `write`, `web`,
   and the adapter maps those to its own CLI's tool names. A tool name in a profile makes
   every role Claude-shaped, which is what a registry of harnesses exists to avoid. This was

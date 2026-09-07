@@ -101,16 +101,23 @@ export function Settings({ onDone }: { onDone: () => void }): React.JSX.Element 
                 </option>
               ))}
             </select>
-            <select
+            {/*
+              Typed, not only picked. The list holds what the registry names and what the
+              harness itself says it can reach, and neither knows about a provider connected
+              since. A model this machine cannot reach fails at the first run and says so,
+              which is a better failure than not being able to name it at all.
+            */}
+            <input
+              list={`models-${role.id}`}
               value={pick.model}
+              placeholder="A model this harness can reach"
               onChange={(event) => set(role.id, harness?.id ?? '', event.target.value)}
-            >
+            />
+            <datalist id={`models-${role.id}`}>
               {(harness?.models ?? []).map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
+                <option key={model} value={model} />
               ))}
-            </select>
+            </datalist>
           </div>
         )
       })}

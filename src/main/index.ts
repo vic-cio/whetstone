@@ -9,6 +9,7 @@ import {
   OUTLINE,
   addToTray,
   briefTray,
+  buildCap,
   buildCourse,
   cancelBrief,
   discardBrief,
@@ -23,6 +24,7 @@ import { review } from './reviewer'
 import { publicTask } from '../shared/format'
 import { reviewSession } from '../shared/again'
 import { revise } from './revise'
+import { warmCatalogs } from './harness'
 import { ask, attach, attached, newChat } from './tutor'
 import type { Ground } from './progress'
 import { fileInCourse } from '../shared/courseFile'
@@ -554,6 +556,17 @@ app.whenReady().then(() => {
 
   ipcMain.handle('harnesses:list', () => harnesses())
 
+  /**
+   * What a build may spend. The user's own number, because the app cannot know what a
+   * model costs: the default stops a cheap one early on a long course and never binds a
+   * dear one at all.
+   */
+  ipcMain.handle('settings:buildCap', () => buildCap())
+  ipcMain.handle('settings:setBuildCap', (_event, usd: number) => {
+    if (Number.isFinite(usd) && usd > 0) progress().setSetting('constructor.cap', String(usd))
+    return buildCap()
+  })
+
   // Which harness and model each role uses. One row per role (PLAN 3.12), remembered, and
   // the model list belongs to the harness so switching one resets the other.
   ipcMain.handle('settings:spending', () => progress().spending())
@@ -636,6 +649,9 @@ app.whenReady().then(() => {
   ipcMain.handle('courses:reveal', (_event, folder: string) => shell.showItemInFolder(folder))
 
   createWindow()
+  // Ask each installed harness what models it reaches, without waiting. The answer takes a
+  // few seconds and the window is drawn before anybody needs it.
+  warmCatalogs()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

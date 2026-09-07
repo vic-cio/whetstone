@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { graderPrompt } from '../src/shared/prompts'
 import { codexAdapter } from '../src/shared/codex'
-import { piAdapter } from '../src/shared/pi'
+import { namesItsProvider, piAdapter } from '../src/shared/pi'
 import { readRegistry } from '../src/shared/harness'
 import type { AgentProfile, Harness, Moment } from '../src/shared/harness'
 
@@ -336,5 +336,50 @@ describe('a turn that ended in an error the CLI exited zero on', () => {
       ok: true,
       denied: [],
     })
+  })
+})
+
+/**
+ * The model list is not a fixed guess.
+ *
+ * A registry entry names a handful of models, chosen when the entry was written. pi can be
+ * asked what it actually reaches, and it is, so a provider connected this morning is
+ * reachable this morning. What is on neither list can still be typed.
+ */
+describe('what models pi can reach', () => {
+  it('reads pi’s own catalogue into the form its --model flag takes', () => {
+    const printed = [
+      'provider     model                       context  max-out  thinking  images',
+      'opencode-go  muse-spark-1.3-contributor  1.0M     131.1K   yes       yes   ',
+      'mistral      mistral-large-latest        262.1K   262.1K   no        yes   ',
+      '',
+    ].join('\n')
+    expect(piAdapter.catalogArgv).toEqual(['--list-models'])
+    expect(piAdapter.catalogModels?.(printed)).toEqual([
+      'opencode-go/muse-spark-1.3-contributor',
+      'mistral/mistral-large-latest',
+    ])
+  })
+
+  /**
+   * Measured against pi's own help: `--model provider/id` needs no `--provider`, and
+   * sending the registry's provider with a model belonging to another one asks the wrong
+   * service for it. The registry's entries are `~` patterns, which name no provider and
+   * still need the flag.
+   */
+  it('drops the registry’s provider when the model names its own', () => {
+    expect(namesItsProvider('opencode-go/muse-spark-1.3-contributor')).toBe(true)
+    expect(namesItsProvider('~anthropic/claude-sonnet-latest')).toBe(false)
+    expect(namesItsProvider('sonnet')).toBe(false)
+
+    const ask = (model: string): string[] =>
+      piAdapter.argv({ harness, model, profile: tutor, prompt: 'Say something' })
+
+    const own = ask('opencode-go/muse-spark-1.3-contributor')
+    expect(own).toContain('opencode-go/muse-spark-1.3-contributor')
+    expect(own).not.toContain('--provider')
+
+    const usual = ask('~anthropic/claude-sonnet-latest')
+    expect(usual[usual.indexOf('--provider') + 1]).toBe('openrouter')
   })
 })

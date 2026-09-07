@@ -184,6 +184,9 @@ const api = {
       ipcRenderer.invoke('settings:roles'),
     setRole: (role: string, harnessId: string, model: string): Promise<void> =>
       ipcRenderer.invoke('settings:setRole', role, harnessId, model),
+    /** What a build may spend. The user's own number, kept between builds. */
+    buildCap: (): Promise<number> => ipcRenderer.invoke('settings:buildCap'),
+    setBuildCap: (usd: number): Promise<number> => ipcRenderer.invoke('settings:setBuildCap', usd),
     spending: (): Promise<{ kind: string; runs: number; usd: number }[]> =>
       ipcRenderer.invoke('settings:spending'),
   },

@@ -43,14 +43,37 @@ const SAYING: Record<string, (input: Record<string, unknown>) => string> = {
   fetch_content: () => 'Reading a page from the web',
 }
 
+/** True when the model string already says which provider it belongs to. */
+export const namesItsProvider = (model: string): boolean =>
+  !model.startsWith('~') && model.includes('/')
+
 export const piAdapter: Adapter = {
   id: 'pi',
   litter: ['.pi'],
 
+  // `pi --list-models` prints a table: provider, model, then columns the app has no use
+  // for. What the app wants is the two together, which is the form `--model` takes.
+  catalogArgv: ['--list-models'],
+  catalogModels(stdout: string): string[] {
+    const models: string[] = []
+    for (const line of stdout.split('\n')) {
+      const [provider, model] = line.trim().split(/\s+/)
+      if (!provider || !model || provider === 'provider') continue
+      models.push(`${provider}/${model}`)
+    }
+    return models
+  },
+
   argv(request: SpawnRequest): string[] {
     const { profile, model, harness } = request
     const args = ['-p', request.prompt, '--mode', 'json', '--model', model]
-    if (harness.provider !== undefined) args.push('--provider', harness.provider)
+    // A model may name its own provider, as `opencode-go/muse-spark-1.3-contributor`, and
+    // pi reads that form without `--provider`. The registry's own entries are fuzzy
+    // patterns beginning `~`, which are not provider-qualified and still need the flag, so
+    // the test is a slash in a model that is not one of those.
+    if (harness.provider !== undefined && !namesItsProvider(model)) {
+      args.push('--provider', harness.provider)
+    }
 
     // The allowlist is the whole restriction here, so it has to be complete rather than
     // indicative: everything not named is off, which is what makes this CLI the easy one.

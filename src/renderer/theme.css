@@ -511,7 +511,14 @@ pre.code {
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
   margin: 0 0 8px; display: flex; gap: 8px; align-items: center;
 }
-.using select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 2px 4px; }
+.using select, .using input {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 2px 4px;
+  font-family: inherit; font-size: inherit;
+}
+/* A model can be typed, so the field has to be wide enough for a provider-qualified name. */
+.using input[list] { min-width: 30ch; }
+.capset { display: flex; align-items: center; gap: 4px; }
+.capset input { width: 7ch; }
 .link { background: none; border: 0; padding: 0; color: var(--amber); cursor: pointer; text-decoration: underline; }
 
 /* The build feed: what the run is doing, in the app's own words. Never a terminal. */
@@ -716,7 +723,11 @@ pre.code {
 }
 .srow b { font-weight: 600; display: block; }
 .srow span { color: var(--muted); font-size: 12px; }
-.srow select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 5px 7px; }
+.srow select, .srow input {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 5px 7px;
+  font-family: inherit; font-size: 12px;
+}
+.srow input[list] { min-width: 28ch; }
 .srow select:disabled { color: var(--muted); }
 
 /* What has been spent. The one number about the app rather than about the reader. */

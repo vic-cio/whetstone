@@ -3,7 +3,7 @@ import { existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { build, harnessById, open, say, stagingRoot, stopLive } from './build'
-import { installed, registry } from './harness'
+import { catalog, installed, registry } from './harness'
 import { progress } from './courseStore'
 import { trayContents } from '../shared/staging'
 import type { BuildResult, Choice, Tray } from './build'
@@ -56,8 +56,23 @@ export function briefTray(): string[] {
   return current ? trayContents(current.folder) : []
 }
 
-/** What each Run costs at most. A Brief message is small; a build is minutes of work. */
-const CAP = { talk: 0.4, build: 3 }
+/**
+ * What each Run costs at most.
+ *
+ * A Brief message is small; a build is minutes of work. The build cap is the user's, set in
+ * the New Course screen and kept in settings, because three dollars is a guess about a
+ * model whose price the app does not know: a cheap one never reaches it and an expensive
+ * one on a long course stops halfway. A message stays cheap whatever the build is set to.
+ */
+const FALLBACK = 3
+export const buildCap = (): number => {
+  const set = Number(progress().setting('constructor.cap') ?? '')
+  return Number.isFinite(set) && set > 0 ? set : FALLBACK
+}
+const caps = (): { talk: number; build: number } => {
+  const build = buildCap()
+  return { build, talk: Math.min(0.4, build) }
+}
 
 function choiceFor(harnessId: string, model: string, capUsd: number): Choice {
   return { harnessId, model, capUsd }
@@ -68,7 +83,7 @@ export async function sendMessage(prompt: string, harnessId: string, model: stri
   const brief = current
 
   const run = progress().startRun({ kind: 'brief', harness: harnessId, model })
-  const answer = await say(brief.folder, choiceFor(harnessId, model, CAP.talk), prompt, brief.session, report)
+  const answer = await say(brief.folder, choiceFor(harnessId, model, caps().talk), prompt, brief.session, report)
   progress().endRun(run, answer.usd, answer.ok ? 'ok' : 'failed')
 
   if (answer.session !== '') brief.session = answer.session
@@ -98,7 +113,7 @@ export async function buildCourse(
   const result = await build(
     here.folder,
     root,
-    choiceFor(harnessId, model, CAP.build),
+    choiceFor(harnessId, model, caps().build),
     brief,
     here.session,
     report,
@@ -124,16 +139,22 @@ export function discardBrief(): void {
 }
 
 /** What Settings and the build line show: every harness, and whether it is on the machine. */
-export function harnesses(): {
+export async function harnesses(): Promise<{
   harnesses: { id: string; label: string; models: string[]; installed: boolean }[]
   errors: string[]
-} {
+}> {
   const found = registry()
+  const catalogues = await Promise.all(found.harnesses.map((entry) => catalog(entry)))
   return {
-    harnesses: found.harnesses.map((entry) => ({
+    harnesses: found.harnesses.map((entry, index) => ({
       id: entry.id,
       label: entry.label,
-      models: entry.models,
+      // The registry's own handful first, because it is the curated one, then whatever the
+      // CLI says it can reach. A model that is in both is listed once.
+      models: [
+        ...entry.models,
+        ...(catalogues[index] ?? []).filter((model) => !entry.models.includes(model)),
+      ],
       // A harness that is not installed is still listed, greyed, naming what to install.
       // Hiding it leaves the user guessing.
       installed: installed(entry),

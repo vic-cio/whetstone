@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { execFileSync, spawn } from 'node:child_process'
+import { execFile, execFileSync, spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
@@ -141,6 +141,61 @@ export function installed(harness: Harness): boolean {
   return widePath()
     .split(delimiter)
     .some((dir) => existsSync(join(dir, harness.command)))
+}
+
+/**
+ * What models this harness can actually reach, asked of the CLI itself.
+ *
+ * A registry entry lists a handful by hand, and that list is a guess made when the entry
+ * was written: it goes stale the day the user connects a new provider, and the model they
+ * want is then simply not offered. A CLI that can be asked is asked once per session, and
+ * what it says is added to the handful.
+ *
+ * Nothing here fails loudly. A CLI that is not installed, does not answer, or answers in a
+ * shape the adapter cannot read leaves the registry's own list standing.
+ */
+const catalogued = new Map<string, Promise<string[]>>()
+
+export function catalog(harness: Harness): Promise<string[]> {
+  const asked = catalogued.get(harness.id)
+  if (asked) return asked
+
+  const adapter = adapterFor(harness)
+  if (!adapter?.catalogArgv || !adapter.catalogModels || !installed(harness)) {
+    return Promise.resolve([])
+  }
+
+  // Asked once per session and awaited rather than blocked on: `pi --list-models` takes a
+  // few seconds, and the main process holds the window, so doing this synchronously froze
+  // the app for as long as the CLI took to answer.
+  const asking = new Promise<string[]>((settle) => {
+    execFile(
+      harness.command,
+      adapter.catalogArgv ?? [],
+      {
+        encoding: 'utf8',
+        timeout: 20_000,
+        maxBuffer: 4 * 1024 * 1024,
+        env: { ...loginEnvironment(), PATH: widePath() },
+      },
+      (error, stdout) => {
+        settle(error ? [] : (adapter.catalogModels?.(stdout) ?? []))
+      },
+    )
+  })
+  catalogued.set(harness.id, asking)
+  return asking
+}
+
+/**
+ * Ask every installed harness what it reaches, without waiting for the answer.
+ *
+ * Called once at startup, so the list is already there by the time somebody opens Settings
+ * or a new Course. Nothing depends on it having finished: a screen opened in the first few
+ * seconds waits on the same promise rather than starting another.
+ */
+export function warmCatalogs(): void {
+  for (const harness of registry().harnesses) void catalog(harness)
 }
 
 export interface Outcome {
