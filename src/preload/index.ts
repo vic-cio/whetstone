@@ -5,10 +5,11 @@ import type { Answer, BuildResult } from '../main/build'
 import type { BrokenCourse, CourseSummary, OpenResult } from '../main/courseStore'
 import type { Moment } from '../shared/harness'
 import type { Answered, Checked } from '../main/answering'
-import type { Ground, Thread } from '../main/progress'
+import type { DefectReport, Ground, Thread } from '../main/progress'
 import type { PublicTask } from '../shared/format'
 import type { Removal } from '../shared/remove'
-import type { Revision } from '../main/revise'
+import type { Evaluation } from '../shared/defect'
+import type { Revision, Work } from '../main/revise'
 import type { TutorReply } from '../main/tutor'
 import type { Outcome } from '../shared/grade'
 import type { PageType } from '../shared/format'
@@ -152,7 +153,7 @@ const api = {
       slug: string,
       harnessId: string,
       model: string,
-      work: { kind: 'add-rung'; depth: string } | { kind: 'remediate'; objective: string; title: string },
+      work: Work,
     ): Promise<Revision> => ipcRenderer.invoke('course:revise', run, slug, harnessId, model, work),
   },
 
@@ -165,9 +166,35 @@ const api = {
       ipcRenderer.invoke('settings:spending'),
   },
 
+  /**
+   * A defect report. Filing one records a claim; it never changes an outcome.
+   *
+   * Reading it is a run, and what that run says settles nothing: the reader upholds the
+   * report or drops it, and only `uphold` touches the record (PLAN 3.15).
+   */
   defects: {
     file: (slug: string, taskId: string, ground: Ground, note: string): Promise<string> =>
       ipcRenderer.invoke('defects:file', slug, taskId, ground, note),
+    list: (slug: string): Promise<DefectReport[]> => ipcRenderer.invoke('defects:list', slug),
+    evaluate: (
+      run: string,
+      slug: string,
+      reportId: string,
+      harnessId: string,
+      model: string,
+    ): Promise<Evaluation> =>
+      ipcRenderer.invoke('defects:evaluate', run, slug, reportId, harnessId, model),
+    uphold: (
+      slug: string,
+      reportId: string,
+      overridden: boolean,
+    ): Promise<
+      { ok: true; taskId: string; note: string; lastInItsTest: boolean } | { ok: false; message: string }
+    > => ipcRenderer.invoke('defects:uphold', slug, reportId, overridden),
+    drop: (reportId: string): Promise<void> => ipcRenderer.invoke('defects:drop', reportId),
+    /** What removing a Module does to the record, before the run that removes it. */
+    voidModule: (slug: string, moduleId: string): Promise<string[]> =>
+      ipcRenderer.invoke('defects:voidModule', slug, moduleId),
   },
   tries: {
     answer: (slug: string, lessonId: string, tryId: string, given: unknown): Promise<Outcome> =>

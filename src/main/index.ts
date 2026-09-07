@@ -18,6 +18,7 @@ import {
 } from './newCourse'
 import { removeCourse } from '../shared/remove'
 import { answer, check } from './answering'
+import { evaluate } from './defect'
 import { publicTask } from '../shared/format'
 import { reviewSession } from '../shared/again'
 import { revise } from './revise'
@@ -25,7 +26,15 @@ import { ask, attach, attached, newChat } from './tutor'
 import type { Ground } from './progress'
 import { fileInCourse } from '../shared/courseFile'
 import { POLICY } from '../shared/miniapp'
-import { answerTry, holdAnswer, reachedEndOfLesson, retakeTest, sittingFor } from './study'
+import {
+  answerTry,
+  emptiesATest,
+  holdAnswer,
+  reachedEndOfLesson,
+  retakeTest,
+  sittingFor,
+  voidUnder,
+} from './study'
 import type { PageType } from '../shared/format'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
@@ -420,12 +429,70 @@ app.whenReady().then(() => {
     },
   )
 
-  // A claim that a Task is broken, on three grounds. It records a claim and never changes
-  // an outcome, which is the whole difference between this and an appeal (PLAN 3.15).
+  // A claim that a Task is broken, on three grounds. Filing one records a claim and never
+  // changes an outcome, which is the whole difference between this and an appeal.
   ipcMain.handle(
     'defects:file',
     (_event, slug: string, taskId: string, ground: Ground, note: string) =>
       progress().fileDefect({ courseSlug: slug, taskId, ground, note }),
+  )
+  ipcMain.handle('defects:list', (_event, slug: string) => progress().defectsFor(slug))
+
+  /**
+   * The Constructor reads the report.
+   *
+   * It comes back agreeing or naming something the reader may have missed, and it settles
+   * nothing: the record moves only when the reader upholds the report below. An evaluation
+   * that cannot be read is trouble, so the report stays exactly as it was filed.
+   */
+  ipcMain.handle(
+    'defects:evaluate',
+    async (event, run: string, slug: string, reportId: string, harnessId: string, model: string) => {
+      const filed = progress().defect(reportId)
+      if (!filed) return { at: 'trouble', message: 'That report is not on file.' }
+      const course = loadCourse(slug)
+      const task = course.tasks[filed.taskId]
+      if (!task) return { at: 'trouble', message: 'That task is no longer in the course.' }
+
+      const row = progress().startRun({ kind: 'defect', courseSlug: slug, harness: harnessId, model })
+      const { evaluation, usd } = await evaluate(
+        { reportId, task, ground: filed.ground, note: filed.note, harnessId, model },
+        report(event, run),
+      )
+      progress().endRun(row, usd, evaluation.at === 'evaluated' ? 'ok' : 'failed')
+      if (evaluation.at === 'evaluated') {
+        progress().evaluateDefect(reportId, { agrees: evaluation.agrees, text: evaluation.text })
+      }
+      return evaluation
+    },
+  )
+
+  /**
+   * The report stands, and the reader said so.
+   *
+   * `overridden` is true when they are overruling a Constructor that disagreed, which is
+   * theirs to do. Upholding voids the Attempts against that Task, and says which work the
+   * repair run should be given: a Task that is the only one in its Test is mended rather
+   * than removed, because a Test page that vanishes leaves a hole in the contents.
+   */
+  ipcMain.handle('defects:uphold', (_event, slug: string, reportId: string, overridden: boolean) => {
+    const before = progress().defect(reportId)
+    if (!before) return { ok: false as const, message: 'That report is not on file.' }
+    progress().upholdDefect(reportId, overridden)
+    const course = loadCourse(slug)
+    return {
+      ok: true as const,
+      taskId: before.taskId,
+      note: before.note,
+      lastInItsTest: emptiesATest(course, before.taskId) !== undefined,
+    }
+  })
+
+  ipcMain.handle('defects:drop', (_event, reportId: string) => progress().dropDefect(reportId))
+
+  /** Removing a Module takes its Attempts off the record, for the same reason. */
+  ipcMain.handle('defects:voidModule', (_event, slug: string, moduleId: string) =>
+    voidUnder(slug, loadCourse(slug), progress(), moduleId),
   )
   ipcMain.handle(
     'tries:answer',

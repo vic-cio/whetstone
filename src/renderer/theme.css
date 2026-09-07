@@ -244,6 +244,12 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.13em;
   color: var(--muted); padding-bottom: 5px; border-bottom: 1px solid var(--frame);
+  display: flex; align-items: baseline; gap: 14px;
+}
+/* The one control a module heading carries: what to do when the whole module is wrong. */
+.mh .link.small {
+  margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 11px;
+  font-family: inherit;
 }
 .lrow2 {
   display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 11px;
@@ -635,6 +641,17 @@ pre.code {
 }
 .filed { color: var(--muted); font-size: 12px; margin-top: 12px; }
 
+/* What the Constructor made of a defect report. It settles nothing: the two buttons
+   under it are the decision, and one of them overrides this (PLAN 3.15). */
+.said {
+  margin: 12px 0 0; padding: 9px 12px; border-left: 2px solid var(--line);
+  font-size: 12.5px; max-width: 62ch;
+}
+.said b {
+  display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+}
+
 /* A review a Mini-app asked for, waiting on a person. Nothing has been spent yet. */
 .kreview {
   margin: 9px 0 0; padding: 9px 12px; border: 1px solid var(--line);
@@ -665,7 +682,7 @@ pre.code {
 .offer span { color: var(--muted); font-size: 12.5px; }
 
 /* The missed block's header carries a control, so its label and its button need room
-   between them. `.mh` on its own is a module heading and has no button in it. */
+   between them. */
 .mhead { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .mhead .quiet { padding: 4px 11px; }
 

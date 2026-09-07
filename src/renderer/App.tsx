@@ -253,6 +253,30 @@ export function App(): React.JSX.Element {
                 .then(setCourse)
             }}
             onReview={() => setRoute({ at: 'review', slug: route.slug })}
+            onModule={(module, kind, note) => {
+              // Removing a Module takes its Attempts off the record first. An Attempt
+              // against a question that no longer exists is a mark for something nobody
+              // can look at, and the run that removes it is the one that might fail.
+              setRevising(module.title)
+              const before =
+                kind === 'remove-module'
+                  ? window.whetstone.defects.voidModule(route.slug, module.id)
+                  : Promise.resolve([])
+              void before
+                .then(() =>
+                  window.whetstone.course.revise(newRunId(), route.slug, builder.harnessId, builder.model, {
+                    kind,
+                    moduleId: module.id,
+                    title: module.title,
+                    note,
+                  }),
+                )
+                .then((result) => {
+                  setRevising('')
+                  if (result.at === 'revised') openCourse(route.slug)
+                  else window.alert(result.at === 'trouble' ? result.message : 'The course could not be changed.')
+                })
+            }}
             onRemediate={(objective) => {
               setRevising(objective.title)
               void window.whetstone.course
@@ -311,6 +335,7 @@ export function App(): React.JSX.Element {
               })
             }}
             grading={grader}
+            building={builder}
           />
         )}
 

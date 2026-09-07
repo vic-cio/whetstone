@@ -6,6 +6,7 @@ import { newRunId } from '../shared/harness'
 import { parseInline } from '../shared/markdown'
 import type { PublicTask } from '../shared/format'
 import type { RubricVerdict } from '../shared/verdict'
+import type { Evaluation } from '../shared/defect'
 import type { RevealedView, SittingView, TestView } from '../main/study'
 
 /**
@@ -24,6 +25,7 @@ export function Test({
   moduleTitle,
   onAnswered,
   grading,
+  building,
 }: {
   slug: string
   test: TestView
@@ -31,6 +33,8 @@ export function Test({
   onAnswered: () => void
   /** Which harness judges a Task the host cannot. Unused by a deterministic one. */
   grading: { harnessId: string; model: string }
+  /** Which harness reads a defect report and mends what it agrees is broken. */
+  building: { harnessId: string; model: string }
 }): React.JSX.Element {
   const [sitting, setSitting] = useState<SittingView | undefined>(undefined)
   const [feedback, setFeedback] = useState(false)
@@ -142,7 +146,13 @@ export function Test({
             is not a dispute about a verdict, and upholding one never rescores (PLAN 3.15).
           */}
           {reporting === task.id ? (
-            <Report slug={slug} taskId={task.id} onDone={() => setReporting('')} />
+            <Report
+              slug={slug}
+              taskId={task.id}
+              building={building}
+              onDone={() => setReporting('')}
+              onRepaired={onAnswered}
+            />
           ) : (
             <button type="button" className="link small" onClick={() => setReporting(task.id)}>
               Report a broken task
@@ -308,22 +318,132 @@ const GROUNDS = [
  * Reporting a broken Task.
  *
  * Three grounds and no others, because the thing this must not become is an appeal. It
- * records a claim. It never changes what was recorded.
+ * records a claim and never changes what was recorded.
+ *
+ * Filing one now brings the Constructor in (PLAN 3.15, phase 6). It reads the Task and the
+ * note and comes back either agreeing or naming something that may have been missed, and it
+ * settles nothing: the reader upholds the report or drops it. **Overriding a Constructor
+ * that disagrees is theirs to do**, and a report that stands voids the Attempts against
+ * that question and sends it back to be mended or removed.
  */
 function Report({
   slug,
   taskId,
+  building,
   onDone,
+  onRepaired,
 }: {
   slug: string
   taskId: string
+  building: { harnessId: string; model: string }
   onDone: () => void
+  onRepaired: () => void
 }): React.JSX.Element {
   const [ground, setGround] = useState<(typeof GROUNDS)[number]['id']>('inaccurate')
   const [note, setNote] = useState('')
-  const [filed, setFiled] = useState(false)
+  const [reportId, setReportId] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [said, setSaid] = useState<Evaluation | undefined>(undefined)
+  const [upheld, setUpheld] = useState<{ note: string; lastInItsTest: boolean } | undefined>(undefined)
+  const [mending, setMending] = useState('')
 
-  if (filed) return <p className="filed">Reported. This does not change your answer.</p>
+  /** File it, then ask. Filing is the record; asking is a run, and it costs money. */
+  const fileIt = async (): Promise<void> => {
+    setAsking(true)
+    const id = await window.whetstone.defects.file(slug, taskId, ground, note.trim())
+    setReportId(id)
+    setSaid(
+      await window.whetstone.defects.evaluate(newRunId(), slug, id, building.harnessId, building.model),
+    )
+    setAsking(false)
+  }
+
+  const uphold = async (overriding: boolean): Promise<void> => {
+    const done = await window.whetstone.defects.uphold(slug, reportId, overriding)
+    if (done.ok) setUpheld({ note: done.note, lastInItsTest: done.lastInItsTest })
+  }
+
+  /** Send it back to the Constructor to be mended or taken away. */
+  const repair = (kind: 'fix-task' | 'remove-task'): void => {
+    setMending(kind)
+    void window.whetstone.course
+      .revise(newRunId(), slug, building.harnessId, building.model, { kind, taskId, note: upheld?.note ?? '' })
+      .then((result) => {
+        setMending('')
+        if (result.at === 'revised') onRepaired()
+        else window.alert(result.at === 'trouble' ? result.message : 'The task could not be changed.')
+        onDone()
+      })
+  }
+
+  if (upheld) {
+    return (
+      <div className="report">
+        <p className="filed">
+          The report stands. Your attempts at this question are void, and it goes back to be
+          mended.
+        </p>
+        <div className="acts">
+          {mending !== '' && <span className="waiting">Working on it</span>}
+          <button
+            type="button"
+            className="quiet"
+            disabled={mending !== '' || upheld.lastInItsTest}
+            title={
+              upheld.lastInItsTest
+                ? 'It is the only question in its test, so it is replaced rather than removed'
+                : 'Take the question out of the course'
+            }
+            onClick={() => repair('remove-task')}
+          >
+            Remove it
+          </button>
+          <button type="button" className="btn" disabled={mending !== ''} onClick={() => repair('fix-task')}>
+            Mend it
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (said?.at === 'evaluated') {
+    return (
+      <div className="report">
+        <p className="said">
+          <b>{said.agrees ? 'Agreed' : 'Not so'}</b>
+          <Run inline={parseInline(said.text)} />
+        </p>
+        <div className="acts">
+          <button type="button" className="quiet" onClick={() => void window.whetstone.defects.drop(reportId).then(onDone)}>
+            {said.agrees ? 'Leave it' : 'Fair enough'}
+          </button>
+          <button type="button" className="btn" onClick={() => void uphold(!said.agrees)}>
+            {said.agrees ? 'Have it mended' : 'It still stands'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Trouble is not a decision. The report is filed and open, and asking again is free of
+  // any consequence except the run (PLAN 3.15).
+  if (said?.at === 'trouble') {
+    return (
+      <div className="report">
+        <p className="filed">Reported, and not yet read: {said.message}</p>
+        <div className="acts">
+          <button type="button" className="quiet" onClick={onDone}>
+            Leave it filed
+          </button>
+          <button type="button" className="btn" onClick={() => void fileIt()}>
+            Ask again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (asking) return <p className="filed">Reported. The constructor is reading it.</p>
 
   return (
     <div className="report">
@@ -348,14 +468,7 @@ function Report({
         <button type="button" className="quiet" onClick={onDone}>
           Cancel
         </button>
-        <button
-          type="button"
-          className="btn"
-          disabled={note.trim() === ''}
-          onClick={() => {
-            void window.whetstone.defects.file(slug, taskId, ground, note.trim()).then(() => setFiled(true))
-          }}
-        >
+        <button type="button" className="btn" disabled={note.trim() === ''} onClick={() => void fileIt()}>
           Report it
         </button>
       </div>

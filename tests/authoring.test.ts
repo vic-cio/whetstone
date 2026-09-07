@@ -31,7 +31,8 @@ describe('what the app hands a harness', () => {
   })
 
   it('ships an instruction file for each way the Constructor is spawned', () => {
-    for (const role of ['constructor-brief', 'constructor-build']) {
+    // Three: talking about a course, building one, and reading a complaint about one task.
+    for (const role of ['constructor-brief', 'constructor-build', 'constructor-defect']) {
       expect(existsSync(join(AGENT, 'roles', `${role}.md`))).toBe(true)
     }
   })
@@ -55,7 +56,7 @@ describe('what the app hands a harness', () => {
   it('says the Course’s own guidance outranks whatever is on the machine', () => {
     // PLAN 3.13: the app drops the `user` setting source, and the role file says so too,
     // because two mechanisms that must both fail is the point.
-    for (const role of ['constructor-brief', 'constructor-build']) {
+    for (const role of ['constructor-brief', 'constructor-build', 'constructor-defect']) {
       expect(readFileSync(join(AGENT, 'roles', `${role}.md`), 'utf8')).toContain('outranks')
     }
   })

@@ -81,6 +81,28 @@ export interface Thread {
 export const GROUNDS = ['inaccurate', 'impossible', 'broke'] as const
 export type Ground = (typeof GROUNDS)[number]
 
+/**
+ * A defect report, as it stands now.
+ *
+ * `open` is filed and not yet looked at. `agreed` and `disputed` are what the Constructor
+ * made of it. `upheld` is a report that stands, with the Attempts against that Task voided,
+ * and `dropped` is one the reader let go after reading the evaluation. Only `upheld`
+ * changes anything, and what it changes is never a score (PLAN 3.15).
+ */
+export type DefectStatus = 'open' | 'agreed' | 'disputed' | 'upheld' | 'dropped'
+
+export interface DefectReport {
+  id: string
+  taskId: string
+  ground: Ground
+  note: string
+  status: DefectStatus
+  /** What the Constructor said, once it has been asked. */
+  evaluation?: string
+  /** True when the reader upheld a report the Constructor disagreed with. */
+  overridden: boolean
+}
+
 /** One execution of a Harness. Every Run is recorded, spend included (PLAN 3.4). */
 export interface RunRecord {
   kind: string
@@ -141,7 +163,21 @@ export interface Progress {
   saveThread(courseSlug: string, pageId: string, thread: Thread): void
   /** File a defect report. It records a claim; it never changes an outcome. */
   fileDefect(report: { courseSlug: string; taskId: string; ground: Ground; note: string }): string
-  defectsFor(courseSlug: string): { taskId: string; ground: Ground; status: string }[]
+  defectsFor(courseSlug: string): DefectReport[]
+  defect(id: string): DefectReport | undefined
+  /**
+   * What the Constructor made of the report: whether it agrees, and what it says. It never
+   * settles anything by itself. A report the Constructor disagrees with waits for the
+   * person, who has the authority to override it (PLAN 3.15).
+   */
+  evaluateDefect(id: string, evaluation: { agrees: boolean; text: string }): void
+  /**
+   * The report stands. This is the only call that touches the record, and what it does is
+   * void the Attempts against a broken question. It never rescores.
+   */
+  upholdDefect(id: string, overridden: boolean): void
+  /** The reader read the evaluation and let the report go. Nothing is touched. */
+  dropDefect(id: string): void
   /** Which harness and model each role uses. Never a secret: those live in the Keychain. */
   setting(key: string): string | undefined
   setSetting(key: string, value: string): void
@@ -149,6 +185,26 @@ export interface Progress {
   forget(courseSlug: string): void
   close(): void
 }
+
+interface DefectRow {
+  id: string
+  taskId: string
+  ground: Ground
+  note: string
+  status: DefectStatus
+  evaluation: string | null
+  overridden: number
+}
+
+const asReport = (row: DefectRow): DefectReport => ({
+  id: row.id,
+  taskId: row.taskId,
+  ground: row.ground,
+  note: row.note,
+  status: row.status,
+  ...(row.evaluation === null ? {} : { evaluation: row.evaluation }),
+  overridden: row.overridden === 1,
+})
 
 export function openProgress(file: string): Progress {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true })
@@ -231,6 +287,14 @@ export function openProgress(file: string): Progress {
     db.exec('ALTER TABLE attempts ADD COLUMN sittingId TEXT')
   }
 
+  // A defect report now carries what the Constructor made of it, and whether the reader
+  // overrode that. Older rows have neither and are still open reports.
+  const defectColumns = db.prepare('PRAGMA table_info(defect_reports)').all() as { name: string }[]
+  if (!defectColumns.some((column) => column.name === 'evaluation')) {
+    db.exec('ALTER TABLE defect_reports ADD COLUMN evaluation TEXT')
+    db.exec('ALTER TABLE defect_reports ADD COLUMN overridden INTEGER NOT NULL DEFAULT 0')
+  }
+
   const selectTicks = db.prepare('SELECT pageId, ticked, byUser FROM page_ticks WHERE courseSlug = ?')
   const countDone = db.prepare('SELECT COUNT(*) AS n FROM page_ticks WHERE courseSlug = ? AND ticked = 1')
   const upsert = db.prepare(`
@@ -299,7 +363,12 @@ export function openProgress(file: string): Progress {
     INSERT INTO defect_reports (id, courseSlug, taskId, ground, note, status, filedAt)
     VALUES (?, ?, ?, ?, ?, 'open', ?)
   `)
-  const selectDefects = db.prepare('SELECT taskId, ground, status FROM defect_reports WHERE courseSlug = ?')
+  const DEFECT_FIELDS = 'id, taskId, ground, note, status, evaluation, overridden'
+  const selectDefects = db.prepare(`SELECT ${DEFECT_FIELDS} FROM defect_reports WHERE courseSlug = ?`)
+  const selectDefect = db.prepare(`SELECT ${DEFECT_FIELDS} FROM defect_reports WHERE id = ?`)
+  const writeEvaluation = db.prepare('UPDATE defect_reports SET status = ?, evaluation = ? WHERE id = ?')
+  const upholdIt = db.prepare("UPDATE defect_reports SET status = 'upheld', overridden = ? WHERE id = ?")
+  const dropIt = db.prepare("UPDATE defect_reports SET status = 'dropped' WHERE id = ?")
   const readSetting = db.prepare('SELECT value FROM settings WHERE key = ?')
   const writeSetting = db.prepare(
     'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
@@ -419,7 +488,28 @@ export function openProgress(file: string): Progress {
       return id
     },
     defectsFor(courseSlug) {
-      return selectDefects.all(courseSlug) as { taskId: string; ground: Ground; status: string }[]
+      return (selectDefects.all(courseSlug) as unknown as DefectRow[]).map(asReport)
+    },
+    defect(id) {
+      const row = selectDefect.get(id) as unknown as DefectRow | undefined
+      return row === undefined ? undefined : asReport(row)
+    },
+    evaluateDefect(id, evaluation) {
+      writeEvaluation.run(evaluation.agrees ? 'agreed' : 'disputed', evaluation.text, id)
+    },
+    upholdDefect(id, overridden) {
+      const row = selectDefect.get(id) as unknown as DefectRow | undefined
+      if (!row) return
+      upholdIt.run(overridden ? 1 : 0, id)
+      // Upholding a report voids the Attempts against that Task, because the question was
+      // broken. Voiding rewrites an outcome; it never adds a row saying it was voided.
+      const course = (db.prepare('SELECT courseSlug FROM defect_reports WHERE id = ?').get(id) as
+        | { courseSlug: string }
+        | undefined)?.courseSlug
+      if (course !== undefined) voidThem.run(course, row.taskId)
+    },
+    dropDefect(id) {
+      dropIt.run(id)
     },
     setting(key) {
       return (readSetting.get(key) as { value: string } | undefined)?.value

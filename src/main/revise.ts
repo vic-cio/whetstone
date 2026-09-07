@@ -12,9 +12,10 @@ import type { CourseError } from '../shared/format'
 /**
  * Changing a Course that already exists.
  *
- * Two runs, and they are the same run with a different instruction: `add-rung` writes Tasks
- * at a Depth the Course does not yet use, and `remediate` writes a block for one Objective
- * the reader keeps failing (PLAN 3.15, phase 5).
+ * One run with a different instruction each time. `add-rung` writes Tasks at a Depth the
+ * Course does not yet use and `remediate` writes a block for one Objective the reader keeps
+ * failing (PLAN 3.15, phase 5). `fix-task` and `remove-task` are what an upheld defect
+ * report does, and `rebuild-module` and `remove-module` are the same at Module scale.
  *
  * Neither writes into the library. The Course is copied into staging, the Run works there,
  * the parser is the gate exactly as it is for a build, and only a folder that parses goes
@@ -53,9 +54,24 @@ export interface ReviseRequest {
   root: string
   harnessId: string
   model: string
-  /** What to do: add a Rung at a Depth, or write a remediation block for an Objective. */
-  work: { kind: 'add-rung'; depth: string } | { kind: 'remediate'; objective: string; title: string }
+  /** What to do. Two kinds add, two mend one Task, and two work at Module scale. */
+  work: Work
 }
+
+/**
+ * The work a revision does.
+ *
+ * The first two add. The rest change or take away what is already there, which is a
+ * different promise to somebody part way through a Course, and they are worded separately
+ * below for that reason.
+ */
+export type Work =
+  | { kind: 'add-rung'; depth: string }
+  | { kind: 'remediate'; objective: string; title: string }
+  | { kind: 'fix-task'; taskId: string; note: string }
+  | { kind: 'remove-task'; taskId: string; note: string }
+  | { kind: 'rebuild-module'; moduleId: string; title: string; note: string }
+  | { kind: 'remove-module'; moduleId: string; title: string; note: string }
 
 export async function revise(
   request: ReviseRequest,
@@ -112,29 +128,113 @@ export async function revise(
  * that points at nothing.
  */
 function instruction(request: ReviseRequest, skills: string[]): string {
-  const keep = [
+  /** For the kinds that add. The strictest rule in the app, and the one it turns on. */
+  const addOnly = [
     'This course already exists and somebody is part way through it. Add to it; change',
     'nothing that is already here. Do not rename an id, do not reuse an id, do not rewrite a',
     'lesson, and do not touch `toolkit/`. Progress is recorded against the ids in these',
     'files, so an id that changes is somebody’s progress pointing at nothing.',
   ]
 
-  const work =
-    request.work.kind === 'add-rung'
-      ? [
-          `Add a Rung at \`${request.work.depth}\` depth.`,
-          `Put \`${request.work.depth}\` in the \`ladder\` in course.json, write Tasks at that`,
-          'depth for every Objective the course has, and add them to the Tests they belong in.',
-          'At least one of them must be `check: deterministic`, whatever the depth.',
-        ]
-      : [
-          `Write a remediation block for \`${request.work.objective}\`, which is "${request.work.title}".`,
-          'The reader has failed it three times, so the material there is not working for them.',
-          'Add one Lesson that takes a different run at it: a worked example with real numbers,',
-          'the smallest case first, or the two ideas introduced in the other order. Add it as a',
-          'Page in the Module that Objective lives in, and write two or three new Tasks for it.',
-          'Do not repeat the lesson that is already there in different words.',
-        ]
+  /**
+   * For the kinds that mend or take away.
+   *
+   * These break the rule above and need their own wording, or a run reading "add, never
+   * rewrite" will add a second copy of the broken question and leave the first one there.
+   * What holds instead is narrower: change what you were named, and nothing else.
+   */
+  const namedOnly = [
+    'This course already exists and somebody is part way through it. Change exactly what is',
+    'named above and nothing else. Every other id stays as it is, every other file stays as',
+    'it is, and `toolkit/` is not yours. Progress is recorded against these ids, so an id',
+    'that changes anywhere else is somebody’s progress pointing at nothing.',
+  ]
 
-  return [...work, '', ...keep, ...(skills.length === 0 ? [] : ['', ...skills])].join('\n')
+  const work = ((): { lines: string[]; keep: string[] } => {
+    switch (request.work.kind) {
+      case 'add-rung':
+        return {
+          keep: addOnly,
+          lines: [
+            `Add a Rung at \`${request.work.depth}\` depth.`,
+            `Put \`${request.work.depth}\` in the \`ladder\` in course.json, write Tasks at that`,
+            'depth for every Objective the course has, and add them to the Tests they belong in.',
+            'At least one of them must be `check: deterministic`, whatever the depth.',
+          ],
+        }
+      case 'remediate':
+        return {
+          keep: addOnly,
+          lines: [
+            `Write a remediation block for \`${request.work.objective}\`, which is "${request.work.title}".`,
+            'The reader has failed it three times, so the material there is not working for them.',
+            'Add one Lesson that takes a different run at it: a worked example with real numbers,',
+            'the smallest case first, or the two ideas introduced in the other order. Add it as a',
+            'Page in the Module that Objective lives in, and write two or three new Tasks for it.',
+            'Do not repeat the lesson that is already there in different words.',
+          ],
+        }
+      case 'fix-task':
+        return {
+          keep: namedOnly,
+          lines: [
+            `Mend the task \`${request.work.taskId}\`, in \`tasks/${request.work.taskId}.json\`.`,
+            'The reader reported it as broken and said this:',
+            '',
+            request.work.note,
+            '',
+            'Rewrite that one file so the question is right and answerable. Keep its id, its',
+            'objective and its depth. The Attempts against it are already void, so nobody is',
+            'holding a mark from the old wording, and nothing else in the course changes.',
+          ],
+        }
+      case 'remove-task':
+        return {
+          keep: namedOnly,
+          lines: [
+            `Remove the task \`${request.work.taskId}\`.`,
+            'The reader reported it as broken and said this:',
+            '',
+            request.work.note,
+            '',
+            `Delete \`tasks/${request.work.taskId}.json\` and take its id out of the test that`,
+            'names it. Leave every other task in that test alone. If taking it out would leave',
+            'the test with no tasks at all, do not remove it: write a replacement question in',
+            'that same file instead, because a test page vanishing from a course somebody is part',
+            'way through leaves a hole in the contents.',
+          ],
+        }
+      case 'rebuild-module':
+        return {
+          keep: namedOnly,
+          lines: [
+            `Rebuild the module \`${request.work.moduleId}\`, "${request.work.title}".`,
+            'The reader says it is badly written or does not teach what it claims to. They said:',
+            '',
+            request.work.note,
+            '',
+            'Rewrite its Lessons and its Tests so they do the job. Keep the module id, keep the',
+            'page ids that stay, and keep the objectives the course declares. A page you drop',
+            'comes out of `modules` in course.json as well as out of its folder.',
+          ],
+        }
+      default:
+        return {
+          keep: namedOnly,
+          lines: [
+            `Remove the module \`${request.work.moduleId}\`, "${request.work.title}".`,
+            'The reader says it should not be in this course at all. They said:',
+            '',
+            request.work.note,
+            '',
+            'Delete its Lessons and Tests, delete the tasks those tests named, and take the',
+            'module out of `modules` in course.json. Take the pages out of `suggestedOrder`',
+            'too. An Objective that no longer has a single task belonging to it comes out of',
+            '`objectives`. Leave every other module exactly as it is.',
+          ],
+        }
+    }
+  })()
+
+  return [...work.lines, '', ...work.keep, ...(skills.length === 0 ? [] : ['', ...skills])].join('\n')
 }

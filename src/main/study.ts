@@ -477,3 +477,42 @@ export function earlierAnswers(
     return [{ id: earlier, prompt: task.prompt, given: held.given }]
   })
 }
+
+// ---------------------------------------------------------------- taking things away
+
+/**
+ * The Test a removal would leave with nothing in it.
+ *
+ * A Test page vanishing from a Course somebody is part way through leaves a hole in the
+ * contents, so a removal that would empty one is not allowed: the Constructor writes a
+ * replacement question instead. This is what the caller asks before it picks which work to
+ * send (PLAN 3.15, phase 6).
+ */
+export function emptiesATest(course: Course, taskId: string): string | undefined {
+  for (const test of Object.values(course.tests)) {
+    if (test.tasks.length === 1 && test.tasks[0] === taskId) return test.id
+  }
+  return undefined
+}
+
+/** Every Task reachable from one Module's Tests. */
+export function tasksUnder(course: Course, moduleId: string): string[] {
+  const module = course.modules.find((entry) => entry.id === moduleId)
+  if (!module) return []
+  const testIds = module.pages.filter((page) => page.type === 'test').map((page) => page.id)
+  return testIds.flatMap((id) => course.tests[id]?.tasks ?? [])
+}
+
+/**
+ * Void every Attempt under a Module.
+ *
+ * What removing a Module does to the record. An Attempt against a question that no longer
+ * exists is a mark for something nobody can look at, so it is voided rather than left
+ * dangling. Voiding rewrites an outcome and never adds a row, so the missed list and the
+ * struggling count both stop seeing it (PLAN 3.4).
+ */
+export function voidUnder(slug: string, course: Course, progress: Progress, moduleId: string): string[] {
+  const tasks = tasksUnder(course, moduleId)
+  for (const taskId of tasks) progress.voidAttempts(slug, taskId)
+  return tasks
+}

@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import type { CourseView, PageView } from '../main/study'
 
 /**
@@ -13,6 +15,7 @@ export function Course({
   onTick,
   onReview,
   onRemediate,
+  onModule,
 }: {
   course: CourseView
   onOpen: (pageId: string) => void
@@ -21,7 +24,19 @@ export function Course({
   onReview: () => void
   /** Ask for another run at one Objective. An offer, and pressing it costs money. */
   onRemediate: (objective: { id: string; title: string }) => void
+  /**
+   * A whole Module is irrelevant or badly written. Rebuilding it costs money, and removing
+   * it voids every Attempt under it, so both start from the reader saying what is wrong.
+   */
+  onModule: (
+    module: { id: string; title: string },
+    kind: 'rebuild-module' | 'remove-module',
+    note: string,
+  ) => void
 }): React.JSX.Element {
+  /** Which Module the reader is writing about, if any. One at a time. */
+  const [saying, setSaying] = useState('')
+  const [note, setNote] = useState('')
   return (
     <>
       <div className="head">
@@ -55,7 +70,58 @@ export function Course({
         <div key={module.id} className="mod">
           <div className="mh">
             {String(index + 1).padStart(2, '0')} {module.title}
+            <button
+              type="button"
+              className="link small"
+              onClick={() => {
+                setSaying(saying === module.id ? '' : module.id)
+                setNote('')
+              }}
+            >
+              {saying === module.id ? 'Never mind' : 'Something wrong with this module?'}
+            </button>
           </div>
+
+          {/*
+            Module scale. A defect report is the small case; this is the large one, and it
+            is deliberately not a button on its own: what is wrong has to be written down,
+            because that sentence is the whole of what the Constructor is given to work from.
+          */}
+          {saying === module.id && (
+            <div className="report">
+              <textarea
+                rows={2}
+                value={note}
+                placeholder="What is wrong with it?"
+                onChange={(event) => setNote(event.target.value)}
+              />
+              <div className="acts">
+                <button
+                  type="button"
+                  className="quiet"
+                  disabled={note.trim() === ''}
+                  title="Take the module out of the course, and void every attempt under it"
+                  onClick={() => {
+                    setSaying('')
+                    onModule(module, 'remove-module', note.trim())
+                  }}
+                >
+                  Remove it
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={note.trim() === ''}
+                  onClick={() => {
+                    setSaying('')
+                    onModule(module, 'rebuild-module', note.trim())
+                  }}
+                >
+                  Rebuild it
+                </button>
+              </div>
+            </div>
+          )}
           {module.pages.map((page) => (
             <div key={page.id} className="lrow2">
               <button
