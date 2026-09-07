@@ -255,10 +255,7 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
   display: flex; align-items: baseline; gap: 14px;
 }
 /* The one control a module heading carries: what to do when the whole module is wrong. */
-.mh .link.small {
-  margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 11px;
-  font-family: inherit;
-}
+.mh .flag { font-size: 11px; }
 .lrow2 {
   display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 11px;
   align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line);
@@ -660,6 +657,16 @@ pre.code {
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted);
 }
 .scored .ms { color: var(--fail); }
+
+/* Saying something is broken: a flag at the end of the row it belongs to, on a question
+   and on a module heading alike. It is quiet until it is hovered, because a report is rare
+   and a control that announces itself every few lines reads as an invitation to argue. */
+.flag {
+  margin-left: auto; background: none; border: 0; padding: 0 2px; cursor: pointer;
+  color: var(--muted); opacity: 0.45; font-size: 12px; line-height: 1;
+}
+.flag:hover, .flag:focus-visible { color: var(--fail); opacity: 1; }
+.flag.on { color: var(--fail); opacity: 1; }
 
 /* Reporting a broken task. Three grounds, and never an appeal. */
 .link.small { font-size: 11px; margin-top: 12px; display: inline-block; }

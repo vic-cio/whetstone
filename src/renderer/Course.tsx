@@ -119,13 +119,15 @@ export function Course({
             {String(index + 1).padStart(2, '0')} {module.title}
             <button
               type="button"
-              className="link small"
+              className={`flag${saying === module.id ? ' on' : ''}`}
+              title="Something wrong with this module"
+              aria-label="Something wrong with this module"
               onClick={() => {
                 setSaying(saying === module.id ? '' : module.id)
                 setNote('')
               }}
             >
-              {saying === module.id ? 'Never mind' : 'Something wrong with this module?'}
+              ⚑
             </button>
           </div>
 

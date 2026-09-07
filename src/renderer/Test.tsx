@@ -101,6 +101,20 @@ export function Test({
             </span>
             <span className={`chip depth-${task.depth}`}>{task.depth}</span>
             <span className="chip k">{task.check === 'deterministic' ? '⚡ instant' : '✦ needs a model'}</span>
+            {/*
+              A flag, on the question's own row and out of the way. Reporting a broken task
+              is rare and a sentence-long link beneath every question read as an invitation
+              to argue with the marking, which is the one thing this is not.
+            */}
+            <button
+              type="button"
+              className={`flag${reporting === task.id ? ' on' : ''}`}
+              title="Report this question as broken"
+              aria-label="Report this question as broken"
+              onClick={() => setReporting(reporting === task.id ? '' : task.id)}
+            >
+              ⚑
+            </button>
           </div>
           <p className="q"><Run inline={parseInline(task.prompt)} /></p>
           {task.rubric !== undefined && (
@@ -145,7 +159,7 @@ export function Test({
             A defect report is a claim that the Task itself is broken, on three grounds. It
             is not a dispute about a verdict, and upholding one never rescores (PLAN 3.15).
           */}
-          {reporting === task.id ? (
+          {reporting === task.id && (
             <Report
               slug={slug}
               taskId={task.id}
@@ -153,10 +167,6 @@ export function Test({
               onDone={() => setReporting('')}
               onRepaired={onAnswered}
             />
-          ) : (
-            <button type="button" className="link small" onClick={() => setReporting(task.id)}>
-              Report a broken task
-            </button>
           )}
         </div>
       ))}
