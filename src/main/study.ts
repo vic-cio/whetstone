@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { missed, strugglingWith } from '../shared/again'
 import { answerDeterministic } from '../shared/grade'
 import { publicTask, publicTry } from '../shared/format'
@@ -14,6 +16,7 @@ import type {
   Test,
 } from '../shared/format'
 import type { Outcome } from '../shared/grade'
+import type { Verdict } from '../shared/verdict'
 import type { Progress } from './progress'
 
 /**
@@ -61,6 +64,8 @@ export interface TestView {
   id: string
   title: string
   module: string
+  /** What the Constructor thinks the sitting takes. Nothing counts down (PLAN 3.4). */
+  minutes?: number
   tasks: PublicTask[]
 }
 
@@ -165,6 +170,7 @@ export function courseView(slug: string, course: Course, progress: Progress): Co
       id,
       title: test.title,
       module: test.module,
+      ...(test.minutes === undefined ? {} : { minutes: test.minutes }),
       tasks: test.tasks.flatMap((taskId) => {
         const task = course.tasks[taskId]
         return task ? [publicTask(task)] : []
@@ -277,4 +283,197 @@ export function answerTry(course: Course, lessonId: string, tryId: string, given
 export function reachedEndOfLesson(slug: string, course: Course, progress: Progress, lessonId: string): void {
   if (!course.lessons[lessonId]) throw new Error(`no lesson "${lessonId}"`)
   progress.earnTick(slug, lessonId, 'lesson')
+}
+
+// ---------------------------------------------------------------- a test is a sitting
+
+/**
+ * A Test is a sitting (docs/adr/0022).
+ *
+ * The reader answers a question and presses Check. The run happens then, and the result is
+ * held. When the last question in the Test is checked, every result is revealed at once.
+ * There is no mark and no number: the reveal is the list of questions with a tick or a
+ * cross beside each.
+ *
+ * Nothing here stores whether a sitting is open. A sitting is revealed when every Task in
+ * the Test carries a checked row, which is derived from the rows themselves, because two
+ * records of one fact drift.
+ */
+
+/** What was checked, kept whole so the feedback screen can draw it later. */
+export interface CheckResult {
+  outcome: Outcome
+  verdict?: Verdict
+}
+
+export interface RevealedView {
+  passed: boolean
+  /** What the reader gave. Their own answer is theirs to see again. */
+  given: unknown
+  explanation?: string
+  assertions?: { name: string; passed: boolean }[]
+  verdict?: Verdict
+}
+
+export interface SittingView {
+  id: string
+  /** What is written down so far, by Task. A closed window loses none of it (PLAN 3.4). */
+  answers: Record<string, { given: unknown; checked: boolean }>
+  revealed: boolean
+  /**
+   * Present only once every question is checked. Before that the window holding the
+   * questions does not hold a single result, which is the same discipline that keeps an
+   * answer out of the renderer.
+   */
+  results?: Record<string, RevealedView>
+}
+
+function testIn(course: Course, testId: string, slug: string): Test {
+  const test = course.tests[testId]
+  if (!test) throw new Error(`no test "${testId}" in course "${slug}"`)
+  return test
+}
+
+/**
+ * The first sitting's id, before there is a row to read one from.
+ *
+ * A fixed string rather than a fresh one each time this is called. A minted id would change
+ * between the read that opened the Test and the write that held the first answer, and two
+ * answers to the same Test would land in two different sittings, neither of them complete.
+ * Every later sitting gets a real id, because a retake has rows to be told apart from.
+ */
+const FIRST = 'first'
+
+/** The sitting the reader is in, drawn from the held rows. Starts a first one if needed. */
+export function sittingFor(slug: string, course: Course, progress: Progress, testId: string): SittingView {
+  const test = testIn(course, testId, slug)
+  const id = progress.currentSitting(slug, testId) ?? FIRST
+  const rows = progress.held(slug, testId, id)
+
+  const answers: Record<string, { given: unknown; checked: boolean }> = {}
+  for (const row of rows) {
+    if (test.tasks.includes(row.taskId)) answers[row.taskId] = { given: row.given, checked: row.checked }
+  }
+
+  const revealed = test.tasks.every((taskId) => answers[taskId]?.checked === true)
+  if (!revealed) return { id, answers, revealed }
+
+  const results: Record<string, RevealedView> = {}
+  for (const row of rows) {
+    const result = row.result as CheckResult | undefined
+    if (!result || !test.tasks.includes(row.taskId)) continue
+    results[row.taskId] = {
+      passed: result.outcome.outcome === 'pass',
+      given: row.given,
+      ...(result.outcome.explanation === undefined ? {} : { explanation: result.outcome.explanation }),
+      ...(result.outcome.assertions === undefined ? {} : { assertions: result.outcome.assertions }),
+      ...(result.verdict === undefined ? {} : { verdict: result.verdict }),
+    }
+  }
+  return { id, answers, revealed, results }
+}
+
+/**
+ * Write an answer down without checking it.
+ *
+ * Called as the reader works, because a Test with a project-depth submission can take a
+ * day, and losing that to a closed lid is the kind of failure that stops somebody trusting
+ * an app. An answer already checked is never overwritten.
+ */
+export function holdAnswer(
+  slug: string,
+  course: Course,
+  progress: Progress,
+  testId: string,
+  taskId: string,
+  given: unknown,
+): SittingView {
+  taskIn(course, testId, taskId, slug)
+  const sitting = sittingFor(slug, course, progress, testId)
+  if (sitting.answers[taskId]?.checked !== true) {
+    progress.hold({ courseSlug: slug, testId, taskId, sittingId: sitting.id, given, checked: false })
+  }
+  return sittingFor(slug, course, progress, testId)
+}
+
+/**
+ * Record a checked question, and hold its result.
+ *
+ * The Attempt is written now, because the run happened now. What is held back is only the
+ * telling: nothing about this reaches the reader until the last question is checked.
+ */
+export function checkedTask(
+  slug: string,
+  course: Course,
+  progress: Progress,
+  testId: string,
+  taskId: string,
+  given: unknown,
+  result: CheckResult,
+): SittingView {
+  const task = taskIn(course, testId, taskId, slug)
+  const test = testIn(course, testId, slug)
+  const sitting = sittingFor(slug, course, progress, testId)
+
+  progress.recordAttempt({
+    courseSlug: slug,
+    taskId,
+    objectiveId: task.objective,
+    depth: task.depth,
+    check: task.check,
+    outcome: result.outcome.outcome,
+    sittingId: sitting.id,
+    ...(result.verdict === undefined ? {} : { verdictJson: JSON.stringify(result.verdict) }),
+  })
+  progress.hold({ courseSlug: slug, testId, taskId, sittingId: sitting.id, given, checked: true, result })
+
+  const attempted = progress.attemptedTaskIds(slug)
+  if (test.tasks.every((id) => attempted.has(id))) progress.earnTick(slug, testId, 'test')
+
+  return sittingFor(slug, course, progress, testId)
+}
+
+/**
+ * Start a fresh sitting, with nothing shown.
+ *
+ * The old rows stay where they are and so do the Attempts they made. Both sittings are in
+ * the record, and the missed list reads the latest, because a retake is another go rather
+ * than a correction of the first one.
+ */
+export function retakeTest(slug: string, course: Course, progress: Progress, testId: string): SittingView {
+  const test = testIn(course, testId, slug)
+  const id = randomUUID()
+  // A sitting exists once it has a row, so the first Task carries an empty one. Without it
+  // `currentSitting` would still hand back the sitting just finished.
+  const first = test.tasks[0]
+  if (first !== undefined) {
+    progress.hold({ courseSlug: slug, testId, taskId: first, sittingId: id, given: null, checked: false })
+  }
+  return sittingFor(slug, course, progress, testId)
+}
+
+/**
+ * The questions this one builds on, with the reader's own answers to them.
+ *
+ * The one exception to the Grader's amnesia (PLAN 3.15). A Task that `follows` another is
+ * marked on what the reader themselves put, not on what was correct, so a wrong part a
+ * followed by a right method in part b passes part b. The correct answers are not here and
+ * must never be: this is error carried forward, not a second chance at part a.
+ */
+export function earlierAnswers(
+  slug: string,
+  course: Course,
+  progress: Progress,
+  testId: string,
+  taskId: string,
+): { id: string; prompt: string; given: unknown }[] {
+  const follows = course.tasks[taskId]?.follows ?? []
+  if (follows.length === 0) return []
+  const sitting = sittingFor(slug, course, progress, testId)
+  return follows.flatMap((earlier) => {
+    const task = course.tasks[earlier]
+    const held = sitting.answers[earlier]
+    if (!task || !held) return []
+    return [{ id: earlier, prompt: task.prompt, given: held.given }]
+  })
 }

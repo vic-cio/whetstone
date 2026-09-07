@@ -82,8 +82,18 @@ beforeAll(() => {
         // follows a report from inside the frame all the way to a recorded Attempt.
         'Array.from(document.querySelectorAll(".rail button")).filter(function (b) { return b.textContent.indexOf("The report arrives") === 0 })[0].click()',
         // That frame loads on its own schedule too. Wait for its report, which carries
-        // what the task asks for, and then one pause for the host to judge and record it.
+        // what the task asks for, and then one pause for the host to write it down.
         'until:window.__probe.some(function (m) { return m && m.value && m.value.placed === "ok" })',
+        '0',
+        // A Test is a sitting. The frame has reported and the answer is written down, and
+        // nothing has been judged: the run happens when the reader presses Check. Note
+        // whether the task's own explanation is on the page before that press.
+        'window.__probe.push({ type: "sawEarly", value: document.body.innerText.indexOf("The report crossed") >= 0 })',
+        'Array.from(document.querySelectorAll(".acts button")).filter(function (b) { return b.textContent === "Check" })[0].click()',
+        // One question, so checking it is checking the last one, and everything is revealed.
+        'until:document.querySelector(".reveal") !== null',
+        'window.__probe.push({ type: "sawMark", value: document.querySelector(".reveal li").className })',
+        'Array.from(document.querySelectorAll(".acts button")).filter(function (b) { return b.textContent === "Get feedback" })[0].click()',
         '0',
         // Opening the tutor is not asking it anything. The panel draws, a thread is read
         // from the database, and nothing is spawned (test 15).
@@ -150,12 +160,12 @@ describe.runIf(existsSync(ELECTRON))('test 7 — a sealed mini-app reaches nothi
     // Four kinds of message and nothing else crossed: the frame's height, that it had
     // drawn, what it chose to report, and a review it asked for without being pressed.
     expect(new Set(messages.map((message) => message.type))).toEqual(
-      new Set(['resize', 'ready', 'answer', 'review', 'sawReview', 'sawTutor']),
+      new Set(['resize', 'ready', 'answer', 'review', 'sawReview', 'sawEarly', 'sawMark', 'sawTutor']),
     )
     // The toolkit's own messages carry its version. The hostile one does not, because it
     // went around the toolkit, and that is the point: `kit` is not a credential. What the
     // host actually checks is that the message came from this frame's own window.
-    const mine = new Set(['review', 'sawReview', 'sawTutor'])
+    const mine = new Set(['review', 'sawReview', 'sawEarly', 'sawMark', 'sawTutor'])
     const toolkit = messages.filter((message) => !mine.has(message.type ?? ''))
     expect(toolkit.every((message) => message.kit === TOOLKIT_VERSION)).toBe(true)
     expect(messages.find((message) => message.type === 'review')?.kit).toBe('1')
@@ -163,10 +173,19 @@ describe.runIf(existsSync(ELECTRON))('test 7 — a sealed mini-app reaches nothi
 })
 
 describe.runIf(existsSync(ELECTRON))('a report reaches the host and is recorded', () => {
-  it('is judged by the host and shown as an outcome', () => {
+  it('shows nothing until the question is checked', () => {
+    // docs/adr/0022, in the real window. The frame reported, the host wrote the answer
+    // down, and the Task's own explanation was not on the page. A sitting that leaked one
+    // result early would have leaked every one of them.
     expect(ran).toBe(true)
-    // The verdict is set in small capitals, so the page reads it back uppercase.
-    expect(page).toMatch(/correct/i)
+    expect(messages.find((message) => message.type === 'sawEarly')?.value).toBe(false)
+  })
+
+  it('reveals it with a tick once the last question is checked', () => {
+    expect(messages.find((message) => message.type === 'sawMark')?.value).toBe('ok')
+  })
+
+  it('is judged by the host, and says why under feedback', () => {
     expect(page).toContain('The report crossed the sandbox and the host judged it.')
   })
 

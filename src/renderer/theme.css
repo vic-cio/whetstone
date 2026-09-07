@@ -580,6 +580,40 @@ pre.code {
   background: none; border-color: var(--rail-line); color: var(--rail-muted);
 }
 
+/* ---------------------------------------------------------------- a test is a sitting */
+
+/* How far through the sitting the reader is. A count, never a score: it says where they
+   are and nothing about how any question went (docs/adr/0022). */
+.sitting { color: var(--muted); font-size: 12.5px; max-width: 60ch; margin: 14px 0 0; }
+
+/* What a checked question says. Deliberately flat: a line the reader could read a result
+   off would have given them the result. */
+.heldline {
+  margin: 8px 0 0; color: var(--muted); font-size: 11px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* The reveal. A tick or a cross beside each question and nothing added up. */
+.reveal { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 2px; }
+.reveal li {
+  display: grid; grid-template-columns: auto 14px 1fr; align-items: baseline;
+  gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.reveal .q { margin: 0; font-weight: 400; }
+.reveal .mark { font-size: 14px; }
+.reveal li.ok .mark { color: var(--pass); }
+.reveal li.no .mark { color: var(--fail); }
+.mark.ok { color: var(--pass); }
+.mark.no { color: var(--fail); }
+
+/* Feedback, per question, once the reveal has happened. */
+.gave { font-size: 12.5px; margin: 6px 0 0; }
+.gave b {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-right: 6px;
+}
+.why { font-size: 12.5px; color: var(--muted); margin: 7px 0 0; max-width: 66ch; }
+
 /* ---------------------------------------------------------------- a scored rubric */
 
 .scored { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 11px; }

@@ -47,7 +47,11 @@ tests/         vitest, run against the fixtures
 - **A Lesson records nothing.** Recorded Tasks live in a Test. A Lesson's `try` blocks are
   a different thing and never become an Attempt. `docs/adr/0013`.
 - **A Test holds its results.** A checked question shows nothing until every question in
-  the Test has been checked. Immediate feedback belongs to a Try. `docs/adr/0022`.
+  the Test has been checked. Immediate feedback belongs to a Try. `docs/adr/0022`. The
+  renderer is not trusted to keep the secret: `sittingFor` leaves `results` out of the view
+  until the last question is checked, so the window cannot show early what it never held.
+  A held answer is written down as the reader types, and a retake writes fresh Attempts
+  under a new `sittingId` with both sittings left in the record.
 - **Most study needs no model.** Nothing spawns on navigation. A harness starts only when
   the user builds a Course, sends a chat message, submits work, or presses Review.
   `docs/adr/0012`.
@@ -203,6 +207,12 @@ produced it. Nothing in `npm test` spawns anything.
 To check the real window without a person at the keyboard, set `WHETSTONE_CAPTURE` to a
 png path and optionally `WHETSTONE_THEME=light|dark`. The app renders once, writes the png
 and a `.txt` of the visible text beside it, and exits.
+
+The png is taken before the `.txt`, and both are the same moment: the capture turns
+background throttling off and calls `webContents.invalidate()` first. Without that the
+compositor hands back the frame it still holds for a window that is not in front, and the
+png showed the library while the text beside it showed a Test three steps later. A
+screenshot check that reads a page which stopped existing seconds ago is worse than none.
 
 **Look at the png.** Capture both themes for any change that touches colour. A computed-
 style contrast audit was written and then removed: it reported "all text passes" on a

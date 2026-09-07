@@ -1,6 +1,8 @@
 import { judge } from './grader'
 import { loadCourse, progress } from './courseStore'
-import { answerTask, recordTask, taskIn } from './study'
+import { answerTask, checkedTask, earlierAnswers, recordTask, taskIn } from './study'
+import { answerDeterministic } from '../shared/grade'
+import type { SittingView } from './study'
 import type { Moment } from '../shared/harness'
 import type { Outcome } from '../shared/grade'
 import type { Verdict } from '../shared/verdict'
@@ -68,4 +70,56 @@ export async function answer(request: Judged, onMoment: (moment: Moment) => void
     JSON.stringify(verdict),
   )
   return { at: 'answered', ...done, verdict }
+}
+
+// ---------------------------------------------------------------- checking, in a sitting
+
+/**
+ * What comes back from pressing Check.
+ *
+ * There is no outcome in it. The run happened, the Attempt is recorded, and the result is
+ * held until every question in the Test has been checked (docs/adr/0022). The window asking
+ * the questions is told only that this one is now checked, which is the same discipline
+ * that keeps an answer out of the renderer: what it does not hold, it cannot show early.
+ */
+export type Checked =
+  | { at: 'checked'; sitting: SittingView }
+  | { at: 'trouble'; message: string }
+
+export async function check(request: Judged, onMoment: (moment: Moment) => void): Promise<Checked> {
+  const course = loadCourse(request.slug)
+  const task = taskIn(course, request.testId, request.taskId, request.slug)
+
+  if (task.check === 'deterministic') {
+    const outcome = answerDeterministic(task, request.given)
+    return {
+      at: 'checked',
+      sitting: checkedTask(request.slug, course, progress(), request.testId, request.taskId, request.given, {
+        outcome,
+      }),
+    }
+  }
+
+  const grading = await judge(
+    task,
+    request.given,
+    request.harnessId,
+    request.model,
+    onMoment,
+    request.submission ?? [],
+    earlierAnswers(request.slug, course, progress(), request.testId, request.taskId),
+  )
+
+  // Trouble is not a fail, so nothing is recorded and the question stays unchecked. In a
+  // sitting that matters more, not less: an unchecked question is one the reveal waits for.
+  if (grading.judgement.at === 'trouble') return { at: 'trouble', message: grading.judgement.message }
+
+  const verdict = grading.judgement.verdict
+  return {
+    at: 'checked',
+    sitting: checkedTask(request.slug, course, progress(), request.testId, request.taskId, request.given, {
+      outcome: { outcome: verdict.outcome, explanation: verdict.reason },
+      verdict,
+    }),
+  }
 }

@@ -17,7 +17,7 @@ import {
   startBrief,
 } from './newCourse'
 import { removeCourse } from '../shared/remove'
-import { answer } from './answering'
+import { answer, check } from './answering'
 import { publicTask } from '../shared/format'
 import { reviewSession } from '../shared/again'
 import { revise } from './revise'
@@ -25,7 +25,7 @@ import { ask, attach, attached, newChat } from './tutor'
 import type { Ground } from './progress'
 import { fileInCourse } from '../shared/courseFile'
 import { POLICY } from '../shared/miniapp'
-import { answerTry, reachedEndOfLesson } from './study'
+import { answerTry, holdAnswer, reachedEndOfLesson, retakeTest, sittingFor } from './study'
 import type { PageType } from '../shared/format'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
@@ -152,6 +152,23 @@ function createWindow(): void {
           if (failure !== '') console.error(`capture step failed: ${step} -> ${failure}`)
           await wait(pause)
         }
+        /*
+         * Paint what the steps left, not what was last on top.
+         *
+         * A window that is not in front is composited lazily, and `capturePage` hands back
+         * whatever frame the compositor still holds. Measured: the png showed the library
+         * while the text beside it showed the Test three steps later, so a screenshot check
+         * was reading a page that had not existed for seconds. Turning throttling off and
+         * waiting for two animation frames makes the picture and the text the same moment.
+         */
+        window.webContents.setBackgroundThrottling(false)
+        window.showInactive()
+        window.moveTop()
+        window.webContents.invalidate()
+        await window.webContents.executeJavaScript(
+          'new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))',
+          true,
+        )
         const image = await window.webContents.capturePage()
         const { writeFileSync } = await import('node:fs')
         writeFileSync(capture, image.toPNG())
@@ -234,6 +251,47 @@ app.whenReady().then(() => {
         },
         report(event, run),
       ),
+  )
+
+  /**
+   * The sitting.
+   *
+   * Reading it, writing an answer down, checking one, and starting again. `tasks:check`
+   * returns the sitting rather than an outcome, and the sitting carries results only once
+   * every question in the Test is checked (docs/adr/0022).
+   */
+  ipcMain.handle('tasks:sitting', (_event, slug: string, testId: string) =>
+    sittingFor(slug, loadCourse(slug), progress(), testId),
+  )
+  ipcMain.handle('tasks:hold', (_event, slug: string, testId: string, taskId: string, given: unknown) =>
+    holdAnswer(slug, loadCourse(slug), progress(), testId, taskId, given),
+  )
+  ipcMain.handle(
+    'tasks:check',
+    (
+      event,
+      run: string,
+      slug: string,
+      testId: string,
+      taskId: string,
+      given: unknown,
+      grading?: { harnessId: string; model: string; submission?: string[] },
+    ) =>
+      check(
+        {
+          slug,
+          testId,
+          taskId,
+          given,
+          harnessId: grading?.harnessId ?? '',
+          model: grading?.model ?? '',
+          ...(grading?.submission === undefined ? {} : { submission: grading.submission }),
+        },
+        report(event, run),
+      ),
+  )
+  ipcMain.handle('tasks:retake', (_event, slug: string, testId: string) =>
+    retakeTest(slug, loadCourse(slug), progress(), testId),
   )
 
   /**

@@ -37,6 +37,28 @@ export interface AttemptRecord {
   outcome: 'pass' | 'fail' | 'voided'
   /** The Grader's whole answer, when there was one. Kept so a Verdict can be shown again. */
   verdictJson?: string
+  /**
+   * The sitting this Attempt was made in. Nullable, so every row written before a Test
+   * became a sitting stays valid, and a retake writes fresh Attempts under a new id with
+   * both sittings left in the record.
+   */
+  sittingId?: string
+}
+
+/**
+ * One answer, held.
+ *
+ * A Test is a sitting: the reader answers a question and presses Check, the run happens
+ * then, and the result is held until every question in the Test has been checked
+ * (docs/adr/0022). The row is written as the reader goes, so a half-answered Test survives
+ * a closed window, and it is left in place after the reveal so feedback is drawn from it.
+ */
+export interface HeldAnswer {
+  taskId: string
+  given: unknown
+  checked: boolean
+  /** What the check came back with. Never read before the reveal. */
+  result?: unknown
 }
 
 /**
@@ -79,6 +101,23 @@ export interface Progress {
    */
   earnTick(courseSlug: string, pageId: string, pageType: PageType): void
   recordAttempt(attempt: AttemptRecord): string
+  /**
+   * The sitting the reader is in, which is simply the most recent one. There is no open or
+   * closed flag: a revealed sitting is one whose every Task is checked, and that is derived
+   * from the rows rather than stored beside them.
+   */
+  currentSitting(courseSlug: string, testId: string): string | undefined
+  held(courseSlug: string, testId: string, sittingId: string): HeldAnswer[]
+  /** Write an answer down, checked or not. Called as the reader goes. */
+  hold(row: {
+    courseSlug: string
+    testId: string
+    taskId: string
+    sittingId: string
+    given: unknown
+    checked: boolean
+    result?: unknown
+  }): void
   attemptedTaskIds(courseSlug: string): Set<string>
   /** Every Attempt against this Course, for the missed list and a review draw. */
   attemptsFor(courseSlug: string): Seen[]
@@ -138,6 +177,17 @@ export function openProgress(file: string): Progress {
       submittedAt TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS attempts_by_course ON attempts (courseSlug, taskId);
+    CREATE TABLE IF NOT EXISTS held_answers (
+      courseSlug TEXT NOT NULL,
+      testId     TEXT NOT NULL,
+      taskId     TEXT NOT NULL,
+      sittingId  TEXT NOT NULL,
+      givenJson  TEXT NOT NULL,
+      checked    INTEGER NOT NULL,
+      resultJson TEXT,
+      at         TEXT NOT NULL,
+      PRIMARY KEY (courseSlug, testId, taskId, sittingId)
+    );
     CREATE TABLE IF NOT EXISTS tutor_threads (
       id          TEXT PRIMARY KEY,
       courseSlug  TEXT NOT NULL,
@@ -174,6 +224,13 @@ export function openProgress(file: string): Progress {
     );
   `)
 
+  // A database written before a Test became a sitting has no `sittingId`. Adding the column
+  // keeps those Attempts, which is the point of the column being nullable at all.
+  const columns = db.prepare('PRAGMA table_info(attempts)').all() as { name: string }[]
+  if (!columns.some((column) => column.name === 'sittingId')) {
+    db.exec('ALTER TABLE attempts ADD COLUMN sittingId TEXT')
+  }
+
   const selectTicks = db.prepare('SELECT pageId, ticked, byUser FROM page_ticks WHERE courseSlug = ?')
   const countDone = db.prepare('SELECT COUNT(*) AS n FROM page_ticks WHERE courseSlug = ? AND ticked = 1')
   const upsert = db.prepare(`
@@ -188,9 +245,27 @@ export function openProgress(file: string): Progress {
     ON CONFLICT (courseSlug, pageId) DO NOTHING
   `)
   const insertAttempt = db.prepare(`
-    INSERT INTO attempts (id, courseSlug, taskId, objectiveId, depth, "check", outcome, verdictJson, submittedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO attempts
+      (id, courseSlug, taskId, objectiveId, depth, "check", outcome, verdictJson, sittingId, submittedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
+  // `rowid` breaks the tie. A retake writes its first row in the same millisecond as the
+  // sitting it follows, and on the timestamp alone the reader is handed back the sitting
+  // they just finished.
+  const latestSitting = db.prepare(
+    'SELECT sittingId FROM held_answers WHERE courseSlug = ? AND testId = ? ORDER BY at DESC, rowid DESC LIMIT 1',
+  )
+  const selectHeld = db.prepare(
+    'SELECT taskId, givenJson, checked, resultJson FROM held_answers WHERE courseSlug = ? AND testId = ? AND sittingId = ?',
+  )
+  const upsertHeld = db.prepare(`
+    INSERT INTO held_answers (courseSlug, testId, taskId, sittingId, givenJson, checked, resultJson, at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (courseSlug, testId, taskId, sittingId)
+    DO UPDATE SET givenJson = excluded.givenJson, checked = excluded.checked,
+                  resultJson = excluded.resultJson, at = excluded.at
+  `)
+  const dropHeld = db.prepare('DELETE FROM held_answers WHERE courseSlug = ?')
   const selectAttempted = db.prepare('SELECT DISTINCT taskId FROM attempts WHERE courseSlug = ?')
   const selectSeen = db.prepare(
     'SELECT taskId, outcome, submittedAt AS at FROM attempts WHERE courseSlug = ? ORDER BY submittedAt',
@@ -259,9 +334,39 @@ export function openProgress(file: string): Progress {
         attempt.check,
         attempt.outcome,
         attempt.verdictJson ?? null,
+        attempt.sittingId ?? null,
         new Date().toISOString(),
       )
       return id
+    },
+    currentSitting(courseSlug, testId) {
+      return (latestSitting.get(courseSlug, testId) as { sittingId: string } | undefined)?.sittingId
+    },
+    held(courseSlug, testId, sittingId) {
+      const rows = selectHeld.all(courseSlug, testId, sittingId) as {
+        taskId: string
+        givenJson: string
+        checked: number
+        resultJson: string | null
+      }[]
+      return rows.map((row) => ({
+        taskId: row.taskId,
+        given: JSON.parse(row.givenJson) as unknown,
+        checked: row.checked === 1,
+        ...(row.resultJson === null ? {} : { result: JSON.parse(row.resultJson) as unknown }),
+      }))
+    },
+    hold(row) {
+      upsertHeld.run(
+        row.courseSlug,
+        row.testId,
+        row.taskId,
+        row.sittingId,
+        JSON.stringify(row.given ?? null),
+        row.checked ? 1 : 0,
+        row.result === undefined ? null : JSON.stringify(row.result),
+        new Date().toISOString(),
+      )
     },
     attemptedTaskIds(courseSlug) {
       const rows = selectAttempted.all(courseSlug) as { taskId: string }[]
@@ -326,6 +431,7 @@ export function openProgress(file: string): Progress {
       // A Run is the spend ledger and outlives the Course it built, so it stays.
       dropTicks.run(courseSlug)
       dropAttempts.run(courseSlug)
+      dropHeld.run(courseSlug)
       dropThreads.run(courseSlug)
       dropDefects.run(courseSlug)
     },

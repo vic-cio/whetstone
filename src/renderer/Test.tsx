@@ -1,18 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Answer } from './Answer'
 import { Run } from './Prose'
 import { newRunId } from '../shared/harness'
 import { parseInline } from '../shared/markdown'
+import type { PublicTask } from '../shared/format'
 import type { RubricVerdict } from '../shared/verdict'
-import type { TestView } from '../main/study'
+import type { RevealedView, SittingView, TestView } from '../main/study'
 
 /**
- * A Test. The same reader in a different mode: Tasks are numbered, every answer is
- * recorded as an Attempt, and a wrong one offers another go.
+ * A Test, which is a sitting (docs/adr/0022).
+ *
+ * You answer a question and press Check. The run happens then, and the result is held.
+ * When the last question is checked, every result is revealed at once. There is no mark and
+ * no number: the reveal is the list of questions with a tick or a cross beside each.
  *
  * Nothing is timed and nothing is locked. A Test is a place to find out what you can do,
- * not a gate.
+ * not a gate, and `minutes` is what the Constructor thinks it takes rather than a clock.
  */
 export function Test({
   slug,
@@ -28,19 +32,62 @@ export function Test({
   /** Which harness judges a Task the host cannot. Unused by a deterministic one. */
   grading: { harnessId: string; model: string }
 }): React.JSX.Element {
-  const [scored, setScored] = useState<Record<string, RubricVerdict>>({})
+  const [sitting, setSitting] = useState<SittingView | undefined>(undefined)
+  const [feedback, setFeedback] = useState(false)
   const [reporting, setReporting] = useState('')
+
+  useEffect(() => {
+    setFeedback(false)
+    void window.whetstone.tasks.sitting(slug, test.id).then(setSitting)
+  }, [slug, test.id])
+
+  const checked = test.tasks.filter((task) => sitting?.answers[task.id]?.checked === true).length
+
+  const head = (
+    <div className="head">
+      <div>
+        <h1 className="title">{test.title}</h1>
+        <p className="sub">
+          {moduleTitle} / Test / {test.tasks.length} tasks
+          {test.minutes !== undefined && ` / about ${test.minutes} minutes`}
+        </p>
+      </div>
+    </div>
+  )
+
+  if (sitting === undefined) return head
+
+  if (sitting.revealed) {
+    return (
+      <>
+        {head}
+        <Reveal
+          test={test}
+          sitting={sitting}
+          feedback={feedback}
+          onFeedback={() => setFeedback(true)}
+          onRetake={() => {
+            void window.whetstone.tasks.retake(slug, test.id).then((fresh) => {
+              setFeedback(false)
+              setSitting(fresh)
+            })
+          }}
+        />
+      </>
+    )
+  }
 
   return (
     <>
-      <div className="head">
-        <div>
-          <h1 className="title">{test.title}</h1>
-          <p className="sub">
-            {moduleTitle} / Test / {test.tasks.length} tasks
-          </p>
-        </div>
-      </div>
+      {head}
+      {/*
+        Counting, never scoring. How many questions have been checked is a fact about where
+        the reader is in the sitting, and says nothing about how any of them went.
+      */}
+      <p className="sitting">
+        {checked} of {test.tasks.length} checked. Nothing is shown until you have checked
+        every question.
+      </p>
 
       {test.tasks.map((task, index) => (
         <div key={task.id} className="panel">
@@ -60,10 +107,22 @@ export function Test({
             </ul>
           )}
           <Answer
+            // Keyed to the sitting, so a retake gives every control a fresh one rather than
+            // the last sitting's answer still sitting in it.
+            key={`${sitting.id}-${task.id}`}
             question={task}
             slug={slug}
+            holding={{
+              ...(sitting.answers[task.id] === undefined ? {} : { given: sitting.answers[task.id]!.given }),
+              checked: sitting.answers[task.id]?.checked === true,
+              onChange: (given) => {
+                // Written down as it changes, so a half-answered Test survives a closed
+                // window. Nothing is judged here (PLAN 3.4).
+                void window.whetstone.tasks.hold(slug, test.id, task.id, given).then(setSitting)
+              },
+            }}
             send={async (given, submission) => {
-              const result = await window.whetstone.tasks.answer(
+              const result = await window.whetstone.tasks.check(
                 newRunId(),
                 slug,
                 test.id,
@@ -72,15 +131,11 @@ export function Test({
                 { ...grading, ...(submission === undefined ? {} : { submission }) },
               )
               if (result.at === 'trouble') return { trouble: result.message }
+              setSitting(result.sitting)
               onAnswered()
-              if (result.verdict?.kind === 'rubric') {
-                setScored((all) => ({ ...all, [task.id]: result.verdict as RubricVerdict }))
-              }
-              return result.outcome
+              return { checked: true }
             }}
           />
-
-          {scored[task.id] && <Scored verdict={scored[task.id]!} rubric={task.rubric ?? []} />}
 
           {/*
             A defect report is a claim that the Task itself is broken, on three grounds. It
@@ -98,6 +153,125 @@ export function Test({
     </>
   )
 }
+
+/**
+ * The reveal.
+ *
+ * Every question, in order, with a tick or a cross. No mark, no percentage and no count of
+ * how many went which way, because the moment there is a number at the top of this screen
+ * the whole design has been undone (docs/adr/0022).
+ */
+function Reveal({
+  test,
+  sitting,
+  feedback,
+  onFeedback,
+  onRetake,
+}: {
+  test: TestView
+  sitting: SittingView
+  feedback: boolean
+  onFeedback: () => void
+  onRetake: () => void
+}): React.JSX.Element {
+  return (
+    <>
+      <ul className="reveal">
+        {test.tasks.map((task, index) => {
+          const result = sitting.results?.[task.id]
+          return (
+            <li key={task.id} className={result?.passed ? 'ok' : 'no'}>
+              <span className="ptype">{String(index + 1).padStart(2, '0')}</span>
+              <span className="mark" aria-label={result?.passed ? 'Right' : 'Not right'}>
+                {result?.passed ? '✓' : '✗'}
+              </span>
+              <span className="q"><Run inline={parseInline(task.prompt)} /></span>
+            </li>
+          )
+        })}
+      </ul>
+
+      {feedback &&
+        test.tasks.map((task) => {
+          const result = sitting.results?.[task.id]
+          if (!result) return null
+          return <Feedback key={task.id} task={task} result={result} />
+        })}
+
+      {/* Under the list, and under the feedback once it is open, because both are read
+          downwards and a button in the middle of the reading is a button in the way. */}
+      <div className="acts">
+        {!feedback && (
+          <button type="button" className="quiet" onClick={onFeedback}>
+            Get feedback
+          </button>
+        )}
+        <button type="button" className="btn" onClick={onRetake}>
+          Retake
+        </button>
+      </div>
+    </>
+  )
+}
+
+/** One question after the reveal: what you gave, how it went, and the Course's own words. */
+function Feedback({ task, result }: { task: PublicTask; result: RevealedView }): React.JSX.Element {
+  return (
+    <div className="panel">
+      <div className="prow">
+        <span className={`chip depth-${task.depth}`}>{task.depth}</span>
+        <span className={`mark ${result.passed ? 'ok' : 'no'}`}>{result.passed ? '✓' : '✗'}</span>
+      </div>
+      <p className="q"><Run inline={parseInline(task.prompt)} /></p>
+      <p className="gave">
+        <b>You gave</b> {gave(task, result.given)}
+      </p>
+      {result.assertions !== undefined && (
+        <ul className="kass">
+          {result.assertions.map((assertion) => (
+            <li key={assertion.name} className={assertion.passed ? '' : 'f'}>
+              {assertion.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      {result.explanation !== undefined && (
+        <p className="why"><Run inline={parseInline(result.explanation)} /></p>
+      )}
+      {result.verdict?.kind === 'rubric' && (
+        <Scored verdict={result.verdict} rubric={task.rubric ?? []} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * What the reader gave, in the words of the question.
+ *
+ * An index is what the app recorded and it is meaningless to a person, so it is turned back
+ * into the option they pressed.
+ */
+function gave(task: PublicTask, given: unknown): string {
+  if (task.kind === 'multiple-choice' && Array.isArray(given)) {
+    const options = task.options ?? []
+    return given.map((index) => options[Number(index)] ?? String(index)).join(', ')
+  }
+  if (task.kind === 'ordering' && Array.isArray(given)) {
+    const items = task.items ?? []
+    return given.map((index) => items[Number(index)] ?? String(index)).join(' → ')
+  }
+  if (typeof given === 'string') return given === '' ? 'nothing' : given
+  if (typeof given === 'number') return String(given)
+  if (given !== null && typeof given === 'object' && 'files' in given) {
+    const held = given as { note?: unknown; files?: unknown }
+    const files = Array.isArray(held.files) ? held.files.map((file) => named(String(file))) : []
+    const note = typeof held.note === 'string' && held.note !== '' ? `, and: ${held.note}` : ''
+    return `${files.join(', ')}${note}`
+  }
+  return JSON.stringify(given)
+}
+
+const named = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
 
 /** A Rubric's score, one line per criterion, in the order the Task declared them. */
 function Scored({

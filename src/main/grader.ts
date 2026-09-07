@@ -68,6 +68,12 @@ export async function judge(
   model: string,
   onMoment: (moment: Moment) => void,
   submission: string[] = [],
+  /**
+   * The questions this one builds on, with the reader's own answers to them. The one
+   * exception to the amnesia above, and a narrow one: the right answers are not in here,
+   * so a wrong part a followed by a right method in part b passes part b (PLAN 3.15).
+   */
+  earlier: { id: string; prompt: string; given: unknown }[] = [],
 ): Promise<Grading> {
   const id = randomUUID()
   const folder = attemptDir(id)
@@ -77,6 +83,9 @@ export async function judge(
   // rather than being handed a blob, which is what lets it quote what it read.
   writeFileSync(join(folder, 'task.json'), `${JSON.stringify(publicTask(task), null, 2)}\n`)
   writeFileSync(join(folder, 'answer.txt'), typeof given === 'string' ? given : JSON.stringify(given, null, 2))
+  if (earlier.length > 0) {
+    writeFileSync(join(folder, 'earlier.json'), `${JSON.stringify(earlier, null, 2)}\n`)
+  }
   const attached: string[] = []
   for (const file of submission) {
     if (!existsSync(file)) continue
@@ -110,6 +119,7 @@ export async function judge(
         skills: furnished.skills,
         attached,
         writeFile,
+        earlier: earlier.length > 0,
       }),
       ...(writeFile ? {} : { schema: schemaFor(criteria) }),
     },

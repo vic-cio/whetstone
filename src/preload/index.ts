@@ -4,7 +4,7 @@ import type { IpcRendererEvent } from 'electron'
 import type { Answer, BuildResult } from '../main/build'
 import type { BrokenCourse, CourseSummary, OpenResult } from '../main/courseStore'
 import type { Moment } from '../shared/harness'
-import type { Answered } from '../main/answering'
+import type { Answered, Checked } from '../main/answering'
 import type { Ground, Thread } from '../main/progress'
 import type { PublicTask } from '../shared/format'
 import type { Removal } from '../shared/remove'
@@ -12,7 +12,7 @@ import type { Revision } from '../main/revise'
 import type { TutorReply } from '../main/tutor'
 import type { Outcome } from '../shared/grade'
 import type { PageType } from '../shared/format'
-import type { CourseView } from '../main/study'
+import type { CourseView, SittingView } from '../main/study'
 
 /**
  * The only bridge out of the renderer. One namespace per feature, no generic `invoke`,
@@ -99,6 +99,28 @@ const api = {
      * submits them, because the Grader copies them into the Attempt folder itself.
      */
     attach: (accepts: string[]): Promise<string[]> => ipcRenderer.invoke('tasks:attach', accepts),
+
+    /**
+     * A Test is a sitting (docs/adr/0022). The four calls below are that sitting: read what
+     * is written down, write an answer down, check one, and start again.
+     *
+     * `check` comes back with no outcome in it. What the page never holds it cannot show
+     * early, which is the same rule that keeps a Task's answer out of the renderer.
+     */
+    sitting: (slug: string, testId: string): Promise<SittingView> =>
+      ipcRenderer.invoke('tasks:sitting', slug, testId),
+    hold: (slug: string, testId: string, taskId: string, given: unknown): Promise<SittingView> =>
+      ipcRenderer.invoke('tasks:hold', slug, testId, taskId, given),
+    check: (
+      run: string,
+      slug: string,
+      testId: string,
+      taskId: string,
+      given: unknown,
+      grading?: { harnessId: string; model: string; submission?: string[] },
+    ): Promise<Checked> => ipcRenderer.invoke('tasks:check', run, slug, testId, taskId, given, grading),
+    retake: (slug: string, testId: string): Promise<SittingView> =>
+      ipcRenderer.invoke('tasks:retake', slug, testId),
   },
 
   /** The Tutor. Every call here starts with the reader pressing something. */

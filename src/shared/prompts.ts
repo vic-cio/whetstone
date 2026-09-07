@@ -53,6 +53,12 @@ export interface GraderAsk {
    * checked object; this one just has to be asked for.
    */
   writeFile: boolean
+  /**
+   * True when this question builds on earlier ones and `earlier.json` is beside it. The
+   * reader's own earlier answers are in that file, and the right ones are not, which is
+   * what makes it error carried forward rather than a second chance (PLAN 3.15).
+   */
+  earlier?: boolean
 }
 
 export function graderPrompt(ask: GraderAsk): string {
@@ -84,6 +90,15 @@ export function graderPrompt(ask: GraderAsk): string {
     ...(ask.attached.length === 0
       ? []
       : [`The reader also submitted ${ask.attached.join(', ')}, in this folder. Open and read them.`]),
+    ...(ask.earlier === true
+      ? [
+          '',
+          'This question builds on earlier ones. `earlier.json` holds those questions and the',
+          'answers this same reader gave to them, right or wrong. Judge the work in front of',
+          'you on their own earlier answers, not on what the earlier answers should have been.',
+          'A right method carried out on a wrong earlier answer passes.',
+        ]
+      : []),
     ...(ask.skills.length === 0 ? [] : ['', ...ask.skills]),
     '',
     ...shape,
