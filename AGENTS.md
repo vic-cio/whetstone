@@ -233,6 +233,14 @@ WHETSTONE_COURSES=$PWD/fixtures/courses WHETSTONE_DB=/tmp/probe.db WHETSTONE_THE
 `WHETSTONE_CAPTURE_WAIT` sets the pause between steps, in milliseconds, default 600. A page
 holding a Mini-app needs longer, because the frame has to load, draw and report.
 
+A step that begins `until:` is a condition, not an action: the run polls it and goes on as
+soon as it is true. Wait on a condition wherever a fixed pause is really a guess about how
+long something takes. A sealed frame loads, draws and reports on its own schedule, and on a
+busy machine that passes 1500ms, so `tests/sandbox.test.ts` waits for the frame's own
+message instead. `WHETSTONE_CAPTURE_UNTIL` is how long one condition gets, 20 minutes by
+default. Set it lower than `WHETSTONE_CAPTURE_LIMIT` in a test, so a condition that never
+goes true still writes the png and the json and fails on what it measured.
+
 `WHETSTONE_CAPTURE_SIZE`, as `2100x1150`, opens the window at that size. The reading column
 is centred and the margin takes the extra width, so a change to it looks right at the default
 1180 and can still be wrong on a wide screen. The screen caps the size it actually gets.

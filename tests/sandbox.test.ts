@@ -58,21 +58,37 @@ beforeAll(() => {
       WHETSTONE_DB: db,
       WHETSTONE_CAPTURE: shot,
       WHETSTONE_CAPTURE_WAIT: '1500',
+      // Each `until:` below gives up after this, so a real regression comes back as a
+      // false probe rather than as a run that hangs to the hard limit.
+      WHETSTONE_CAPTURE_UNTIL: '20000',
+      WHETSTONE_CAPTURE_LIMIT: '75000',
       WHETSTONE_CAPTURE_STEPS: JSON.stringify([
         // The listener has to be in the page, because a message posted out of the frame
         // is delivered to this window and nowhere else.
         'window.__probe = []; window.addEventListener("message", function (e) { window.__probe.push(e.data) })',
         open('Sandbox probe'),
         'document.querySelectorAll(".lname")[0].click()',
+        // The sealed frame has to load and run before it can ask for a review, and how
+        // long that takes is not fixed: on a busy machine it passes 1500ms. So wait for
+        // the ask itself, which the listener above records, rather than for a pause.
+        'until:window.__probe.some(function (m) { return m && m.type === "review" })',
+        // One pause, for the host to answer the ask. The pause runs after every step, so
+        // a step that does nothing is how a capture waits.
+        '0',
         // While the lesson is open, note whether the host held the review the hostile
         // mini-app asked for. The shot at the end is of a different page.
         'window.__probe.push({ type: "sawReview", value: document.body.innerText.indexOf("nothing happens until you press") >= 0 })',
         // Then the Test, from the rail, whose mini-app reports on its own. One run then
         // follows a report from inside the frame all the way to a recorded Attempt.
         'Array.from(document.querySelectorAll(".rail button")).filter(function (b) { return b.textContent.indexOf("The report arrives") === 0 })[0].click()',
+        // That frame loads on its own schedule too. Wait for its report, which carries
+        // what the task asks for, and then one pause for the host to judge and record it.
+        'until:window.__probe.some(function (m) { return m && m.value && m.value.placed === "ok" })',
+        '0',
         // Opening the tutor is not asking it anything. The panel draws, a thread is read
         // from the database, and nothing is spawned (test 15).
         'document.querySelector(".tstub").click()',
+        'until:document.querySelector(".tcompose") !== null',
         'window.__probe.push({ type: "sawTutor", value: document.querySelectorAll(".tcompose textarea").length })',
       ]),
     },
