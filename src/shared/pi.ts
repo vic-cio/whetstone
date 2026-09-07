@@ -72,6 +72,7 @@ export const piAdapter: Adapter = {
     // pi reports a turn's cost cumulatively per turn, so the run's cost is the sum of them.
     let spent = 0
     let session = ''
+    let trouble = ''
 
     return (line: string): Moment | undefined => {
       const trimmed = line.trim()
@@ -100,12 +101,21 @@ export const piAdapter: Adapter = {
           const usage = message?.['usage'] as Record<string, unknown> | undefined
           const cost = usage?.['cost'] as Record<string, unknown> | undefined
           spent += Number(cost?.['total'] ?? 0)
+          // A turn can end in an error the CLI still exits zero on. Found the hard way: a
+          // provider answered 403 because the account was out of credit, pi reported the
+          // turn as `stopReason: error`, exited cleanly, and the app recorded a success
+          // that had said nothing and cost nothing.
+          if (message?.['stopReason'] === 'error') {
+            trouble = sentence(String(message['errorMessage'] ?? ''))
+          }
           return undefined
         }
 
         // The run has stopped for good. Everything before this may be one turn of several.
         case 'agent_settled':
-          return { at: 'finished', usd: spent, ok: true, denied: [] }
+          return trouble === ''
+            ? { at: 'finished', usd: spent, ok: true, denied: [] }
+            : { at: 'failed', message: trouble }
 
         default:
           return undefined
@@ -154,4 +164,26 @@ function fromTurn(raw: unknown): Moment | undefined {
     }
   }
   return undefined
+}
+
+/**
+ * One plain sentence out of a provider's error.
+ *
+ * The provider's own message is the useful part and is usually already a sentence: "out of
+ * credit", "no such model". It is dug out of whatever JSON it arrived wrapped in, because a
+ * reader should be told what is wrong and never shown a status code and a brace.
+ */
+function sentence(raw: string): string {
+  if (raw === '') return 'The model provider refused the request.'
+  const at = raw.indexOf('{')
+  if (at >= 0) {
+    try {
+      const body = JSON.parse(raw.slice(at)) as { message?: unknown; error?: { message?: unknown } }
+      const said = String(body.message ?? body.error?.message ?? '')
+      if (said !== '') return said.endsWith('.') ? said : `${said}.`
+    } catch {
+      // Not JSON after all. The line below says something true instead.
+    }
+  }
+  return 'The model provider refused the request.'
 }

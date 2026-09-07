@@ -291,3 +291,50 @@ describe('the codex adapter', () => {
     expect(half(JSON.stringify(asked))?.at).toBe('doing')
   })
 })
+
+describe('a turn that ended in an error the CLI exited zero on', () => {
+  const turn = (errorMessage: string): string =>
+    JSON.stringify({ type: 'turn_end', message: { stopReason: 'error', errorMessage, usage: { cost: { total: 0 } } } })
+
+  it('is trouble, not a silent success', () => {
+    // Found by running one. The provider answered 403 because the account was out of
+    // credit, pi reported the turn as an error and exited cleanly, and the app recorded a
+    // success that had said nothing and cost nothing.
+    const read = piAdapter.reader()
+    read(turn('403: {"message":"Workspace lifetime budget of $1.00 exceeded. Contact your org admin.","code":403}'))
+    expect(read(JSON.stringify({ type: 'agent_settled' }))).toEqual({
+      at: 'failed',
+      message: 'Workspace lifetime budget of $1.00 exceeded. Contact your org admin.',
+    })
+  })
+
+  it('says something true when the error carries no sentence of its own', () => {
+    const read = piAdapter.reader()
+    read(turn('connection reset'))
+    expect(read(JSON.stringify({ type: 'agent_settled' }))).toEqual({
+      at: 'failed',
+      message: 'The model provider refused the request.',
+    })
+  })
+
+  it('shows no status code and no brace, whatever arrived', () => {
+    const read = piAdapter.reader()
+    read(turn('500: {"error":{"message":"upstream is having a moment"}}'))
+    const last = read(JSON.stringify({ type: 'agent_settled' }))
+    expect(last).toEqual({ at: 'failed', message: 'upstream is having a moment.' })
+    // The sentence itself carries no status code and no JSON, which is the claim.
+    const said = last?.at === 'failed' ? last.message : ''
+    expect(said).not.toMatch(/[{}]|\b500\b/)
+  })
+
+  it('still reports a good run as finished', () => {
+    const read = piAdapter.reader()
+    read(JSON.stringify({ type: 'turn_end', message: { stopReason: 'stop', usage: { cost: { total: 0.5 } } } }))
+    expect(read(JSON.stringify({ type: 'agent_settled' }))).toEqual({
+      at: 'finished',
+      usd: 0.5,
+      ok: true,
+      denied: [],
+    })
+  })
+})

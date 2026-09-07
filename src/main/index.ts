@@ -122,6 +122,27 @@ function createWindow(): void {
       void (async () => {
         await wait(900)
         for (const step of steps) {
+          /*
+           * A step beginning `until:` is a condition rather than an action: the run waits
+           * for it to go true before going on. Fixed pauses were the fragile part of
+           * driving a build, which takes minutes and takes a different number of them each
+           * time, and four attempts at one failed on the timing rather than on the app.
+           */
+          if (step.startsWith('until:')) {
+            const test = step.slice('until:'.length)
+            const deadline = Date.now() + Number(process.env['WHETSTONE_CAPTURE_UNTIL'] ?? 1_200_000)
+            let met = false
+            while (!met && Date.now() < deadline) {
+              met = await window.webContents.executeJavaScript(
+                `(() => { try { return Boolean(${test}) } catch { return false } })()`,
+                true,
+              )
+              if (!met) await wait(1500)
+            }
+            if (!met) console.error(`capture never saw: ${test}`)
+            continue
+          }
+
           // A step that misses is reported and skipped. A capture must always produce a
           // png: a hung one is a debugging session, not a check.
           const failure = await window.webContents.executeJavaScript(
