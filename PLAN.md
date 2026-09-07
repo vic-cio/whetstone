@@ -276,7 +276,7 @@ claude -p "<prompt>"
 
 Every flag above was checked against `claude 2.1.263` rather than taken from an earlier note.
 
-**The budget is the CLI's to keep, not ours.** `--max-budget-usd` stops the run at the cap. The app still reads `total_cost_usd` for the meter and the `runs` table, but it does not have to watch a stream and kill a process, and a run cannot overshoot while the app is deciding to. Pass the role's budget on every spawn.
+**The budget is the CLI's to keep when the CLI can keep it.** `pi` has no such flag, so its registry entry says `capsSpend: false` and the app watches the reported cost and stops the run itself. A cap nobody keeps is not a cap. For `claude`, `--max-budget-usd` stops the run at the cap. The app still reads `total_cost_usd` for the meter and the `runs` table, but it does not have to watch a stream and kill a process, and a run cannot overshoot while the app is deciding to. Pass the role's budget on every spawn.
 
 **`--restricted` is a second lock.** It removes the built-in tools that run commands or code, and WebFetch. The Tutor and Grader get it as well as their allow list, because two mechanisms that must both fail is the point of section 3.14.
 
@@ -496,7 +496,9 @@ The Tutor runs inside the Course folder and reads every file there, which is the
 
 Three layers, strongest first.
 
-1. **The tool allowance.** Two flags, and they do different things. Measured against two recorded runs of `claude 2.1.263`, not assumed. `--allowedTools` is a permission filter and not a tool filter: it named two tools and `system/init` still advertised 76. `--disallowedTools` is a real tool filter: every name it carried was absent from the advertised list. So a read-only role is made by the disallow list, and that list has to be exhaustive, because a run that named `Write`, `Edit` and `Bash` still advertised `NotebookEdit`. Whetstone names every writer and every outward-facing tool it knows of in one place, `READ_ONLY` in `src/shared/harness.ts`, and passes `--restricted` beside it, which also takes `WebFetch`. In the second recording that left 62 tools of 76.
+1. **The tool allowance, and it works the opposite way in the two CLIs measured so far.** In `pi 0.84.3` the allowlist is the real filter: told to write a file with `--tools "read,glob,grep"`, the run wrote nothing and said so itself. In `claude 2.1.263` the allow list changes nothing and the disallow list does the work. So "restrict the tools" is not one mechanism with two spellings, and an adapter is the right place for that difference to live. What follows is the Claude case.
+
+   Two flags, and they do different things. Measured against two recorded runs of `claude 2.1.263`, not assumed. `--allowedTools` is a permission filter and not a tool filter: it named two tools and `system/init` still advertised 76. `--disallowedTools` is a real tool filter: every name it carried was absent from the advertised list. So a read-only role is made by the disallow list, and that list has to be exhaustive, because a run that named `Write`, `Edit` and `Bash` still advertised `NotebookEdit`. Whetstone names every writer and every outward-facing tool it knows of in one place, `READ_ONLY` in `src/shared/harness.ts`, and passes `--restricted` beside it, which also takes `WebFetch`. In the second recording that left 62 tools of 76.
 
 2. **The permission mode.** `--permission-mode dontAsk` with `--permission-prompts none` denies anything the allowance did not already cover, and reports it rather than waiting for an answer nobody can give. This layer is not theoretical: told to write a file, the run called `Write` anyway, was refused with "No such tool available: Write. Write is disabled for this session, in subagents as well as here", went looking for `Edit` with `ToolSearch`, and gave up. Nothing was written. The clause about subagents matters, because `Task` is still advertised.
 
@@ -758,8 +760,16 @@ Three things settled during the build.
 
 **A bug found on the way, and it was not in this phase.** A harness spawned by the app got the app's environment, which on a Mac launched from Finder is almost nothing. `~/.zshrc` is read by an interactive shell and by nothing else, so a harness configured to take its key from `$OPENROUTER_API_KEY` found nothing, reported itself unauthenticated, and the app had no way to know why. This is the same class of problem as the PATH widening that was already there, and the PATH widening exists precisely because of it, so the environment was the half that was missed. The app now asks the login shell once for what it exports and merges it under anything Electron set. Found by measuring rather than by reasoning: a credential check run from a non-interactive shell disagreed with the same check in Victor's own terminal.
 
-**Phase 6. More harnesses.**
-Codex and pi adapters. Settings shows every harness and the models it declares. Verify each CLI's headless output format, tool restriction flags, structured-output support, and cost reporting from its own documentation at this point, not before. Where a CLI cannot restrict tools, the content hash from 3.14 is the only guard, and that must be stated in its registry entry.
+**Phase 6. More harnesses. In progress: pi done, Codex and Settings to come.**
+Verify each CLI's headless output format, tool restriction flags, structured-output support, and cost reporting by running it at this point, not before. Where a CLI cannot restrict tools, the content hash from 3.14 is the only guard, and that must be stated in its registry entry.
+
+**pi 0.84.3 is in, and it moved three things out of the adapter and into the registry.** A second harness was always going to say which of the assumptions in this plan were about harnesses and which were about `claude`, and the answer was three of them.
+
+- **Restriction runs the opposite way.** pi's `--tools` allowlist genuinely filters; `claude`'s does not, and its disallow list is what works. Measured both ways, against a run of each that was told to write a file and did not.
+- **A spend cap is not a given.** pi has no `--max-budget-usd`, so `capsSpend: false` in its entry and the app stops the run on the reported cost. Section 3.5 said the cap was the CLI's to keep, and that was a fact about one CLI.
+- **Structured output is not a given either.** pi has no `--json-schema`, so `validatesOutput: false`, and the Grader is told to write `verdict.json` for the app to check. That fallback was written in phase 4 against no second harness, and this is the first time it has had one.
+
+One thing that did not survive contact. The test that proves no raw tool name reaches the interface cannot be run over what a pi model says: pi's tools are called `read`, `write`, `edit` and `bash`, which are also ordinary English, and the recorded run's own answer contains the word "edit". So for pi the claim is about the lines the app writes, a status line and a file notice, rather than about the ones it relays.
 
 The skills a role is given already reach any harness, because they are files the prompt names rather than a plugin (section 3.9, decision record 0021). What is left for this phase is each CLI's own vocabulary: its tool names, which `denied()` in that CLI's adapter has to cover exhaustively, and its headless output, which its reader has to normalise into a `Moment`.
 

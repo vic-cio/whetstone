@@ -25,11 +25,25 @@ export const HarnessSchema = z.object({
   /** Which adapter builds this CLI's arguments and reads its output. */
   adapter: z.string().min(1),
   models: z.array(z.string().min(1)).min(1),
+  /** Some CLIs name a provider separately from the model. Passed only when it is set. */
+  provider: z.string().min(1).optional(),
   /**
    * Set when this CLI cannot restrict its own tools, so the content hash of PLAN 3.14 is
-   * the only guard left. Phase 6 has to fill this in per CLI rather than assume it.
+   * the only guard left. Measured per CLI, never assumed.
    */
   restrictsTools: z.boolean().default(true),
+  /**
+   * Whether this CLI keeps a spend cap itself. `claude` does, with `--max-budget-usd`, and
+   * `pi` has no such flag, so the app watches the cost and stops the run. A cap nobody keeps
+   * is not a cap (PLAN 3.5).
+   */
+  capsSpend: z.boolean().default(false),
+  /**
+   * Whether this CLI validates its own structured output against a schema. When it does not,
+   * the Grader is told to write `verdict.json` and the app validates that instead. Both paths
+   * end in the same checked object (PLAN 3.11).
+   */
+  validatesOutput: z.boolean().default(false),
 })
 export type Harness = z.infer<typeof HarnessSchema>
 

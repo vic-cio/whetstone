@@ -55,3 +55,27 @@ list is not evidence that nothing was refused. The content hash of PLAN 3.14 sta
 
 Do not regenerate these by hand. Re-record with a real spawn, and say in the commit which
 CLI version produced it.
+
+## `pi-refused-a-write.jsonl`
+
+One run of `pi 0.84.3` on `openrouter/~openai/gpt-mini-latest`, in a folder holding one
+lesson, told to write `note.txt` and to edit the lesson, with `--tools "read,glob,grep"`.
+`tests/pi.test.ts` runs against it.
+
+It wrote nothing, and pi differs from `claude` in three ways that all had to be run to find.
+
+**The allowlist is the real filter here.** `--tools` genuinely restricts. The run wrote
+nothing and said so itself: "I only have read/search access, not write access." That is the
+opposite of `claude`, where the allow list changed nothing and the disallow list did the
+work. Two CLIs, opposite flags, same read-only role.
+
+**It keeps no spend cap.** There is no `--max-budget-usd`, so the app watches the cost and
+stops the run. `capsSpend: false` in its registry entry.
+
+**It validates no structured output.** There is no `--json-schema`, so a Grader run is told
+to write `verdict.json` and the app checks that. `validatesOutput: false`.
+
+Two smaller things. The stream is one event per token and each event carries the whole usage
+object, so the reader ignores far more than it keeps. And pi's tool names are ordinary
+English words, so the "no raw tool name reached the interface" scan that works for `claude`
+cannot be run over what the model said: this run's own answer contains the word "edit".

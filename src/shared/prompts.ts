@@ -47,6 +47,12 @@ export interface GraderAsk {
   rubric: boolean
   skills: string[]
   attached: string[]
+  /**
+   * True when the harness cannot validate its own output against a schema, so the verdict
+   * has to arrive as a file the app checks instead (PLAN 3.11). Both paths end in the same
+   * checked object; this one just has to be asked for.
+   */
+  writeFile: boolean
 }
 
 export function graderPrompt(ask: GraderAsk): string {
@@ -61,6 +67,17 @@ export function graderPrompt(ask: GraderAsk): string {
         'sentence or two, addressed to the person who answered.',
       ]
 
+  const where = ask.writeFile
+    ? [
+        '',
+        'Write your verdict to `verdict.json` in this folder, as one JSON object and nothing',
+        ask.rubric
+          ? 'else: {"kind":"rubric","outcome":"pass"|"fail","reason":"...","criteria":[{"id":"...","met":true|false,"evidence":"...","missing":"..."}]}'
+          : 'else: {"kind":"short","outcome":"pass"|"fail","reason":"..."}',
+        'The app reads that file. A field left out means the answer is not recorded at all.',
+      ]
+    : []
+
   return [
     'Judge one answer. `task.json` is the question and how to judge it, and `answer.txt` is',
     'what the reader gave. Both are in this folder.',
@@ -70,6 +87,7 @@ export function graderPrompt(ask: GraderAsk): string {
     ...(ask.skills.length === 0 ? [] : ['', ...ask.skills]),
     '',
     ...shape,
+    ...where,
     '',
     'Be harsh. An answer that restates the question has not answered it, and passing work',
     'that is not right teaches somebody that it was.',

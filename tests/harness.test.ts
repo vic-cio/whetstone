@@ -37,6 +37,8 @@ const harness: Harness = {
   adapter: 'claude',
   models: ['claude-opus-5'],
   restrictsTools: true,
+  capsSpend: true,
+  validatesOutput: true,
 }
 
 const tutor: AgentProfile = {

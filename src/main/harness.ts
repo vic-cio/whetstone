@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import { MARK, readEnvironment } from '../shared/environment'
 import { claudeAdapter } from '../shared/claude'
+import { piAdapter } from '../shared/pi'
 import { readRegistry } from '../shared/harness'
 import type { Adapter, Harness, Moment, SpawnRequest } from '../shared/harness'
 
@@ -21,7 +22,7 @@ import type { Adapter, Harness, Moment, SpawnRequest } from '../shared/harness'
  * an app failure and says one plain sentence (PLAN 3.6, rule 3).
  */
 
-const ADAPTERS: Record<string, Adapter> = { claude: claudeAdapter }
+const ADAPTERS: Record<string, Adapter> = { claude: claudeAdapter, pi: piAdapter }
 
 /** Where the files the app hands a harness live: the registry, the roles, the bundles. */
 export function agentDir(): string {
@@ -176,6 +177,7 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
   let session = ''
   let failure: string | undefined
   let cancelled = false
+  let overspent = false
   let rest = ''
 
   const take = (moment: Moment): void => {
@@ -183,6 +185,22 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
     if (moment.at === 'finished') usd = moment.usd
     if (moment.at === 'failed') failure = moment.message
     onMoment(moment)
+  }
+
+  /**
+   * Stop a run that is over its cap, when the CLI will not stop itself.
+   *
+   * `claude` keeps the cap with `--max-budget-usd` and this never fires. `pi` has no such
+   * flag, so the app is the only thing standing between a loop and the user's credit. A cap
+   * nobody keeps is not a cap.
+   */
+  const watchSpend = (moment: Moment): void => {
+    if (request.harness.capsSpend || overspent) return
+    const so_far = moment.at === 'finished' ? moment.usd : 0
+    if (so_far > 0 && so_far > request.profile.budgetUsd) {
+      overspent = true
+      child.kill('SIGTERM')
+    }
   }
 
   child.stdout.setEncoding('utf8')
@@ -193,7 +211,10 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
     rest = parts.pop() ?? ''
     for (const line of parts) {
       const moment = read(line)
-      if (moment) take(moment)
+      if (moment) {
+        take(moment)
+        watchSpend(moment)
+      }
     }
   })
 
@@ -223,6 +244,12 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
       }
       if (cancelled) {
         finish(false, 'The run was stopped.')
+        return
+      }
+      if (overspent) {
+        const message = 'The run reached its spend cap before it finished.'
+        onMoment({ at: 'failed', message })
+        finish(false, message)
         return
       }
       if (failure !== undefined) {

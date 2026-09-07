@@ -7,6 +7,7 @@ import { asTrouble, readVerdict, schemaFor } from '../shared/verdict'
 import { harnessById } from './build'
 import { start } from './harness'
 import { attemptDir, furnish, readerProfile } from './workspace'
+import type { AgentProfile } from '../shared/harness'
 import type { Moment } from '../shared/harness'
 import type { Judgement } from '../shared/verdict'
 import type { Task } from '../shared/format'
@@ -26,6 +27,18 @@ import type { Task } from '../shared/format'
 
 /** A short answer is one turn. A rubric is a person's work, and is worth more (PLAN 3.12). */
 const CAP = { short: 0.1, rubric: 1 }
+
+/**
+ * The Grader's allowance.
+ *
+ * It reads, and on a harness that cannot validate its own output it also writes, because
+ * the verdict has to arrive as a file. That write is confined to the Attempt folder, which
+ * is the run's working directory and holds nothing but this one Attempt.
+ */
+function graderProfile(cwd: string, budgetUsd: number, writeFile: boolean): AgentProfile {
+  const profile = readerProfile('grader', cwd, budgetUsd, [])
+  return writeFile ? { ...profile, can: ['read', 'write'], restricted: false } : profile
+}
 
 export interface Grading {
   judgement: Judgement
@@ -65,6 +78,8 @@ export async function judge(
 
   const harness = harnessById(harnessId)
   if (!harness) return { judgement: asTrouble('That harness is not configured.'), usd: 0, folder }
+  // A harness that cannot check its own output is asked for a file, and the app checks that.
+  const writeFile = !harness.validatesOutput
 
   const furnished = furnish(folder, 'grading', {
     updated: new Date().toISOString(),
@@ -81,9 +96,14 @@ export async function judge(
     {
       harness,
       model,
-      profile: readerProfile('grader', folder, task.check === 'rubric' ? CAP.rubric : CAP.short, []),
-      prompt: graderPrompt({ rubric: task.check === 'rubric', skills: furnished.skills, attached }),
-      schema: schemaFor(criteria),
+      profile: graderProfile(folder, task.check === 'rubric' ? CAP.rubric : CAP.short, writeFile),
+      prompt: graderPrompt({
+        rubric: task.check === 'rubric',
+        skills: furnished.skills,
+        attached,
+        writeFile,
+      }),
+      ...(writeFile ? {} : { schema: schemaFor(criteria) }),
     },
     (moment) => {
       if (moment.at === 'says') said += moment.text

@@ -14,6 +14,8 @@ src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade
                verdict.ts (what a Grader may come back with), guard.ts (a course put back),
                snapshot.ts (what the reader is doing), prompts.ts (what each role is told),
                again.ts (the missed list and a review draw), environment.ts (a login shell),
+               claude.ts and pi.ts (one adapter per harness, each holding that CLI's own
+               vocabulary and nothing else),
                miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
                samples.ts (keeping the shipped Courses current in a library),
                harness.ts (what a Harness is, and the Moment union), claude.ts (the CLI
@@ -78,7 +80,12 @@ tests/         vitest, run against the fixtures
   that way. `fileInCourse` calls `realpathSync` first.
 - **A Mini-app reports; it never decides.** `grade.ts` compares what the frame sent with what
   the Constructor wrote. An `assertions-pass` Task passes only on the assertions it declares.
-- **A role is shaped by what it denies, not by what it allows.** Measured, not assumed:
+- **How a role is restricted is per CLI, and both directions are real.** `pi`'s `--tools`
+  allowlist genuinely filters; `claude`'s does not, and its disallow list is what works. Both
+  measured by telling a read-only run to write a file. Never carry one CLI's mechanism to
+  another: run it and see. The same goes for a spend cap and for structured output, which
+  `claude` has and `pi` does not; those are `capsSpend` and `validatesOutput` in the registry.
+- **A role is shaped by what it denies, not by what it allows.** For `claude`, that is: Measured, not assumed:
   `--allowedTools` changed nothing about the tool list in a recorded run, and
   `--disallowedTools` removed exactly what it named. So `denied()` in `src/shared/claude.ts`
   has to name every writer and every outward-facing tool, and a writer it misses survives.

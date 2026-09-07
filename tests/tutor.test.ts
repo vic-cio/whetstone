@@ -123,20 +123,20 @@ describe('the snapshot a run reads', () => {
 
 describe('what the grader is told', () => {
   it('is harsh, and asked for a whole verdict or none', () => {
-    const rubric = graderPrompt({ rubric: true, skills: [], attached: [] })
+    const rubric = graderPrompt({ rubric: true, skills: [], attached: [], writeFile: false })
     expect(rubric).toContain('Score every criterion in `task.json`, one line each, and no others')
     expect(rubric).toContain('half a verdict is worse than none')
     expect(rubric).toContain('Be harsh')
   })
 
   it('judges a short answer against the guide the task carries', () => {
-    const short = graderPrompt({ rubric: false, skills: [], attached: [] })
+    const short = graderPrompt({ rubric: false, skills: [], attached: [], writeFile: false })
     expect(short).toContain('answerGuide')
     expect(short).not.toContain('criterion')
   })
 
   it('is told to open a submission rather than to expect it pasted in', () => {
-    expect(graderPrompt({ rubric: true, skills: [], attached: ['model.py'] })).toContain(
+    expect(graderPrompt({ rubric: true, skills: [], attached: ['model.py'], writeFile: false })).toContain(
       'The reader also submitted model.py, in this folder. Open and read them.',
     )
   })

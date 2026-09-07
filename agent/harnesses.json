@@ -5,8 +5,33 @@
       "label": "Claude Code",
       "command": "claude",
       "adapter": "claude",
-      "models": ["claude-opus-5", "claude-fable-5-1", "claude-sonnet-5", "claude-haiku-4-5"],
-      "restrictsTools": true
+      "models": [
+        "claude-opus-5",
+        "claude-fable-5-1",
+        "claude-sonnet-5",
+        "claude-haiku-4-5"
+      ],
+      "restrictsTools": true,
+      "capsSpend": true,
+      "validatesOutput": true
+    },
+    {
+      "id": "pi",
+      "label": "pi",
+      "command": "pi",
+      "adapter": "pi",
+      "provider": "openrouter",
+      "models": [
+        "~anthropic/claude-sonnet-latest",
+        "~anthropic/claude-opus-latest",
+        "~openai/gpt-latest",
+        "~openai/gpt-mini-latest",
+        "~google/gemini-pro-latest",
+        "~moonshotai/kimi-latest"
+      ],
+      "restrictsTools": true,
+      "capsSpend": false,
+      "validatesOutput": false
     }
   ]
 }
