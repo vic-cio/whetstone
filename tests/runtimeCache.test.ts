@@ -85,8 +85,11 @@ describe('gcRuntimeCache', () => {
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, 'course.json'), 'not json')
     putRuntime('python', '0.26.1')
-    expect(() => gcRuntimeCache(cacheRoot, coursesRoot)).not.toThrow()
-    expect(gcRuntimeCache(cacheRoot, coursesRoot)).toEqual(['python@0.26.1'])
+    let removed: string[] = []
+    expect(() => {
+      removed = gcRuntimeCache(cacheRoot, coursesRoot)
+    }).not.toThrow()
+    expect(removed).toEqual(['python@0.26.1'])
   })
 
   it('returns nothing removed when the cache does not exist yet', () => {
