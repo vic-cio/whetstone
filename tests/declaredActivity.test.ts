@@ -199,6 +199,52 @@ describe('crossCheckTaskAnswer: expected answer must not equal the widget\'s own
   })
 })
 
+describe('sim and plot: presentational widgets keep their own shape', () => {
+  it('is undefined for a sim\'s initialAnswer only when it carries no expected field, but the widget itself always has a starting state', () => {
+    const activity = DeclaredActivitySchema.parse({
+      id: 'act-sim',
+      widget: 'sim',
+      label: 'A little machine',
+      start: { count: 0 },
+      stepBody: 'return { count: state.count + 1 }',
+      drawBody: 'ctx.fillText(String(state.count), 10, 10)',
+    })
+    expect(initialAnswer(activity)).toEqual({ count: 0 })
+  })
+
+  it('compiles a sim activity using the declared step/draw bodies, not the raw start object as the answer', () => {
+    const activity = DeclaredActivitySchema.parse({
+      id: 'act-sim',
+      widget: 'sim',
+      label: 'A little machine',
+      start: { count: 0 },
+      stepBody: 'return { count: state.count + 1 }',
+      drawBody: 'ctx.fillText(String(state.count), 10, 10)',
+    })
+    const markup = compileActivity(activity)
+    expect(markup).toContain('Kit.sim(')
+  })
+
+  it('compiles a plot activity as presentation only, with no Kit.bridge.action', () => {
+    const activity = DeclaredActivitySchema.parse({ id: 'act-plot', widget: 'plot', label: 'A curve' })
+    const markup = compileActivity(activity)
+    expect(markup).toContain('Kit.plot(')
+    expect(markup).not.toContain('Kit.bridge.action(')
+    expect(markup).toContain('Kit.bridge.ready()')
+  })
+
+  it('compiles a steps activity as presentation only, with no Kit.bridge.action', () => {
+    const activity = DeclaredActivitySchema.parse({
+      id: 'act-steps',
+      widget: 'steps',
+      steps: [{ title: 'One', body: 'First' }, { title: 'Two', body: 'Second' }],
+    })
+    const markup = compileActivity(activity)
+    expect(markup).toContain('Kit.steps(')
+    expect(markup).not.toContain('Kit.bridge.action(')
+  })
+})
+
 describe('compileActivity', () => {
   it('renders an order activity as a Mini-app that reports via Kit.bridge.action, never a raw button', () => {
     const activity = DeclaredActivitySchema.parse({
