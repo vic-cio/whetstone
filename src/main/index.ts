@@ -214,7 +214,36 @@ function createWindow(): void {
   else void window.loadFile(join(here, '../renderer/index.html'))
 }
 
-app.whenReady().then(() => {
+/**
+ * `WHETSTONE_GATE_CHECK=<courseDir>::<appId>,<appId>` runs the execution gate against a
+ * folder directly and writes its result to `WHETSTONE_GATE_OUTPUT`, then quits — a narrow
+ * entry point for testing the gate itself without a full Constructor build or opening the
+ * app's own UI (`tests/executionGate.test.ts`). Not used by the app in ordinary use; the
+ * real gate runs from `src/main/build.ts`, inside the build loop.
+ */
+async function runGateCheckAndExit(): Promise<void> {
+  const spec = process.env['WHETSTONE_GATE_CHECK']
+  if (!spec) return
+  const outputPath = process.env['WHETSTONE_GATE_OUTPUT']
+  const [courseDir, appIdList] = spec.split('::')
+  const appIds = (appIdList ?? '').split(',').filter(Boolean)
+  const { checkAllMiniApps } = await import('./executionGate')
+  const { writeFileSync } = await import('node:fs')
+  try {
+    const errors = await checkAllMiniApps(courseDir ?? '', appIds)
+    if (outputPath) writeFileSync(outputPath, JSON.stringify({ errors }))
+  } catch (cause) {
+    if (outputPath) writeFileSync(outputPath, JSON.stringify({ errors: [], crash: String(cause) }))
+  }
+  app.exit(0)
+}
+
+app.whenReady().then(async () => {
+  if (process.env['WHETSTONE_GATE_CHECK']) {
+    await runGateCheckAndExit()
+    return
+  }
+
   protocol.handle('whetstone-course', serveCourseFile)
   protocol.handle('whetstone-app', (request) => serveMiniApp(request))
 

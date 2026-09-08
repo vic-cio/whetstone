@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { TOOLKIT_VERSION } from '../shared/miniapp'
+import { compileDeclaredActivities } from '../shared/declaredActivity'
+import { checkAllMiniApps } from './executionGate'
 import { substancePrompt, thin } from '../shared/substance'
 import {
   BRIEF,
@@ -267,8 +269,35 @@ export async function build(
 
     // Written before the check, so the folder the parser reads is the folder that moves in.
     stamp(folder, harness.id, choice.model)
+
+    // A declared activity compiles to an ordinary apps/<id>/index.html before the parser
+    // ever sees it, so everything downstream — the parser's own apps/ checks, the
+    // execution gate below, frameSource at runtime — treats it exactly like a hand-written
+    // Mini-app. Compiling can fail (the initial-state invariant, a malformed DSL
+    // assertion), and those failures are gate errors like any other.
+    const compileErrors = compileDeclaredActivities(folder)
+    if (compileErrors.length > 0) {
+      errors = compileErrors
+      complaints = []
+      onMoment({ at: 'doing', what: `Checking the course, and asking for ${errors.length} fix${errors.length === 1 ? '' : 'es'}` })
+      continue
+    }
+
     const gate = inspect(folder, root)
     if (gate.ok) {
+      // A Mini-app that exists, holds no external reference and matches the pinned
+      // toolkit can still throw on line one, draw no way to answer, or draw a button
+      // nobody can read. Booting it for real, once, at build time, is the only way to
+      // know (build-time only: a later toolkit update is not re-checked, since acting on
+      // a failure needs the Constructor, which may be unavailable or out of credit).
+      const executionErrors = gate.course.apps.length > 0 ? await checkAllMiniApps(folder, gate.course.apps) : []
+      if (executionErrors.length > 0) {
+        errors = executionErrors
+        complaints = []
+        onMoment({ at: 'doing', what: `Checking the course, and asking for ${errors.length} fix${errors.length === 1 ? '' : 'es'}` })
+        continue
+      }
+
       // Said out loud, because a course that tours its subject in an afternoon parses
       // exactly as well as one that teaches it, and the difference is a count.
       onMoment({ at: 'doing', what: `Read the course: ${sizeLine(gate.course)}` })
