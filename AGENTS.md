@@ -311,9 +311,35 @@ against the whole file before adding it.
 
 ## Packaging
 
-`npm run dist:mac` writes `dist/mac-arm64/Whetstone.app` and a dmg beside it. Apple
-Silicon only, and deliberately unsigned, so Gatekeeper quarantines a copy that has been
-moved or downloaded. Clear it with:
+`npm run dist:mac` writes `dist/mac-arm64/Whetstone.app`, a dmg and a zip. Apple Silicon
+only, and deliberately unsigned: signing for other people's machines needs a Developer ID
+certificate, which needs a paid Apple Developer Program membership, and this is a personal
+build. An **Apple Development** certificate is not a substitute; it covers your own
+registered devices and Gatekeeper still refuses the app everywhere else.
+
+So a copy that arrives by browser, AirDrop or Messages is quarantined, and macOS refuses it
+until somebody opens System Settings and says to open it anyway. The Control-click bypass
+that used to do this was removed in macOS 15.
+
+**Giving it to somebody is therefore the zip and `scripts/install.sh`, not the dmg.**
+
+```
+curl -fsSL https://github.com/vic-cio/whetstone/releases/latest/download/install.sh | bash
+```
+
+There is no dialog to click through because there is nothing quarantined: `curl` sets no
+quarantine attribute, unlike a browser, so the app is never marked in the first place. The
+script clears the attribute anyway for a copy that arrived some other way. Publish a release
+with the zip and the script beside each other:
+
+```
+npm run dist:mac
+gh release create v0.1.0 dist/Whetstone-*-arm64-mac.zip scripts/install.sh \
+  --title "Whetstone 0.1.0" --notes "..."
+```
+
+On your own machine, where the build never left the disk, nothing is quarantined either. A
+copy you have moved around can be cleared by hand:
 
 ```
 xattr -dr com.apple.quarantine /Applications/Whetstone.app

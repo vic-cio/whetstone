@@ -32,6 +32,10 @@ mac:
       arch: [arm64]
     - target: dmg
       arch: [arm64]
+    # A zip as well as a dmg, because `scripts/install.sh` unpacks one without mounting
+    # anything. A dmg is for a person dragging an icon; a zip is for a script.
+    - target: zip
+      arch: [arm64]
   category: public.app-category.education
   # Unsigned on purpose: this is a personal build, not something being distributed.
   identity: null
