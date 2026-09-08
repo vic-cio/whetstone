@@ -1,0 +1,16 @@
+{
+  "id": "tsk-missed-list",
+  "objective": "obj-sitting",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "A question you got wrong last week is on your missed list. You retake the test and get it right. What happens to it?",
+  "options": [
+    "It leaves the list, with no schedule and nothing due",
+    "It stays until you have got it right three times",
+    "It moves to a review queue with a date on it",
+    "It leaves the list and the old attempt is deleted"
+  ],
+  "answer": [0],
+  "explanation": "Missed is a plain list of what you got wrong and have not since got right. Getting it right removes it. The old attempt stays in the record: nothing is deleted to tidy the list up."
+}

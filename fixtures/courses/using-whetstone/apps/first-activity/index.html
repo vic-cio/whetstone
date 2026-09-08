@@ -1,0 +1,23 @@
+<!-- The smallest activity that shows the rule: a Mini-app reports, and the host judges.
+     This one is embedded twice. In a Lesson it is a toy and its Answer button records
+     nothing. In a Test it answers a Task, and the number it sends is compared against what
+     the course wrote down, in the main process, where the answer lives. -->
+<div id="app"></div>
+<script>
+  var dial = Kit.slider({
+    mount: '#app',
+    label: 'The dial',
+    min: 0,
+    max: 8,
+    step: 1,
+    value: 0,
+    format: function (value) { return String(value) },
+  })
+
+  // Nothing leaves the frame until this is pressed. There is no other way out.
+  Kit.bridge.action('Answer', function () {
+    return dial.value()
+  })
+
+  Kit.bridge.ready()
+</script>

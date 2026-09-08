@@ -10,6 +10,7 @@ import {
   addToTray,
   briefTray,
   buildCap,
+  buildingNow,
   buildCourse,
   cancelBrief,
   discardBrief,
@@ -553,6 +554,10 @@ app.whenReady().then(() => {
   )
 
   // ---------------------------------------------------------------- building a course
+
+  // Whether a build is going. The window asks on mount, so a reader who navigated away and
+  // came back is shown the build rather than an empty New Course screen.
+  ipcMain.handle('brief:status', () => buildingNow())
 
   ipcMain.handle('harnesses:list', () => harnesses())
 

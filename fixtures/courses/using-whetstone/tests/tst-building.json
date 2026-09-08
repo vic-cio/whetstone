@@ -1,0 +1,7 @@
+{
+  "id": "tst-building",
+  "title": "Making your own",
+  "module": "mod-3",
+  "minutes": 6,
+  "tasks": ["tsk-what-costs-money", "tsk-order-of-a-build", "tsk-broken-question", "tsk-where-a-course-lives"]
+}

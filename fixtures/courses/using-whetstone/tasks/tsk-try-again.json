@@ -1,0 +1,16 @@
+{
+  "id": "tsk-try-again",
+  "objective": "obj-pages",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "You want to practise a question you keep getting wrong, without another attempt going into the record. Where can you do that?",
+  "options": [
+    "In a lesson, where questions are never recorded",
+    "Nowhere: every question in the app is recorded",
+    "In a test, by not pressing Check at the end",
+    "In a review session, which is not recorded"
+  ],
+  "answer": [0],
+  "explanation": "A Lesson's questions are Tries and record nothing, however many times you answer them. A review session draws real Tasks, and those are recorded like any other attempt."
+}

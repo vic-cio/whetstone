@@ -6,14 +6,13 @@ directories:
 files:
   - out/**
   - package.json
-# The sample Courses ship beside the app and are copied into a brand-new courses root on
+# The sample Course ships beside the app and is copied into a brand-new courses root on
 # first run, so a fresh install opens with something to read rather than an empty library.
-# They sit on different toolkit versions on purpose: each carries the copy it was built on.
+# It is one course, and it is about the app: somebody opening this for the first time has
+# nothing of their own yet, and a course on somebody else's subject explains nothing.
 extraResources:
-  - from: fixtures/courses/gradients-by-hand
-    to: samples/gradients-by-hand
-  - from: fixtures/courses/forks-and-pins
-    to: samples/forks-and-pins
+  - from: fixtures/courses/using-whetstone
+    to: samples/using-whetstone
   # The toolkit this build ships. It is written into a Course at build time and nowhere
   # else: the host always injects the copy pinned inside the Course folder.
   - from: toolkit
@@ -36,6 +35,10 @@ mac:
     # anything. A dmg is for a person dragging an icon; a zip is for a script.
     - target: zip
       arch: [arm64]
+  # A fixed name, with no version in it. `scripts/install.sh` fetches
+  # `releases/latest/download/Whetstone-mac-arm64.zip`, and that URL can only resolve if
+  # every release calls the file the same thing.
+  artifactName: Whetstone-mac-${arch}.${ext}
   category: public.app-category.education
   # Unsigned on purpose: this is a personal build, not something being distributed.
   identity: null

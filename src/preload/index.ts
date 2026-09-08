@@ -55,6 +55,8 @@ const api = {
       ipcRenderer.invoke('brief:build', run, harnessId, model, brief),
     cancel: (): Promise<void> => ipcRenderer.invoke('brief:cancel'),
     discard: (): Promise<void> => ipcRenderer.invoke('brief:discard'),
+    /** Whether a build is going, so a window that navigated away can find its way back. */
+    status: (): Promise<{ building: boolean; since?: number }> => ipcRenderer.invoke('brief:status'),
   },
 
   /**

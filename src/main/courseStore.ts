@@ -75,10 +75,14 @@ export function coursesRoot(): string {
 }
 
 /**
- * The Courses that ship with the app. They sit on different toolkit versions on purpose,
- * which is what a pinned toolkit is for.
+ * The Course that ships with the app.
+ *
+ * One, and it is about the app. Somebody opening Whetstone for the first time has no course
+ * of their own and nothing to judge the thing by, and a library of courses on other people's
+ * subjects is a worse answer than one short course that explains what they are looking at.
+ * `gradients-by-hand` and `forks-and-pins` stay in `fixtures/` as what the tests run on.
  */
-const SAMPLES = ['gradients-by-hand', 'forks-and-pins']
+const SAMPLES = ['using-whetstone']
 
 /** Where a bundled sample Course lives, packaged or running from source. */
 function samplePath(name: string): string {

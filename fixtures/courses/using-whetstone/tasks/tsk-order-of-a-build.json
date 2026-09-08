@@ -1,0 +1,17 @@
+{
+  "id": "tsk-order-of-a-build",
+  "objective": "obj-building",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "ordering",
+  "prompt": "Put building a course in order, from the first thing you say to the course appearing in your library.",
+  "items": [
+    "You describe what you want to learn",
+    "You ask for an outline and read it",
+    "You press Build the course",
+    "The app reads the folder and sends back anything wrong or thin",
+    "The course appears in your library"
+  ],
+  "answer": [0, 1, 2, 3, 4],
+  "explanation": "The outline is the cheap place to find out the shape is wrong. Nothing reaches the library until the app has read the folder itself."
+}

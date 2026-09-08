@@ -1,0 +1,16 @@
+{
+  "id": "tsk-what-a-tick-counts",
+  "objective": "obj-pages",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "You work through a test and get every question wrong. What happens to the tick beside it?",
+  "options": [
+    "It fills, because the tick counts what you have been through",
+    "It stays empty until you pass something",
+    "It fills halfway",
+    "It fills, then clears when you retake the test"
+  ],
+  "answer": [0],
+  "explanation": "The tick counts and never scores. Attempting every question in a test is the whole condition, and how it went is not part of it."
+}

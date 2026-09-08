@@ -1,0 +1,17 @@
+{
+  "id": "tsk-order-of-a-sitting",
+  "objective": "obj-sitting",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "ordering",
+  "prompt": "Put a sitting in order, from answering the first question to seeing how it went.",
+  "items": [
+    "You answer a question and press Check",
+    "The attempt is recorded and the result is held",
+    "You check the last question in the test",
+    "Every result is revealed together",
+    "Get feedback goes through them one at a time"
+  ],
+  "answer": [0, 1, 2, 3, 4],
+  "explanation": "Checking happens question by question and telling happens once. The feedback screen comes after the reveal, not instead of it."
+}

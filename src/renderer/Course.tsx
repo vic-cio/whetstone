@@ -15,6 +15,7 @@ export function Course({
   onTick,
   onReview,
   onProject,
+  onRemove,
   onAddRung,
   onRemediate,
   onModule,
@@ -26,6 +27,8 @@ export function Course({
   onReview: () => void
   /** Open a Project. It is a page of its own and it carries no tutor panel. */
   onProject: (projectId: string) => void
+  /** Delete this Course. It asks first, and says what goes with it. */
+  onRemove: () => void
   /** Ask for another run at one Objective. An offer, and pressing it costs money. */
   onRemediate: (objective: { id: string; title: string }) => void
   /** Ask for Tasks at a Rung this Course does not use. Also an offer, and also money. */
@@ -54,6 +57,14 @@ export function Course({
             {course.pagesDone} of {course.pageCount} pages · {course.modules.length} modules
           </p>
         </div>
+        {/*
+          Deleting a course from the course itself, which is where somebody decides a course
+          is not worth keeping. The library row has the same control; this is the one you
+          find without going looking, and it asks before it does anything.
+        */}
+        <button type="button" className="quiet danger" onClick={onRemove}>
+          Delete course
+        </button>
       </div>
 
       <div className="prose">

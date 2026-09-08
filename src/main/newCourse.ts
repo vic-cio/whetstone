@@ -30,6 +30,36 @@ interface Brief {
 
 let current: Brief | undefined
 
+/**
+ * Whether a build is going.
+ *
+ * The build runs here, in the main process, so it survives the window navigating away from
+ * it. What did not survive was the folder: leaving the New Course screen calls
+ * `discardBrief`, which deletes the staging folder the run is writing into. Somebody
+ * clicking Home two minutes into a twenty-minute build destroyed it and was told nothing.
+ *
+ * So a Brief that is building is not discardable. Stop is the only thing that ends a build.
+ */
+let running: { since: number } | undefined
+
+export const buildingNow = (): { building: boolean; since?: number } =>
+  running === undefined ? { building: false } : { building: true, since: running.since }
+
+/**
+ * The two ends of a build, as one thing rather than two assignments.
+ *
+ * `buildCourse` calls both, and so does the test that proves a building Brief survives being
+ * asked to bin itself. That rule is the reason this state exists, so it is worth being able
+ * to check without spawning a harness for twenty minutes.
+ */
+export function buildStarted(): void {
+  running = { since: Date.now() }
+}
+
+export function buildEnded(): void {
+  running = undefined
+}
+
 /** A run reports through here, so the window can draw it as it happens. */
 export type Report = (moment: Moment) => void
 
@@ -110,6 +140,7 @@ export async function buildCourse(
     return { ok: false, folder: '', errors: [], attempts: 0, usd: 0, message: 'There is no course being planned.' }
   }
   const here = current
+  buildStarted()
   const run = progress().startRun({ kind: 'build', harness: harnessId, model })
 
   const result = await build(
@@ -121,6 +152,7 @@ export async function buildCourse(
     report,
   )
   here.usd += result.usd
+  buildEnded()
   progress().endRun(run, result.usd, result.ok ? 'ok' : 'failed')
 
   // A Course that made it into the library leaves nothing behind. One that did not keeps
@@ -130,12 +162,25 @@ export async function buildCourse(
 }
 
 /** Stop the run. A cancelled Brief bins its folder: there is no resume (PLAN 3.19). */
+/**
+ * Stop whatever is going, and bin the Brief. The one thing that ends a build, and it is a
+ * press on the build screen rather than a side effect of navigating.
+ */
 export function cancelBrief(): void {
   stopLive()
+  buildEnded()
   discardBrief()
 }
 
+/**
+ * Bin the Brief and its folder.
+ *
+ * Refused while a build is going, because that folder is what the run is writing into. This
+ * is called whenever the reader leaves the New Course screen, and leaving a screen must not
+ * destroy work that takes twenty minutes to make.
+ */
 export function discardBrief(): void {
+  if (running !== undefined) return
   if (current && existsSync(current.folder)) rmSync(current.folder, { recursive: true, force: true })
   current = undefined
 }

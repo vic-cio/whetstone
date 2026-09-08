@@ -1,0 +1,7 @@
+{
+  "id": "tst-the-sitting",
+  "title": "Being tested",
+  "module": "mod-2",
+  "minutes": 8,
+  "tasks": ["tsk-order-of-a-sitting", "tsk-when-results-appear", "tsk-missed-list", "tsk-try-again"]
+}

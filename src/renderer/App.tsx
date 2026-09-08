@@ -8,6 +8,8 @@ import { Tutor } from './Tutor'
 import { Lesson } from './Lesson'
 import { Test } from './Test'
 import { Project } from './Project'
+import { Building, describe, feedLine } from './Building'
+import type { BuildState } from './Building'
 import { newRunId } from '../shared/harness'
 import type { BrokenCourse, CourseSummary } from '../main/courseStore'
 import type { CourseView, PageView } from '../main/study'
@@ -28,6 +30,8 @@ type Route =
   | { at: 'review'; slug: string }
   | { at: 'settings' }
   | { at: 'page'; slug: string; pageId: string }
+  /** The build screen. A build outlives it, so this is a view of one rather than the run. */
+  | { at: 'building' }
   /** A Project: below the last Module, outside the reading order, and no tutor panel. */
   | { at: 'project'; slug: string; projectId: string }
 
@@ -42,6 +46,14 @@ export function App(): React.JSX.Element {
   const [tutorOpen, setTutorOpen] = useState(false)
   /** A revision run in flight. It costs money, so the page says so while it runs. */
   const [revising, setRevising] = useState('')
+  /**
+   * The build, which belongs to the window rather than to the New Course screen.
+   *
+   * It takes minutes, so the reader has to be able to go and read something else while it
+   * happens. Keeping it here is what lets them: leaving that screen leaves a page, and the
+   * run carries on in the main process. Only Stop ends it.
+   */
+  const [build, setBuild] = useState<BuildState | undefined>(undefined)
 
   /**
    * Which harness answers the questions the host cannot. One row per role, from Settings,
@@ -72,6 +84,25 @@ export function App(): React.JSX.Element {
     )
   }, [route.at])
 
+  // A build reports on the same channel as everything else, so anything that is not this
+  // build is read and dropped. The New Course screen and the Tutor do the same with theirs.
+  useEffect(
+    () =>
+      window.whetstone.runs.watch((run, moment) => {
+        setBuild((state) => {
+          if (!state || run !== state.run) return state
+          const line = feedLine(moment)
+          return {
+            ...state,
+            log: [...state.log, describe(moment)],
+            ...(line === undefined ? {} : { feed: [...state.feed, line] }),
+            ...(moment.at === 'finished' ? { spent: state.spent + moment.usd } : {}),
+          }
+        })
+      }),
+    [],
+  )
+
   const refreshLibrary = useCallback(() => {
     void window.whetstone.courses.list().then((result) => {
       setCourses(result.courses)
@@ -97,7 +128,9 @@ export function App(): React.JSX.Element {
 
   const goHome = useCallback(() => {
     // Leaving the brief bins it. A Run costs minutes rather than hours, so a half-written
-    // course kept for later is state to get wrong for very little (PLAN 3.19).
+    // course kept for later is state to get wrong for very little (PLAN 3.19). A brief that
+    // is building is not binned: the main process refuses, because the folder it would
+    // delete is the one the run is writing into.
     void window.whetstone.brief.discard()
     setRoute({ at: 'home' })
     setCourse(undefined)
@@ -105,15 +138,30 @@ export function App(): React.JSX.Element {
     refreshLibrary()
   }, [refreshLibrary])
 
+  /**
+   * Delete a Course.
+   *
+   * The warning says what actually goes, because two different things do: the folder, which
+   * is recoverable from the Trash, and everything the app recorded about it, which is not.
+   * Deleting the Course that is open also leaves the page it was being read on.
+   */
   const remove = useCallback(
     (slug: string, title: string) => {
-      if (!window.confirm(`Delete "${title}"? The folder goes to the Trash.`)) return
+      const asked = window.confirm(
+        `Delete "${title}"?\n\n` +
+          'The course folder goes to the Trash, so it can be recovered from there. Your ' +
+          'progress through it, your tutor conversations about it and any work you submitted ' +
+          'to it are deleted with it, and those cannot.',
+      )
+      if (!asked) return
       void window.whetstone.courses.remove(slug).then((result) => {
         if (!result.ok && result.message !== undefined) window.alert(result.message)
         refreshLibrary()
+        // Whatever was on screen is about a course that is not there any more.
+        if (route.at !== 'home' && route.at !== 'settings' && route.at !== 'new') goHome()
       })
     },
-    [refreshLibrary],
+    [refreshLibrary, goHome, route],
   )
 
   const page = route.at === 'page' ? findPage(course, route.pageId) : undefined
@@ -168,7 +216,7 @@ export function App(): React.JSX.Element {
           <button type="button" className="collapse" onClick={() => setRailOpen(false)}>
             ☰ hide
           </button>
-          {route.at === 'home' || route.at === 'new' || route.at === 'settings' ? (
+          {route.at === 'home' || route.at === 'new' || route.at === 'settings' || route.at === 'building' ? (
             <>
               <div className="brand">Whetstone</div>
               {courses.map((entry) => (
@@ -239,11 +287,49 @@ export function App(): React.JSX.Element {
 
         {route.at === 'new' && (
           <NewCourse
-            onOpen={(slug) => {
-              refreshLibrary()
-              openCourse(slug)
-            }}
             onLeave={goHome}
+            onBuild={(transcript, pick, cap) => {
+              const run = newRunId()
+              setBuild({ run, feed: [], log: [], spent: 0, cap })
+              setRoute({ at: 'building' })
+              void window.whetstone.brief
+                .build(run, pick.harnessId, pick.model, transcript)
+                .then((result) => {
+                  if (result.ok && result.slug !== undefined) {
+                    setBuild(undefined)
+                    refreshLibrary()
+                    openCourse(result.slug)
+                    return
+                  }
+                  setBuild((state) =>
+                    state === undefined
+                      ? undefined
+                      : {
+                          ...state,
+                          failed: {
+                            message: result.message ?? 'The course was not built.',
+                            errors: result.errors,
+                            folder: result.folder,
+                          },
+                        },
+                  )
+                })
+            }}
+          />
+        )}
+
+        {route.at === 'building' && build && (
+          <Building
+            state={build}
+            onStop={() => {
+              void window.whetstone.brief.cancel()
+              setBuild(undefined)
+              goHome()
+            }}
+            onClose={() => {
+              setBuild(undefined)
+              goHome()
+            }}
           />
         )}
 
@@ -262,6 +348,7 @@ export function App(): React.JSX.Element {
             }}
             onReview={() => setRoute({ at: 'review', slug: route.slug })}
             onProject={(projectId) => setRoute({ at: 'project', slug: route.slug, projectId })}
+            onRemove={() => remove(route.slug, course.title)}
             onModule={(module, kind, note) => {
               // Removing a Module takes its Attempts off the record first. An Attempt
               // against a question that no longer exists is a mark for something nobody
@@ -395,6 +482,21 @@ export function App(): React.JSX.Element {
           </div>
         )}
       </main>
+
+      {/*
+        A build, from anywhere else in the app.
+        
+        It runs for minutes in the main process, so the reader is free to go and read
+        something in the meantime. This is how they know it is still going and how they get
+        back to it, and it is the only thing in the window that follows them around.
+      */}
+      {build && route.at !== 'building' && (
+        <button type="button" className="ongoing" onClick={() => setRoute({ at: 'building' })}>
+          <span className="odot" aria-hidden="true" />
+          {build.failed ? 'A course was not built' : 'Building a course'}
+          <span className="ogo">{build.failed ? 'see why' : 'watch it'}</span>
+        </button>
+      )}
 
       {/*
         The Tutor. It exists only on a Page, because a conversation is about a Page, and it

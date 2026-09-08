@@ -1,0 +1,16 @@
+{
+  "id": "tsk-broken-question",
+  "objective": "obj-sitting",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "A question in a course you built rests on something that is simply not true. You flag it, and the model that wrote the course disagrees with you. What now?",
+  "options": [
+    "You can overrule it, and the report stands",
+    "The report is closed: the model that wrote it decides",
+    "It goes to a second model to break the tie",
+    "Nothing happens until you flag it again"
+  ],
+  "answer": [0],
+  "explanation": "The model reads the question and either agrees or names something you may have missed. It settles nothing. Upholding the report voids your attempts at that question and sends it back to be mended."
+}

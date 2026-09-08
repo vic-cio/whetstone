@@ -1,0 +1,16 @@
+{
+  "id": "tsk-what-a-lesson-records",
+  "objective": "obj-pages",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "A question inside a Lesson. You answer it wrong, then right. What is in the record afterwards?",
+  "options": [
+    "Nothing: a lesson records nothing",
+    "One attempt, the second one",
+    "Two attempts, in order",
+    "One attempt, marked as corrected"
+  ],
+  "answer": [0],
+  "explanation": "A question in a Lesson is a Try. Recorded questions live in a Test, which is the whole difference between the two page types."
+}

@@ -1,0 +1,56 @@
+{
+  "formatVersion": 1,
+  "id": "using-whetstone",
+  "title": "Using Whetstone",
+  "subject": "Whetstone",
+  "summary": "What the pieces of this app are, how a test works, and how to get a course built on something you actually want to learn.",
+  "toolkitVersion": "1.1.0",
+  "library": [],
+  "tags": ["whetstone"],
+  "small": true,
+  "projects": [],
+  "objectives": [
+    { "id": "obj-pages", "title": "Tell a Lesson from a Test, and know what each one records" },
+    { "id": "obj-sitting", "title": "Work through a Test as a sitting" },
+    { "id": "obj-building", "title": "Get a course built, and know what it costs" }
+  ],
+  "ladder": ["recall", "apply"],
+  "modules": [
+    {
+      "id": "mod-1",
+      "title": "What you are looking at",
+      "pages": [
+        { "type": "lesson", "id": "les-pages" },
+        { "type": "lesson", "id": "les-activities" },
+        { "type": "test", "id": "tst-reading" }
+      ]
+    },
+    {
+      "id": "mod-2",
+      "title": "Being tested",
+      "pages": [
+        { "type": "lesson", "id": "les-the-sitting" },
+        { "type": "lesson", "id": "les-coming-back" },
+        { "type": "test", "id": "tst-the-sitting" }
+      ]
+    },
+    {
+      "id": "mod-3",
+      "title": "Making your own",
+      "pages": [
+        { "type": "lesson", "id": "les-building" },
+        { "type": "test", "id": "tst-building" }
+      ]
+    }
+  ],
+  "suggestedOrder": [
+    "les-pages",
+    "les-activities",
+    "tst-reading",
+    "les-the-sitting",
+    "les-coming-back",
+    "tst-the-sitting",
+    "les-building",
+    "tst-building"
+  ]
+}

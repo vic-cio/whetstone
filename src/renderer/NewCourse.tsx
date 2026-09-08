@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { newRunId } from '../shared/harness'
-import type { Moment } from '../shared/harness'
-import type { CourseError } from '../shared/format'
 
 /**
  * New course.
@@ -33,11 +31,12 @@ interface Harnesses {
 const CAP = 3
 
 export function NewCourse({
-  onOpen,
   onLeave,
+  onBuild,
 }: {
-  onOpen: (slug: string) => void
   onLeave: () => void
+  /** Start the build. The window owns it from there, because it outlives this screen. */
+  onBuild: (transcript: string, pick: { harnessId: string; model: string }, cap: number) => void
 }): React.JSX.Element {
   const [said, setSaid] = useState<Said[]>([])
   const [draft, setDraft] = useState('')
@@ -50,12 +49,6 @@ export function NewCourse({
   const [changing, setChanging] = useState(false)
   /** What a build may spend. The user's own number, and the main process keeps it. */
   const [cap, setCap] = useState(CAP)
-
-  const [building, setBuilding] = useState(false)
-  const [feed, setFeed] = useState<string[]>([])
-  const [log, setLog] = useState<string[]>([])
-  const [spent, setSpent] = useState(0)
-  const [failed, setFailed] = useState<{ message: string; errors: CourseError[]; folder: string } | undefined>()
 
   // The answer as it is typed. It is a ref as well as state because a delta arrives many
   // times a second and every one of them would otherwise be a render of the whole page.
@@ -85,16 +78,14 @@ export function NewCourse({
         if (found.errors.length > 0) setTrouble(found.errors[0] as string)
       },
     )
+    // What this page listens for is the conversation, and only that. A build reports to the
+    // window, which owns it, because it goes on after this screen is gone.
     return window.whetstone.runs.watch((run, moment) => {
       if (run !== mine.current) return
-      setLog((lines) => [...lines, describe(moment)])
       if (moment.at === 'says') {
         typing.current += moment.text
         setLive(typing.current)
       }
-      if (moment.at === 'doing') setFeed((lines) => [...lines, moment.what])
-      if (moment.at === 'wrote') setFeed((lines) => [...lines, `Wrote ${moment.file}`])
-      if (moment.at === 'finished') setSpent((usd) => usd + moment.usd)
       if (moment.at === 'failed') setTrouble(moment.message)
     })
   }, [])
@@ -134,90 +125,17 @@ export function NewCourse({
     void exchange(undefined, () => window.whetstone.brief.outline(mine.current, pick.harnessId, pick.model))
   }
 
-  const build = async (): Promise<void> => {
+  /**
+   * Hand the build up, and stop watching it.
+   *
+   * A build takes minutes and outlives this screen, so it belongs to the window rather than
+   * to this page. The reader can go and read something else while it happens, and only Stop
+   * on the build screen ends it.
+   */
+  const build = (): void => {
     if (busy) return
-    setBuilding(true)
-    setFeed([])
-    setTrouble('')
     const transcript = said.map((entry) => `${entry.who === 'you' ? 'User' : 'You'}: ${entry.text}`).join('\n\n')
-    mine.current = newRunId()
-    const result = await window.whetstone.brief.build(mine.current, pick.harnessId, pick.model, transcript)
-    if (result.ok && result.slug !== undefined) {
-      onOpen(result.slug)
-      return
-    }
-    setBuilding(false)
-    setFailed({
-      message: result.message ?? 'The course was not built.',
-      errors: result.errors,
-      folder: result.folder,
-    })
-  }
-
-  const stop = (): void => {
-    void window.whetstone.brief.cancel()
-    setBuilding(false)
-    onLeave()
-  }
-
-  if (building) {
-    return (
-      <>
-        <div className="head">
-          <h1 className="title">Building</h1>
-          <button type="button" className="quiet" onClick={stop}>
-            Stop
-          </button>
-        </div>
-        <p className="empty">
-          This takes a few minutes. Nothing is added to your library until the course is finished and
-          the app has read it.
-        </p>
-        <ul className="feed">
-          {feed.map((line, index) => (
-            <li key={index}>{line}</li>
-          ))}
-          {feed.length === 0 && <li className="waiting">Starting</li>}
-        </ul>
-        <p className="spend">
-          ${spent.toFixed(2)} of ${cap.toFixed(2)}
-        </p>
-        <Log lines={log} />
-      </>
-    )
-  }
-
-  if (failed) {
-    return (
-      <>
-        <div className="head">
-          <h1 className="title">The course was not built</h1>
-          <button type="button" className="quiet" onClick={onLeave}>
-            Close
-          </button>
-        </div>
-        <p className="empty">{failed.message}</p>
-        {failed.errors.length > 0 && (
-          <div className="broken">
-            <h2>What the app could not read</h2>
-            <ul>
-              {failed.errors.slice(0, 8).map((error, index) => (
-                <li key={index}>
-                  {error.file}
-                  {error.field !== undefined ? ` · ${error.field}` : ''} — {error.message}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <p className="onward">
-          <button type="button" className="quiet" onClick={() => void window.whetstone.courses.reveal(failed.folder)}>
-            Show me the folder
-          </button>
-        </p>
-        <Log lines={log} />
-      </>
-    )
+    onBuild(transcript, pick, cap)
   }
 
   return (
@@ -340,44 +258,11 @@ export function NewCourse({
           <button type="button" disabled={busy || said.length === 0} onClick={outline}>
             Propose an outline
           </button>
-          <button type="button" className="btn" disabled={busy || said.length === 0} onClick={() => void build()}>
+          <button type="button" className="btn" disabled={busy || said.length === 0} onClick={build}>
             Build the course
           </button>
         </div>
       </div>
     </>
   )
-}
-
-/**
- * The technical log, closed by default and never opened by the app.
- *
- * It holds what the app understood, not the harness's own stream. The stream never crosses
- * the bridge, and adding a second channel to carry it would be a hole in the one thing the
- * first channel is for.
- */
-function Log({ lines }: { lines: string[] }): React.JSX.Element {
-  return (
-    <details className="log">
-      <summary>Technical log</summary>
-      <pre>{lines.join('\n')}</pre>
-    </details>
-  )
-}
-
-function describe(moment: Moment): string {
-  switch (moment.at) {
-    case 'started':
-      return `started ${moment.model}`
-    case 'says':
-      return `says ${moment.text.length} characters`
-    case 'doing':
-      return `doing ${moment.what}`
-    case 'wrote':
-      return `wrote ${moment.file}`
-    case 'finished':
-      return `finished $${moment.usd.toFixed(4)}${moment.denied.length > 0 ? ` (${moment.denied.join(', ')})` : ''}`
-    case 'failed':
-      return `failed ${moment.message}`
-  }
 }

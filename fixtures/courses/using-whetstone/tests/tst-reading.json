@@ -1,0 +1,7 @@
+{
+  "id": "tst-reading",
+  "title": "What you are looking at",
+  "module": "mod-1",
+  "minutes": 5,
+  "tasks": ["tsk-what-a-lesson-records", "tsk-what-a-tick-counts", "tsk-set-the-dial"]
+}

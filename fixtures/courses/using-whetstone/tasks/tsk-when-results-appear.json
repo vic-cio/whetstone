@@ -1,0 +1,16 @@
+{
+  "id": "tsk-when-results-appear",
+  "objective": "obj-sitting",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "A test has five questions. You have checked three. What do you know about how those three went?",
+  "options": [
+    "Nothing at all",
+    "How many of them passed",
+    "Which ones passed, but not why",
+    "The first one only, as a worked example"
+  ],
+  "answer": [0],
+  "explanation": "Held means held. The counter says how far through the sitting you are and nothing about how any question went, because knowing changes how you answer the next one."
+}

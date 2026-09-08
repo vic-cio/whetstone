@@ -1,0 +1,16 @@
+{
+  "id": "tsk-where-a-course-lives",
+  "objective": "obj-building",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "You want to send a course you built to a friend. What are you sending?",
+  "options": [
+    "A zip of the course folder, which is the whole course",
+    "A link, since courses live in the app's account",
+    "The course and your progress through it together",
+    "Nothing: a course is tied to the machine that built it"
+  ],
+  "answer": [0],
+  "explanation": "A course is a self-contained folder, and Export writes a zip of it. Your progress and your tutor conversations are kept separately and stay with you, so what you send is the course and nothing about you."
+}

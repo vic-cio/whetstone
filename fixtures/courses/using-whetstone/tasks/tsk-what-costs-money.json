@@ -1,0 +1,16 @@
+{
+  "id": "tsk-what-costs-money",
+  "objective": "obj-building",
+  "depth": "recall",
+  "check": "deterministic",
+  "kind": "multiple-choice",
+  "prompt": "You are on a train with no signal and no model configured. Which of these still works?",
+  "options": [
+    "Reading a lesson, playing its activities, and answering a test the app marks itself",
+    "Only reading: every question needs a model",
+    "Nothing: the app checks for a model at startup",
+    "Everything except building a new course"
+  ],
+  "answer": [0],
+  "explanation": "Most questions are answered by comparison inside the app, instantly and offline. A model is needed to build a course, to answer the tutor, and to mark a question that has to be read rather than compared."
+}

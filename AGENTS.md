@@ -67,6 +67,12 @@ tests/         vitest, run against the fixtures
   top-level array rather than a Page type, so they reach neither the rail nor the tick rules.
   A removal that would empty a Test is refused; a replacement is written instead.
   `docs/adr/0023`.
+- **A build outlives the screen that started it.** It runs in the main process and takes
+  minutes, so the reader is free to navigate away and come back; the bar at the foot of the
+  window is how they get back. Only Stop ends one. Leaving the New Course screen used to
+  call `discardBrief`, which deletes the staging folder the run is writing into, and that
+  destroyed two real builds before it was found. A Brief that is building refuses to be
+  discarded, and `tests/staging.test.ts` fails if that guard is removed.
 - **Most study needs no model.** Nothing spawns on navigation. A harness starts only when
   the user builds a Course, sends a chat message, submits work, or presses Review.
   `docs/adr/0012`.
@@ -334,7 +340,7 @@ with the zip and the script beside each other:
 
 ```
 npm run dist:mac
-gh release create v0.1.0 dist/Whetstone-*-arm64-mac.zip scripts/install.sh \
+gh release create v0.1.0 dist/Whetstone-mac-arm64.zip scripts/install.sh \
   --title "Whetstone 0.1.0" --notes "..."
 ```
 
@@ -345,8 +351,11 @@ copy you have moved around can be cleared by hand:
 xattr -dr com.apple.quarantine /Applications/Whetstone.app
 ```
 
-The courses root is seeded with the sample Courses from `fixtures/courses/`, which ship in
-the bundle under `Contents/Resources/samples/`. `src/shared/samples.ts` holds the rule and
+The courses root is seeded with one sample Course, `using-whetstone`, which ships in the
+bundle under `Contents/Resources/samples/`. It is a hand-written course about the app
+itself, so a first run opens with something that explains what the reader is looking at, and
+every question in it is one the app answers by itself: it works with no harness installed.
+`gradients-by-hand` and `forks-and-pins` stay in `fixtures/` as what the tests run against. `src/shared/samples.ts` holds the rule and
 `tests/samples.test.ts` pins it: **a sample is the app's content until the user touches it.**
 Each seeded folder carries a `.whetstone-sample` note holding the digest of what was written.
 A folder whose digest still matches its note has not been edited and is replaced when the app

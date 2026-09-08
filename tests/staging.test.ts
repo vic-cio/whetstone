@@ -336,3 +336,36 @@ describe('the size of a course', () => {
     expect(line).toContain('8 tasks')
   })
 })
+
+/**
+ * A build outlives the screen that started it.
+ *
+ * Leaving the New Course screen calls `discardBrief`, which deletes the staging folder. A
+ * run writes into that folder for twenty minutes, so a reader who clicked Home two minutes
+ * in destroyed the build and was told nothing. It happened twice while driving the app for
+ * a real build, which is how it was found.
+ */
+describe('a brief that is building', () => {
+  it('keeps its folder when something asks to bin it, and loses it once the build is over', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'whetstone-brief-'))
+    process.env['WHETSTONE_STAGING'] = root
+    const { buildStarted, buildEnded, buildingNow, startBrief, discardBrief } = await import(
+      '../src/main/newCourse'
+    )
+
+    const { id } = startBrief()
+    const folder = join(root, id)
+    expect(existsSync(folder)).toBe(true)
+
+    buildStarted()
+    expect(buildingNow().building).toBe(true)
+    discardBrief()
+    // The whole point: the folder the run is writing into is still there.
+    expect(existsSync(folder)).toBe(true)
+
+    buildEnded()
+    expect(buildingNow()).toEqual({ building: false })
+    discardBrief()
+    expect(existsSync(folder)).toBe(false)
+  })
+})

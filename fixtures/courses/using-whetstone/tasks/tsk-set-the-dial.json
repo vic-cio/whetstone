@@ -1,0 +1,11 @@
+{
+  "id": "tsk-set-the-dial",
+  "objective": "obj-pages",
+  "depth": "apply",
+  "check": "deterministic",
+  "kind": "app-result",
+  "app": "first-activity",
+  "prompt": "Set the dial to 5 and press Answer. The activity sends the number; the app decides whether it is right.",
+  "answer": 5,
+  "explanation": "The frame reported a number and the comparison happened outside it, where the answer is kept. That is why an activity cannot pass you on its own."
+}

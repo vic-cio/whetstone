@@ -612,6 +612,30 @@ pre.code {
 .tag:hover { border-color: var(--frame); }
 .tag.on { background: var(--amber); border-color: var(--amber); color: var(--on-amber); }
 
+/* A control that takes something away. Quiet until it is hovered, because it sits beside
+   ordinary controls and must not read as the thing to press. */
+.quiet.danger { color: var(--muted); }
+.quiet.danger:hover, .quiet.danger:focus-visible { color: var(--fail); border-color: var(--fail); }
+
+/* A build going on somewhere else. The one thing in the window that follows the reader
+   around, because a run they cannot find is a run they will cancel by accident. */
+.ongoing {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 40;
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--frame);
+  padding: 8px 14px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.ongoing:hover { border-color: var(--amber); }
+.ongoing .odot {
+  width: 6px; height: 6px; background: var(--amber); border-radius: 50%;
+  animation: obeat 1.4s ease-in-out infinite;
+}
+.ongoing .ogo { color: var(--amber); text-transform: uppercase; letter-spacing: 0.1em; }
+@keyframes obeat { 0%, 100% { opacity: 1 } 50% { opacity: 0.25 } }
+/* One frame, for anybody who asked the system not to animate things. */
+@media (prefers-reduced-motion: reduce) { .ongoing .odot { animation: none } }
+
 /* ---------------------------------------------------------------- a test is a sitting */
 
 /* How far through the sitting the reader is. A count, never a score: it says where they

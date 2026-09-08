@@ -1,0 +1,16 @@
+[
+  {
+    "id": "res-claude-code",
+    "url": "https://docs.claude.com/en/docs/claude-code/overview",
+    "title": "Claude Code",
+    "type": "documentation",
+    "why": "Anthropic's command line tool. Install it and log in, and Whetstone can use it for everything that needs a model."
+  },
+  {
+    "id": "res-codex-cli",
+    "url": "https://developers.openai.com/codex/cli/",
+    "title": "Codex CLI",
+    "type": "documentation",
+    "why": "OpenAI's command line tool, and the other one Whetstone knows how to spawn. Install whichever you already pay for."
+  }
+]
