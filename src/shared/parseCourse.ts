@@ -4,6 +4,7 @@ import matter from 'gray-matter'
 import type { ZodType } from 'zod'
 
 import { EXTERNAL, readToolkit } from './miniapp'
+import { DeclaredActivitySchema, crossCheckTaskAnswer } from './declaredActivity'
 import {
   ManifestSchema,
   TaskSchema,
@@ -177,6 +178,28 @@ export function parseCourse(dir: string): ParseResult {
     }
     if ('app' in task && typeof task.app === 'string' && !apps.includes(task.app)) {
       fail(file, `refers to a mini-app that does not exist: "${task.app}"`, 'app')
+    }
+
+    // A declared activity's own untouched starting state must never be the expected
+    // answer, or a reader who presses Answer without doing anything would pass. A
+    // bespoke, hand-written Mini-app carries no `activities/<id>.json`, so it is skipped
+    // here — the execution gate is what checks a bespoke Mini-app's behaviour instead.
+    if (task.kind === 'app-result' && typeof task.app === 'string') {
+      const activityFile = join(dir, 'activities', `${task.app}.json`)
+      if (existsSync(activityFile)) {
+        try {
+          const raw = JSON.parse(readFileSync(activityFile, 'utf8'))
+          const parsedActivity = DeclaredActivitySchema.safeParse(raw)
+          if (parsedActivity.success) {
+            const crossError = crossCheckTaskAnswer(task, parsedActivity.data, file)
+            if (crossError) fail(crossError.file, crossError.message, crossError.field)
+          }
+        } catch {
+          // The activity itself is validated, and any error reported, by
+          // `compileDeclaredActivities` at build time; a file that fails to read or
+          // parse here is not this loop's problem to report a second time.
+        }
+      }
     }
   }
 
