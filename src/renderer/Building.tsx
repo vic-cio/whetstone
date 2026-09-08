@@ -19,6 +19,9 @@ export interface BuildState {
   log: string[]
   spent: number
   cap: number
+  /** What the build was told to build, so it can be told again from where it stopped. */
+  transcript?: string
+  pick?: { harnessId: string; model: string }
   /** Set when the build is over and did not produce a Course. */
   failed?: { message: string; errors: CourseError[]; folder: string }
 }
@@ -27,12 +30,15 @@ export function Building({
   state,
   onStop,
   onClose,
+  onResume,
 }: {
   state: BuildState
   /** Ends the run and bins its folder. The only thing that does. */
   onStop: () => void
-  /** Leaves the failure screen. The build is over, so this only closes a page. */
+  /** Leaves the failure screen. What was written stays, so this only closes a page. */
   onClose: () => void
+  /** Carry on from where it stopped, on the same folder and the same session. */
+  onResume: () => void
 }): React.JSX.Element {
   if (state.failed) {
     return (
@@ -44,6 +50,17 @@ export function Building({
           </button>
         </div>
         <p className="empty">{state.failed.message}</p>
+        {/*
+          Everything the run wrote is still in its folder, and the harness's own session is
+          still resumable, so carrying on is genuinely carrying on. This is the ordinary
+          ending for a build that met a usage limit, which is not a fault and not a reason
+          to lose the work.
+        */}
+        <div className="acts">
+          <button type="button" className="btn" onClick={onResume}>
+            Carry on from here
+          </button>
+        </div>
         {state.failed.errors.length > 0 && (
           <ul className="feed">
             {state.failed.errors.slice(0, 8).map((error, index) => (
@@ -55,7 +72,7 @@ export function Building({
           </ul>
         )}
         {state.failed.folder !== '' && (
-          <div className="acts">
+          <div className="acts quiet-row">
             <button
               type="button"
               className="quiet"

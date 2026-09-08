@@ -283,6 +283,7 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
     for (const line of parts) {
       const moment = read(line)
       if (moment) {
+        if (moment.at === 'says') said = (said + moment.text).slice(-4000)
         take(moment)
         watchSpend(moment)
       }
@@ -291,6 +292,9 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
 
   // stderr is the harness talking to a terminal that is not there. It is kept only so a
   // failure with nothing else to say has something true to say.
+  // The tail of what the run said, kept only so a failure can be recognised by it. It never
+  // reaches the interface: what reaches the interface is the app's own sentence.
+  let said = ''
   let noise = ''
   child.stderr.setEncoding('utf8')
   child.stderr.on('data', (chunk: string) => {
@@ -342,7 +346,12 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
       }
       // An exit code means nothing to a student, so it becomes a sentence. The harness's
       // own noise is kept out of the interface and goes to the technical log instead.
-      const message = `${request.harness.label} stopped before it finished.`
+      //
+      // One kind of failure is worth naming, because it is the common one and because it
+      // is not a fault: a plan's usage limit. "Stopped before it finished" sends somebody
+      // looking for a bug in a course that was fine, and it hides the one useful fact,
+      // which is that waiting fixes it.
+      const message = limitReached(noise + said) ?? `${request.harness.label} stopped before it finished.`
       if (noise !== '') console.error(`[${request.harness.id}] ${noise}`)
       onMoment({ at: 'failed', message })
       finish(false, message)
@@ -359,6 +368,27 @@ export function start(request: SpawnRequest, onMoment: (moment: Moment) => void)
     },
     done,
   }
+}
+
+/**
+ * Whether a run died because a plan ran out rather than because anything is wrong.
+ *
+ * Every CLI says it differently and none of them says it in a field, so this reads the
+ * words. What it produces is the app's own sentence, plus the time the harness gave if it
+ * gave one: a person who knows the limit resets at six o'clock waits, and a person told
+ * "stopped before it finished" goes looking for a bug that is not there.
+ */
+export function limitReached(output: string): string | undefined {
+  if (!/usage limit|rate limit|rate_limit|quota|too many requests|429/i.test(output)) return undefined
+
+  // Claude Code prints `Claude AI usage limit reached|<seconds since the epoch>`.
+  const epoch = /usage limit reached\|(\d{9,})/i.exec(output)
+  const when = epoch?.[1] === undefined ? undefined : new Date(Number(epoch[1]) * 1000)
+  const at = when === undefined || Number.isNaN(when.getTime())
+    ? ''
+    : ` It resets at ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+
+  return `The plan behind this model has run out for now.${at} Nothing is lost: the course keeps what was written, and Resume carries on from there.`
 }
 
 /** A run that never started. It still reports the way a run reports, so callers have one path. */

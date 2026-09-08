@@ -67,6 +67,17 @@ tests/         vitest, run against the fixtures
   top-level array rather than a Page type, so they reach neither the rail nor the tick rules.
   A removal that would empty a Test is refused; a replacement is written instead.
   `docs/adr/0023`.
+- **A build that stopped is kept, and can be carried on.** The ordinary way one dies is a
+  plan's usage limit, which resets hours later with the app closed, so the Brief is written
+  into its own staging folder (`.whetstone/brief.json`: the session, the conversation, the
+  harness) rather than only held in memory. The home screen offers it back, and resuming
+  puts the run on the same folder and the same session, so it continues rather than starting
+  again. Only starting another course, or saying to throw it away, deletes it. A usage limit
+  is also named as one rather than reported as "stopped before it finished", because the
+  useful fact is that waiting fixes it.
+- **Staging is swept at launch.** Every Brief leaves a folder and nothing ever removed them.
+  The newest stopped build is kept, because that is the one being offered back; everything
+  else older than a day goes.
 - **A build outlives the screen that started it.** It runs in the main process and takes
   minutes, so the reader is free to navigate away and come back; the bar at the foot of the
   window is how they get back. Only Stop ends one. Leaving the New Course screen used to

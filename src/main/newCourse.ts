@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { build, harnessById, open, say, stagingRoot, stopLive } from './build'
 import { catalog, installed, registry } from './harness'
 import { progress } from './courseStore'
-import { trayContents } from '../shared/staging'
+import { HOUSE, trayContents } from '../shared/staging'
 import type { BuildResult, Choice, Tray } from './build'
 import type { Moment } from '../shared/harness'
 import type { Answer } from './build'
@@ -26,6 +26,30 @@ interface Brief {
   session?: string
   tray: Tray
   usd: number
+  /** The conversation the build was told to build, kept so it can be told again. */
+  transcript?: string
+  harnessId?: string
+  model?: string
+}
+
+/**
+ * What a stopped build leaves behind, so it can be picked up.
+ *
+ * A run that hits a usage limit stops in the middle, and the limit resets hours later, by
+ * which time the app has been closed. So the Brief is written into its own staging folder
+ * rather than only held in memory: the session to resume, the conversation the build was
+ * given, and which harness it was using. It lives under `.whetstone/`, which is the app's
+ * own and is removed at the gate, so it never travels with a Course.
+ */
+const STATE = 'brief.json'
+
+interface Stopped {
+  folder: string
+  at: string
+  transcript: string
+  harnessId: string
+  model: string
+  session?: string
 }
 
 let current: Brief | undefined
@@ -41,6 +65,15 @@ let current: Brief | undefined
  * So a Brief that is building is not discardable. Stop is the only thing that ends a build.
  */
 let running: { since: number } | undefined
+
+/**
+ * A build that stopped part way, and is being kept.
+ *
+ * A usage limit is the ordinary case: the run dies mid-course, the limit resets in hours,
+ * and everything it wrote is still on disk and still usable. Binning that because somebody
+ * closed the failure screen is the difference between an interruption and a loss.
+ */
+let kept = false
 
 export const buildingNow = (): { building: boolean; since?: number } =>
   running === undefined ? { building: false } : { building: true, since: running.since }
@@ -64,12 +97,121 @@ export function buildEnded(): void {
 export type Report = (moment: Moment) => void
 
 export function startBrief(): { id: string } {
-  discardBrief()
+  // Starting another course is the one thing that throws a stopped build away, because it
+  // is the one thing that says the reader is finished with it.
+  dropBrief()
   const id = randomUUID()
   const folder = join(stagingRoot(), id)
   current = { id, folder, tray: { files: [], links: [] }, usd: 0 }
   open(folder, current.tray)
   return { id }
+}
+
+/**
+ * Clear out staging folders nothing is coming back to.
+ *
+ * A folder is left behind by every Brief: one that was abandoned, one whose app was killed
+ * mid-build, one from a course that was built weeks ago. Nothing ever removed them, so they
+ * accumulated, each carrying a toolkit, a set of skills and a part-written course.
+ *
+ * The newest folder holding a stopped build is kept, because that is the one the reader is
+ * offered back. Everything else older than a day goes. Nothing from this session is touched,
+ * so a Brief being written now is never swept from under it.
+ */
+export function sweepStaging(): number {
+  const root = stagingRoot()
+  if (!existsSync(root)) return 0
+
+  const keep = resumable()?.at
+  const day = Date.now() - 24 * 60 * 60 * 1000
+  let gone = 0
+
+  for (const name of readdirSync(root)) {
+    const folder = join(root, name)
+    if (folder === keep || folder === current?.folder) continue
+    try {
+      if (statSync(folder).mtimeMs > day) continue
+      rmSync(folder, { recursive: true, force: true })
+      gone += 1
+    } catch {
+      // A folder that will not go is not worth failing a launch over.
+    }
+  }
+  return gone
+}
+
+/** Throw the Brief away, stopped build and all. Only a deliberate act calls this. */
+export function dropBrief(): void {
+  kept = false
+  discardBrief()
+}
+
+/** Write down what a stopped build would need to carry on, beside what it has written. */
+function remember(brief: Brief): void {
+  if (brief.transcript === undefined) return
+  const state: Stopped = {
+    folder: brief.folder,
+    at: new Date().toISOString(),
+    transcript: brief.transcript,
+    harnessId: brief.harnessId ?? '',
+    model: brief.model ?? '',
+    ...(brief.session === undefined ? {} : { session: brief.session }),
+  }
+  mkdirSync(join(brief.folder, HOUSE), { recursive: true })
+  writeFileSync(join(brief.folder, HOUSE, STATE), `${JSON.stringify(state, null, 2)}\n`)
+}
+
+/**
+ * A build that stopped and is still on disk, if there is one.
+ *
+ * Read from the folders rather than from memory, so it survives the app being closed, which
+ * is what happens while a usage limit resets. The newest one wins: the app holds one Brief
+ * at a time, so there is only ever one worth offering.
+ */
+export function resumable(): { at: string; started: string } | undefined {
+  const root = stagingRoot()
+  if (!existsSync(root)) return undefined
+
+  let best: Stopped | undefined
+  for (const name of readdirSync(root)) {
+    const file = join(root, name, HOUSE, STATE)
+    if (!existsSync(file)) continue
+    try {
+      const state = JSON.parse(readFileSync(file, 'utf8')) as Stopped
+      if (!best || state.at > best.at) best = { ...state, folder: join(root, name) }
+    } catch {
+      // A half-written state file is not a build worth offering back.
+    }
+  }
+  return best === undefined ? undefined : { at: best.folder, started: best.at }
+}
+
+/**
+ * Pick a stopped build back up.
+ *
+ * The folder is where it was, with everything the run had written still in it, and the
+ * harness's own session is resumed, so the run carries on rather than starting again.
+ */
+export function resumeBrief(folder: string): { ok: boolean; transcript?: string; harnessId?: string; model?: string } {
+  const file = join(folder, HOUSE, STATE)
+  if (!existsSync(file)) return { ok: false }
+  try {
+    const state = JSON.parse(readFileSync(file, 'utf8')) as Stopped
+    current = {
+      id: folder.split('/').filter(Boolean).pop() ?? 'resumed',
+      folder,
+      tray: { files: [], links: [] },
+      usd: 0,
+      transcript: state.transcript,
+      harnessId: state.harnessId,
+      model: state.model,
+      ...(state.session === undefined ? {} : { session: state.session }),
+    }
+    kept = true
+    return { ok: true, transcript: state.transcript, harnessId: state.harnessId, model: state.model }
+  } catch {
+    return { ok: false }
+  }
 }
 
 /** Add a file or a link to the tray. Both are copied into staging, where a run can read them. */
@@ -140,6 +282,10 @@ export async function buildCourse(
     return { ok: false, folder: '', errors: [], attempts: 0, usd: 0, message: 'There is no course being planned.' }
   }
   const here = current
+  here.transcript = brief
+  here.harnessId = harnessId
+  here.model = model
+  remember(here)
   buildStarted()
   const run = progress().startRun({ kind: 'build', harness: harnessId, model })
 
@@ -155,9 +301,15 @@ export async function buildCourse(
   buildEnded()
   progress().endRun(run, result.usd, result.ok ? 'ok' : 'failed')
 
-  // A Course that made it into the library leaves nothing behind. One that did not keeps
-  // its folder, so it can be opened, until the next build replaces it.
-  if (result.ok) current = undefined
+  // A Course that made it into the library leaves nothing behind. One that stopped keeps
+  // its folder and everything needed to carry on, until the reader starts another course.
+  if (result.ok) {
+    kept = false
+    current = undefined
+  } else {
+    kept = true
+    remember(here)
+  }
   return result
 }
 
@@ -181,6 +333,10 @@ export function cancelBrief(): void {
  */
 export function discardBrief(): void {
   if (running !== undefined) return
+  // A build that stopped keeps everything it wrote and everything needed to carry on. It
+  // is thrown away when the reader starts another course or says to throw it away, and not
+  // because they closed a screen.
+  if (kept) return
   if (current && existsSync(current.folder)) rmSync(current.folder, { recursive: true, force: true })
   current = undefined
 }

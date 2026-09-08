@@ -66,6 +66,8 @@ export function App(): React.JSX.Element {
     newer: false,
   })
   const [updating, setUpdating] = useState(false)
+  /** A build that stopped and is still on disk, offered on the home screen until it is used. */
+  const [stopped, setStopped] = useState<{ at: string; started: string } | undefined>(undefined)
 
   /**
    * Which harness answers the questions the host cannot. One row per role, from Settings,
@@ -119,6 +121,14 @@ export function App(): React.JSX.Element {
     void window.whetstone.update.check().then(setUpdate)
   }, [])
 
+  // A build that stopped part way. Read from the folder rather than from memory, so it is
+  // still there after the app has been closed for the hours a usage limit takes to reset.
+  const lookForStopped = useCallback(() => {
+    void window.whetstone.brief.resumable().then(setStopped)
+  }, [])
+  useEffect(lookForStopped, [lookForStopped])
+
+
   const refreshLibrary = useCallback(() => {
     void window.whetstone.courses.list().then((result) => {
       setCourses(result.courses)
@@ -141,6 +151,47 @@ export function App(): React.JSX.Element {
       }
     })
   }, [])
+
+  /**
+   * Start a build, or carry one on.
+   *
+   * The same call either way: the main process holds the folder and the harness's session,
+   * so a build that stopped on a usage limit continues where it was rather than beginning
+   * again. It is here rather than in the New Course screen because it outlives that screen.
+   */
+  const startBuild = useCallback(
+    (transcript: string, pick: { harnessId: string; model: string }, cap: number) => {
+      const run = newRunId()
+      setBuild({ run, feed: [], log: [], spent: 0, cap })
+      setRoute({ at: 'building' })
+      void window.whetstone.brief.build(run, pick.harnessId, pick.model, transcript).then((result) => {
+        if (result.ok && result.slug !== undefined) {
+          setBuild(undefined)
+          setStopped(undefined)
+          refreshLibrary()
+          openCourse(result.slug)
+          return
+        }
+        lookForStopped()
+        setBuild((state) =>
+          state === undefined
+            ? undefined
+            : {
+                ...state,
+                transcript,
+                pick,
+                cap,
+                failed: {
+                  message: result.message ?? 'The course was not built.',
+                  errors: result.errors,
+                  folder: result.folder,
+                },
+              },
+        )
+      })
+    },
+    [refreshLibrary, openCourse, lookForStopped],
+  )
 
   const goHome = useCallback(() => {
     // Leaving the brief bins it. A Run costs minutes rather than hours, so a half-written
@@ -319,6 +370,26 @@ export function App(): React.JSX.Element {
             onOpen={openCourse}
             onNew={() => setRoute({ at: 'new' })}
             onRemove={remove}
+            stopped={stopped}
+            onResume={() => {
+              if (!stopped) return
+              void window.whetstone.brief.resume(stopped.at).then((held) => {
+                if (!held.ok || held.transcript === undefined) {
+                  window.alert('That build could not be picked up.')
+                  lookForStopped()
+                  return
+                }
+                startBuild(
+                  held.transcript,
+                  { harnessId: held.harnessId ?? '', model: held.model ?? '' },
+                  update.current === '' ? 3 : 3,
+                )
+              })
+            }}
+            onForget={() => {
+              if (!window.confirm('Throw away the course that was being built? What it wrote is deleted.')) return
+              void window.whetstone.brief.drop().then(lookForStopped)
+            }}
           />
         )}
 
@@ -327,33 +398,7 @@ export function App(): React.JSX.Element {
         {route.at === 'new' && (
           <NewCourse
             onLeave={goHome}
-            onBuild={(transcript, pick, cap) => {
-              const run = newRunId()
-              setBuild({ run, feed: [], log: [], spent: 0, cap })
-              setRoute({ at: 'building' })
-              void window.whetstone.brief
-                .build(run, pick.harnessId, pick.model, transcript)
-                .then((result) => {
-                  if (result.ok && result.slug !== undefined) {
-                    setBuild(undefined)
-                    refreshLibrary()
-                    openCourse(result.slug)
-                    return
-                  }
-                  setBuild((state) =>
-                    state === undefined
-                      ? undefined
-                      : {
-                          ...state,
-                          failed: {
-                            message: result.message ?? 'The course was not built.',
-                            errors: result.errors,
-                            folder: result.folder,
-                          },
-                        },
-                  )
-                })
-            }}
+            onBuild={startBuild}
           />
         )}
 
@@ -363,11 +408,18 @@ export function App(): React.JSX.Element {
             onStop={() => {
               void window.whetstone.brief.cancel()
               setBuild(undefined)
+              setStopped(undefined)
               goHome()
             }}
             onClose={() => {
+              // What it wrote stays where it is, and the home screen offers it back.
               setBuild(undefined)
+              lookForStopped()
               goHome()
+            }}
+            onResume={() => {
+              if (build.transcript === undefined || build.pick === undefined) return
+              startBuild(build.transcript, build.pick, build.cap)
             }}
           />
         )}
@@ -561,6 +613,9 @@ function Home({
   onOpen,
   onNew,
   onRemove,
+  stopped,
+  onResume,
+  onForget,
 }: {
   courses: CourseSummary[]
   broken: BrokenCourse[]
@@ -568,6 +623,10 @@ function Home({
   onOpen: (slug: string) => void
   onNew: () => void
   onRemove: (slug: string, title: string) => void
+  /** A build that stopped part way and is still on disk, if there is one. */
+  stopped: { at: string; started: string } | undefined
+  onResume: () => void
+  onForget: () => void
 }): React.JSX.Element {
   /** The tag the library is filtered by, or nothing. One at a time, and never a search. */
   const [tag, setTag] = useState('')
@@ -587,6 +646,30 @@ function Home({
           New course
         </button>
       </div>
+
+      {/*
+        A build that stopped. The usual reason is a plan's usage limit, which resets hours
+        later with the app long closed, so this is offered here rather than only on the
+        screen it stopped on: the folder and the harness's session are both still there.
+      */}
+      {stopped && (
+        <div className="offer">
+          <b>A course was left part way through</b>
+          <span>
+            Building it stopped on {new Date(stopped.started).toLocaleString()}. Everything
+            written so far is still here, and carrying on continues from that point rather
+            than starting again.
+          </span>
+          <div className="acts">
+            <button type="button" className="quiet danger" onClick={onForget}>
+              Throw it away
+            </button>
+            <button type="button" className="btn" onClick={onResume}>
+              Carry on building it
+            </button>
+          </div>
+        </div>
+      )}
 
       {tags.length > 0 && (
         <div className="tags">

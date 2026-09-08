@@ -14,7 +14,11 @@ import {
   buildCourse,
   cancelBrief,
   discardBrief,
+  dropBrief,
   harnesses,
+  resumable,
+  resumeBrief,
+  sweepStaging,
   sendMessage,
   startBrief,
 } from './newCourse'
@@ -561,6 +565,18 @@ app.whenReady().then(() => {
   ipcMain.handle('brief:status', () => buildingNow())
 
   /**
+   * A build that stopped, and picking it up.
+   *
+   * A usage limit is the ordinary way a build dies, and the limit resets hours later with
+   * the app long closed. So this is read off the disk rather than out of memory, and
+   * resuming puts the run back on the same folder and the same session: it carries on
+   * rather than starting again.
+   */
+  ipcMain.handle('brief:resumable', () => resumable())
+  ipcMain.handle('brief:resume', (_event, folder: string) => resumeBrief(folder))
+  ipcMain.handle('brief:drop', () => dropBrief())
+
+  /**
    * Updating the app. The check runs once a launch and only reports; nothing is downloaded
    * or replaced without a press. It is the one thing here that touches the network on its
    * own, and it fails quietly, because no network is the ordinary state on a train.
@@ -666,6 +682,9 @@ app.whenReady().then(() => {
   // Ask each installed harness what models it reaches, without waiting. The answer takes a
   // few seconds and the window is drawn before anybody needs it.
   warmCatalogs()
+  // And clear out the staging folders nothing is coming back to. Every Brief leaves one,
+  // and until now none of them was ever removed.
+  sweepStaging()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

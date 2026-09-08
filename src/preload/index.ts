@@ -58,6 +58,19 @@ const api = {
     discard: (): Promise<void> => ipcRenderer.invoke('brief:discard'),
     /** Whether a build is going, so a window that navigated away can find its way back. */
     status: (): Promise<{ building: boolean; since?: number }> => ipcRenderer.invoke('brief:status'),
+    /**
+     * A build that stopped part way and is still on disk. A usage limit resets hours later,
+     * by which time the app has been closed, so this is read from the folder rather than
+     * from memory.
+     */
+    resumable: (): Promise<{ at: string; started: string } | undefined> =>
+      ipcRenderer.invoke('brief:resumable'),
+    resume: (
+      folder: string,
+    ): Promise<{ ok: boolean; transcript?: string; harnessId?: string; model?: string }> =>
+      ipcRenderer.invoke('brief:resume', folder),
+    /** Throw a stopped build away. The one deliberate way to lose it. */
+    drop: (): Promise<void> => ipcRenderer.invoke('brief:drop'),
   },
 
   /**

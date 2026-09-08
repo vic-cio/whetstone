@@ -1,4 +1,14 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -367,5 +377,68 @@ describe('a brief that is building', () => {
     expect(buildingNow()).toEqual({ building: false })
     discardBrief()
     expect(existsSync(folder)).toBe(false)
+  })
+})
+
+/**
+ * A build that stopped, and picking it up.
+ *
+ * The ordinary way a build dies is a plan's usage limit, which resets hours later with the
+ * app long closed. Measured on a real run: it stopped mid-course, said only "stopped before
+ * it finished", and the next click deleted everything it had written.
+ */
+describe('a build that stopped part way', () => {
+  it('names a usage limit as one, with the time it resets', async () => {
+    const { limitReached } = await import('../src/main/harness')
+    // What Claude Code prints, epoch and all.
+    const said = limitReached('Claude AI usage limit reached|1789200000')
+    expect(said).toContain('has run out for now')
+    expect(said).toContain('It resets at')
+    expect(said).toContain('Nothing is lost')
+
+    // Other shapes of the same thing, without a time in them.
+    expect(limitReached('Error: 429 Too Many Requests')).toContain('has run out for now')
+    expect(limitReached('rate limit exceeded')).toContain('has run out for now')
+    // And an ordinary failure stays an ordinary failure.
+    expect(limitReached('SyntaxError: unexpected token')).toBeUndefined()
+    expect(limitReached('')).toBeUndefined()
+  })
+
+  it('is kept on disk with what it needs to carry on, and swept when it is not', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'whetstone-stopped-'))
+    process.env['WHETSTONE_STAGING'] = root
+    const { resumable, resumeBrief, sweepStaging } = await import('../src/main/newCourse')
+
+    // A folder shaped like one a stopped build leaves behind.
+    const folder = join(root, 'a-stopped-build')
+    mkdirSync(join(folder, HOUSE), { recursive: true })
+    writeFileSync(
+      join(folder, HOUSE, 'brief.json'),
+      JSON.stringify({
+        folder,
+        at: new Date().toISOString(),
+        transcript: 'User: teach me strudel',
+        harnessId: 'pi',
+        model: 'openrouter/meta/muse-spark-1.3-contributor',
+        session: 'abc123',
+      }),
+    )
+
+    expect(resumable()?.at).toBe(folder)
+    const held = resumeBrief(folder)
+    expect(held.ok).toBe(true)
+    // The conversation and the harness come back, so the run is told the same thing again.
+    expect(held.transcript).toBe('User: teach me strudel')
+    expect(held.harnessId).toBe('pi')
+
+    // An abandoned folder from a week ago, which nothing is coming back to.
+    const old = join(root, 'abandoned')
+    mkdirSync(old, { recursive: true })
+    utimesSync(old, new Date(Date.now() - 8 * 24 * 3600 * 1000), new Date(Date.now() - 8 * 24 * 3600 * 1000))
+
+    expect(sweepStaging()).toBe(1)
+    expect(existsSync(old)).toBe(false)
+    // The one being offered back survives the sweep.
+    expect(existsSync(folder)).toBe(true)
   })
 })
