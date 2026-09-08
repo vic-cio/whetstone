@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { Answer } from './Answer'
+import { Codeblock } from './Codeblock'
 import { MiniApp } from './MiniApp'
 import { Prose, Run } from './Prose'
 import { parseInline } from '../shared/markdown'
@@ -113,6 +114,23 @@ export function Lesson({
                   <span className="ptype">Activity</span>
                 </div>
                 <MiniApp slug={slug} appId={block.id} {...(block.height === undefined ? {} : { height: block.height })} />
+              </div>
+            )
+
+          // A codeblock is a demonstration, like an `app` block: it runs and shows real
+          // output, and a Lesson records nothing either way.
+          case 'codeblock':
+            return (
+              <div key={index} className="panel">
+                <div className="prow">
+                  <span className="ptype">{block.label ?? 'Code'}</span>
+                </div>
+                <Codeblock
+                  slug={slug}
+                  lessonId={lesson.id}
+                  blockIndex={index}
+                  {...(block.height === undefined ? {} : { height: block.height })}
+                />
               </div>
             )
 

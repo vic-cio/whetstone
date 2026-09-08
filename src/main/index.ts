@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 import {
   appFrame,
+  codeblockFrame,
   coursesRoot,
   listCourses,
   loadCourse,
@@ -84,6 +85,14 @@ function serveCourseFile(request: Request): Promise<Response> {
  * of its own gives the frame a response with its own policy, and `sandbox="allow-scripts"`
  * still leaves it on an opaque origin with no reach into the host.
  */
+/**
+ * A Lesson codeblock has no `apps/<id>` folder to address, so it is routed by a reserved
+ * first path segment instead of an app id: `/__codeblock__/<lessonId>/<blockIndex>`. Real
+ * app ids can never collide with this because `:::app{id=...}` ids come from the
+ * Constructor and `__codeblock__` is not a shape the parser accepts for one (docs/adr/0025).
+ */
+const CODEBLOCK_PREFIX = '__codeblock__'
+
 function serveMiniApp(request: Request): Response {
   const url = new URL(request.url)
   const headers = {
@@ -91,7 +100,14 @@ function serveMiniApp(request: Request): Response {
     'Content-Security-Policy': POLICY,
   }
   try {
-    const document = appFrame(decodeURIComponent(url.hostname), decodeURIComponent(url.pathname).replace(/^\/+/, ''))
+    const slug = decodeURIComponent(url.hostname)
+    const path = decodeURIComponent(url.pathname).replace(/^\/+/, '')
+    const [first, lessonId, blockIndex] = path.split('/')
+
+    const document =
+      first === CODEBLOCK_PREFIX
+        ? codeblockFrame(slug, lessonId ?? '', Number(blockIndex))
+        : appFrame(slug, path)
     return new Response(document, { headers })
   } catch (cause) {
     // A Course the parser accepted always has its mini-apps, so this is a broken folder

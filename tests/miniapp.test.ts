@@ -3,7 +3,7 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { EXTERNAL, POLICY, TOOLKIT_VERSION, frameSource, readToolkit } from '../src/shared/miniapp'
+import { EXTERNAL, POLICY, TOOLKIT_VERSION, codeblockFrameSource, frameSource, readToolkit } from '../src/shared/miniapp'
 import { parseCourse } from '../src/shared/parseCourse'
 import type { Course } from '../src/shared/format'
 
@@ -166,6 +166,28 @@ describe('test 17 — a mini-app built from the toolkit has no colour of its own
     }
     expect(readToolkit(join(FIXTURE, 'toolkit'))?.version).toBe(TOOLKIT_VERSION)
     expect(readToolkit(join(CHESS, 'toolkit'))?.version).toBe(TOOLKIT_VERSION)
+  })
+})
+
+describe('the Lesson codeblock frame (docs/adr/0025)', () => {
+  it('carries the policy, the toolkit, then a Kit.codeblock call built from the block', () => {
+    const frame = codeblockFrameSource(FIXTURE, { lang: 'js', start: 'console.log(1)' })
+
+    expect(frame).toContain(POLICY)
+    const toolkit = frame.indexOf('whetstone-toolkit')
+    const call = frame.indexOf('Kit.codeblock(')
+    expect(toolkit).toBeGreaterThan(-1)
+    expect(call).toBeGreaterThan(toolkit)
+    expect(frame).toContain('"lang":"js"')
+    expect(frame).toContain('"start":"console.log(1)"')
+    expect(frame).toContain('Kit.bridge.ready()')
+  })
+
+  it('escapes a literal "</script>" in the starting code so it cannot close the tag early', () => {
+    const frame = codeblockFrameSource(FIXTURE, { lang: 'js', start: '"</script><script>evil()</script>"' })
+    expect(frame).not.toContain('</script><script>evil()')
+    // The real closing tag for the generated script is still there, just once.
+    expect(frame.match(/<\/script>/g)?.length).toBeGreaterThan(0)
   })
 })
 
