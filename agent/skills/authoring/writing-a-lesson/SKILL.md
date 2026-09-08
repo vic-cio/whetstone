@@ -110,17 +110,26 @@ six deterministic kinds.
 :::
 ```
 
-A Try carries no Objective, no Depth and no Check. It exists so the reader can check they
-followed. Put one after the idea it checks, not at the end.
+A Try carries no Objective, no Depth and no Check. It is **controlled practice**: the reader
+knows what it is about, it comes straight after the idea, and it cannot be got wrong by
+somebody who followed. A Task in a Test is the other instrument, **free use**, where nothing
+tells them which idea applies. `staging-a-lesson` has the table.
 
 ## What a Lesson is made of
 
-A Lesson that teaches rather than lists usually has three parts, in this order.
+Read `staging-a-lesson` before you write one. It carries the order the parts go in and why,
+and the two rules that decide whether a reader learns anything: build the context before you
+state the rule, and check the concept rather than the comprehension.
 
-1. **The idea, in the smallest case that shows it.** One concrete example, with real values.
-2. **The worked example.** The same thing carried all the way through, with the intermediate
+In short, a Lesson that teaches rather than lists has these parts, in this order.
+
+1. **The context.** The situation the idea belongs to, before the idea itself.
+2. **The idea, in the smallest case that shows it.** One concrete example, with real values.
+3. **A check on the concept**, as a `try`, aimed at the thing that has to be true in the
+   reader's head rather than at what the last paragraph said.
+4. **The worked example.** The same thing carried all the way through, with the intermediate
    steps shown. This is normally the longest part, and it is the part a reader comes back to.
-3. **Where it goes wrong.** The mistake somebody actually makes here, what it looks like when
+5. **Where it goes wrong.** The mistake somebody actually makes here, what it looks like when
    they make it, and how to tell. This is what you know and a search result does not.
 
 A Try goes after the part it checks, and only where it earns its place. Three Tries in one

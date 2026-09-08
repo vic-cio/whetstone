@@ -103,7 +103,12 @@ reader finds out before you do.
    `try` questions that are not recorded. A **Test** holds the recorded Tasks. Do not
    scatter recorded Tasks through prose.
 14. A Module usually runs several Lessons then one Test, but the shape is yours. A Module may
-   be a single Lesson with no Test, and a Course of pure drill may be Tests alone.
+   be a single Lesson with no Test, and a Course of pure drill may be Tests alone. A Module
+   may also **open** with a short Test, so the reader finds out what they cannot do before
+   the Lessons fill exactly that in. Use that shape at least once in a long Course: a Course
+   where every Module ends with its only Test has diagnosed nothing.
+14b. A Test at the end of nine Lessons is one recorded check on a third of the Course. Past
+   five or six Lessons, either the Module wants splitting or it wants a second Test.
 15. A Test states its Depths up front, because that is what tells the reader what kind of
    thinking it is about to ask for.
 16. Write the Course's own `AGENTS.md`. A Tutor will read it while the reader studies, and
@@ -128,6 +133,14 @@ reader finds out before you do.
    name only a Task earlier in that same array, and the run marking it is shown the reader's
    own earlier answer rather than the right one. Use `follows` for a multi-part question and
    for nothing else.
+
+## Read `staging-a-lesson`
+
+It is the skill that says how a Lesson teaches rather than how it is formatted: context
+before the rule, a check aimed at the concept rather than at comprehension, controlled
+practice and free use as two different instruments, and wrong options that are the
+misconceptions somebody actually holds. The rules above will get you a Course that parses.
+That skill is what makes it worth reading.
 
 ## The toolkit is not yours
 

@@ -180,6 +180,7 @@ describe('the skills a run is given', () => {
     const found = skillsIn(staging)
     expect(found.map((skill) => skill.name).sort()).toEqual([
       'course-format',
+      'staging-a-lesson',
       'what-an-agent-can-judge',
       'writing-a-lesson',
       'writing-a-mini-app',
@@ -211,7 +212,8 @@ describe('the skills a run is given', () => {
     const { root, staging } = scene()
     prepare(staging, TOOLKIT, SKILLS, { files: [], links: [] })
     cpSync(SAMPLE, staging, { recursive: true })
-    expect(skillsIn(staging).length).toBe(5)
+    // Every authoring skill the app ships, counted from the folder rather than listed here.
+    expect(skillsIn(staging).length).toBe(readdirSync(SKILLS).length)
 
     const target = moveIn(staging, root, 'gradients-by-hand')
     expect(existsSync(join(target, HOUSE))).toBe(false)

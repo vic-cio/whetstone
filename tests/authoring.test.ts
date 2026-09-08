@@ -81,6 +81,32 @@ describe('what the app hands a harness', () => {
     expect(lesson).toContain('is a template')
   })
 
+  /**
+   * How a Lesson teaches, as opposed to how it is formatted. The three staged shapes are
+   * the standard ones from language teaching, where a lesson has to work in an hour with no
+   * shared vocabulary; the problem generalises because it is the same problem.
+   */
+  it('carries the staging skill, and the two rules that decide whether anybody learns', () => {
+    const staging = readFileSync(join(SKILLS, 'staging-a-lesson', 'SKILL.md'), 'utf8')
+    // Context before the rule, and a check aimed at the concept rather than at whether the
+    // reader thinks they followed.
+    expect(staging).toContain('Build the context first')
+    expect(staging).toContain('Check the concept, not the comprehension')
+    // A wrong option is a misconception somebody holds, or it is filler.
+    expect(staging).toContain('The wrong options are the lesson')
+    // The alternative shape: diagnose, teach the gap, then use it freely.
+    expect(staging).toContain('Test, teach, test')
+    // A Try and a Task are two instruments, not two difficulty levels.
+    expect(staging).toContain('Controlled practice and free use are different instruments')
+
+    // And the two files that would otherwise drift from it say the same thing.
+    expect(readFileSync(join(SKILLS, 'writing-a-lesson', 'SKILL.md'), 'utf8')).toContain('staging-a-lesson')
+    expect(readFileSync(join(SKILLS, 'writing-a-task', 'SKILL.md'), 'utf8')).toContain('misconception')
+    const build = readFileSync(join(AGENT, 'roles', 'constructor-build.md'), 'utf8')
+    expect(build).toContain('may also **open** with a short Test')
+    expect(build).toContain('14b.')
+  })
+
   it('tells the mini-app skill to build the subject, not a quiz with buttons', () => {
     const app = readFileSync(join(SKILLS, 'writing-a-mini-app', 'SKILL.md'), 'utf8')
     expect(app).toContain('A playable version of the subject')
@@ -107,6 +133,7 @@ describe('what the app hands a harness', () => {
     const skills = readdirSync(SKILLS).sort()
     expect(skills).toEqual([
       'course-format',
+      'staging-a-lesson',
       'what-an-agent-can-judge',
       'writing-a-lesson',
       'writing-a-mini-app',

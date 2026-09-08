@@ -23,6 +23,12 @@ The app answers all six itself, instantly, offline, at no cost.
 
 **multiple-choice.** `answer` is an array of indices, so it does more than one right option.
 
+Every wrong option is a misconception somebody actually has: the answer a reader reaches by
+making one specific mistake. If you cannot name the mistake an option represents, it is
+filler, and a question of four options where three are filler tests reading rather than
+understanding. `staging-a-lesson` covers this and the rest of what makes a question check
+the concept.
+
 ```json
 {
   "id": "tsk-which-factor-vanishes", "objective": "obj-chain-rule",
@@ -101,6 +107,12 @@ before starting.
 ```
 
 A criterion the reader can satisfy by restating the prompt is a bad criterion.
+
+## The explanation is read by somebody who got it wrong
+
+Write it for them. Say what the answer they gave would have been right for, then the one
+step that turns it into the right answer. An explanation that states the correct answer and
+stops has told the person who answered differently nothing about why they did.
 
 ## A question that follows another
 
