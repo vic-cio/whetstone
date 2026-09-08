@@ -106,6 +106,26 @@ _Avoid_: Appeal, dispute, complaint, challenge
 
 ### Study
 
+**Sitting**:
+One pass through a Test. You answer a question and press Check, the run happens then, and the result is held until every question in the Test has been checked, when all of them are revealed together. A Retake starts another sitting, and both stay in the record.
+_Avoid_: Session (that word is taken), run, submission, attempt (that is one question)
+
+**Held**:
+What a checked answer is until the sitting is revealed. It has been recorded; it has not been told.
+_Avoid_: Pending, queued, unmarked
+
+**Reveal**:
+The end of a sitting: every question with a tick or a cross beside it, and no number of any kind. Feedback and Retake follow it.
+_Avoid_: Results, score screen, report
+
+**Project**:
+Open-ended work covering a theme or a whole Course, done outside the app with ordinary tools and submitted as a folder and some links. It sits below the last Module, is not a Page, and has no Tutor panel.
+_Avoid_: Assignment, capstone, coursework
+
+**Reviewer**:
+The role that reads a submitted Project and writes one response, in the register of a senior colleague reading the work. No mark, no thread, no memory of a previous submission.
+_Avoid_: Grader (that is a different role), marker, critic
+
 **Review session**:
 A set of Tasks drawn at random from Objectives the user has already covered. It exists to interrupt linear progress, and it draws at random rather than by any estimate of ability.
 _Avoid_: Practice, quiz, revision
@@ -163,6 +183,10 @@ _Avoid_: Draft, temp, scratch, working copy
 **Moment**:
 One thing the app understood a [[harness]] to have done, in the app's own words: it started, it said something, it is doing something, a file appeared, it finished, it failed. A Moment is all the interface ever receives, which is what makes the harness invisible.
 _Avoid_: Event, message, update, chunk
+
+**Stopped build**:
+A build that ended without producing a Course, usually because a plan's usage limit ran out. It keeps its staging folder and what it needs to carry on, and the home screen offers it back. Carrying on resumes the same harness session on the same folder.
+_Avoid_: Failed build, crashed, draft
 
 **Live snapshot**:
 The file the app writes with the current study state, immediately before a spawn and never otherwise, so a [[harness]] can see what the student is doing without an API. It is written into the folder the run was given, never into the Course, because a Tutor may not change a byte of a Course.

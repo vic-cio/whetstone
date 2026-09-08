@@ -800,6 +800,26 @@ Two things were found by running it rather than by reading it. The first sitting
 
 The format moved in one pass: `tags`, `small` and `projects` on the manifest, `follows` on a Task, `minutes` on a Test, with the parser, the authoring skills and the Constructor's instructions in the same commit. A defect report now brings the Constructor in, and `revise.ts` gained four work kinds, two of which take something away and needed their own wording. Projects arrived with a fourth role, the Reviewer, which reads a folder and answers in prose.
 
+**Phase 9. Giving it to somebody else. Done.**
+An install is one `curl` line and the app updates itself: the foot of the rail says which
+version is running and becomes a button when a release is newer. `electron-updater` is not
+usable, because macOS applies an update through Squirrel and Squirrel needs a signature, and
+signing for other people's machines needs a paid Apple Developer membership. So the app does
+what the install script does. There is no security warning to dismiss, because `curl`
+attaches no quarantine flag: the script avoids the conversation rather than teaching people
+to click through it.
+
+What the phase was really about is what happens when a build goes wrong for somebody who
+cannot read a stack trace. A build now survives the reader navigating away from it, and a
+run that dies on a plan's usage limit says so, keeps everything it wrote and can be carried
+on from where it stopped, on the same folder and the same harness session. Staging is swept
+at launch, which nothing had ever done, and never sweeps a folder holding a part-written
+course.
+
+The app also ships with one course rather than two, and it is about the app: somebody
+opening it for the first time has nothing of their own and no way to judge the thing, and
+every question in it is answered offline, so it works before a harness is installed.
+
 ---
 
 ## The real build, and what four attempts of it taught

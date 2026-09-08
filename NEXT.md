@@ -1,101 +1,137 @@
 # Whetstone: what to do next
 
-**Written:** 2026-09-07
-**Written by:** Claude Opus 5, after building part B.
+**Written:** 2026-09-08
+**Written by:** Claude Opus 5, at the end of the session that shipped part B and 0.2.2.
 **Written for:** the next session, starting cold.
-**Status:** part A and part B are both done. What is left is listed in section 3, and none
-of it is designed yet.
+**Status:** part A, part B and shipping are done. Section 3 is the open list, and the first
+item in it is the one that matters.
 
 ---
 
 ## 0. How to read this
 
-The bug sweep (part A) and the phase after it (part B) are both finished and in `main`.
-Section 1 says what part B turned out to be, section 2 says what was found while building
-it, and section 3 is the open list.
-
-Read `PLAN.md` for the design and `CONTEXT.md` for the vocabulary. Use those words exactly.
-`docs/adr/0022`, `0023` and `0024` hold the reasoning for the three decisions part B rests
-on, and they say what was rejected, which is the part that matters when one of them looks
-awkward to build against. `HANDOFF.md` is the original design handoff and is historical.
+Read `AGENTS.md` for the invariants and `CONTEXT.md` for the vocabulary; use those words
+exactly. `PLAN.md` holds the design and what each phase turned out to be. `docs/adr/` holds
+why each structural decision was made **and what was rejected**, which is the half that
+matters when one of them looks awkward to build against. `README.md` is for a person
+installing the app rather than working on it.
 
 ---
 
-## 1. What part B built
+## 1. Where things stand
 
-**The format.** `course.json` gained `tags`, `small` and `projects`. A Task gained
-`follows`, and a Test gained `minutes`. The schema, the parser, the authoring skills and the
-Constructor's instructions moved in one commit, because a skill describing a format the
-parser refuses is worse than no skill. Every field defaults, so a Course written before this
-still parses.
+**Part B is done** and is described in `PLAN.md` phase 8: a Test is a sitting, Projects and
+the Reviewer, defect reports the Constructor answers and the reader can override, revision
+at module scale, tags and the library filter.
 
-**A Test is a sitting.** Answer, press Check, and the run happens then. The result is held
-until every question in the Test is checked, and the reveal is a list of ticks and crosses
-with no number on it. Feedback shows what you gave and the Course's own explanation. Retake
-starts a fresh sitting, and both sittings stay in the record. `docs/adr/0022`.
+**Shipping is done** (phase 9). One `curl` line installs it, the app updates itself from the
+foot of the rail, and a build survives navigation, a stopped run and a usage limit.
 
-**A defect report brings the Constructor in.** It reads the Task and the note and either
-agrees or names what was missed. The reader upholds the report or drops it, and overriding a
-Constructor that disagrees is theirs to do. Upholding voids the Attempts and sends the
-question back to be mended or removed. `docs/adr/0024`.
-
-**Revision reaches a module.** `revise.ts` has six work kinds now. `rebuild-module` and
-`remove-module` are offered from the Course page, and `add-project` from a revision run.
-
-**Projects and the Reviewer.** Open-ended work done outside the app, submitted as a folder
-and some links, answered with one written response and no mark. A fourth role with its own
-row in Settings. `docs/adr/0023`.
-
-**Tags.** The library filters on one at a time, and the Constructor is shown the tags already
-in the library before it invents another.
+**The Constructor knows much more than it did.** Size in numbers, the staging skill drawn
+from a TEFL course, repetition and spacing, and what a sealed frame can actually do. The
+gate measures prose and questions and sends a thin course back twice before accepting it.
 
 ---
 
-## 2. Two things found by running it
+## 2. What two real builds taught, with numbers
 
-**A minted id is not stable enough to be a key.** `sittingFor` minted a fresh id whenever
-there were no rows yet, so the id changed between the read that opened a Test and the write
-that held the first answer, and two answers landed in two different sittings. The first
-sitting is now a fixed string. Anything else that mints an id on read will have this bug.
+Both parsed on the first attempt and both were bad, in ways nothing was checking.
 
-**Every screenshot check in this repository was reading a stale page.** `capturePage()`
-hands back the frame the compositor still holds for a window that is not in front, so the
-png showed the library while the `.txt` beside it showed a Test three steps later. The
-capture now turns background throttling off and calls `invalidate()` before the shot. If a
-screenshot ever looks like it is showing the wrong screen again, that is where to look.
+| | First build | Second build | Asked for |
+|---|---|---|---|
+| Pages | 17 | 40 | 30–60 |
+| Prose words | 2,959 | 13,347 | |
+| Words per lesson | 174 | 393 | 600–1200 |
+| Tries per lesson | 1.0 | 0.94 | varied |
+| Questions of one kind | — | 31 of 42 multiple choice | mixed |
+
+The instructions moved the structural things (a JavaScript module exists, an engine exists in
+`lib/`) and barely moved the quantitative ones, which is why the second gate exists. What is
+still unmeasured is the activities, and that is item 1 below.
 
 ---
 
 ## 3. What is open
 
-Nothing here is designed. Each would need a decision from Victor before it is built.
+### 1. Mini-apps have no real gate. This is the important one.
 
-1. **A live harness has never run part B's new roles.** The Reviewer, the defect evaluation
-   and the four new revision kinds are all covered by offline tests, and none of them has
-   spawned a real model. `scripts/prove-refusal.mjs` is the pattern for doing that
-   deliberately and cheaply. The prompts are the part most likely to be wrong.
-2. **A signed build.** Still the only thing left from phase 7, and it needs an Apple
-   developer identity, which is Victor's to provide.
-3. **The spend cap still does not fire for `pi`,** which reports its cost once, after the run
-   is over. Victor handles limits at the provider portals, so this is deliberate. If it is
-   ever picked up, the fix is a per-turn cost moment from the harness and a cap that kills on
-   a running total.
-4. **Findings 6 and 7 of the old sweep are closed.** A defect report is read now, and
-   `add-rung` has a button in the same place the module controls are. Nothing is left of
-   part A.
+Everything the app checks about a Mini-app is three things: that `apps/<id>/index.html`
+exists, that it holds no external reference, and that the Course's toolkit version matches
+the manifest. Nothing checks that the JavaScript parses, that it draws, that pressing Answer
+sends anything, or that it throws on line one. **The most complex artefact in a Course is
+the only one with no gate**, and it is the only one that is arbitrary code.
+
+What that produced, twice, in courses that parsed perfectly:
+
+- a drum grid whose expected answer was its own initial state, so pressing Answer passed
+  without doing anything
+- an editor whose four `assertions-pass` checks were `indexOf` on the raw text, so prose
+  containing `bd*4` passed and correct code with `bd*8` failed
+- controls built from bare `<button>` elements, which inherit the frame's ink on the user
+  agent's light button face and are invisible in the dark theme. `AGENTS.md` documents that
+  exact trap for the app's own UI and nothing carries it into `writing-a-mini-app`
+- all six `app-result` tasks stating their expected values in the prompt, which makes them
+  instruction-following rather than questions
+
+**Victor's proposal, and the one to build:** the Constructor declares the common activities
+as data against a schema, rather than writing code. The toolkit already draws every shape
+those activities needed — `Kit.steps`, `Kit.order`, `Kit.pieces`, `Kit.slider`, `Kit.plot`,
+`Kit.editor`, `Kit.hotspot`, `Kit.sim` — so a declaration is thin, and five of the six
+activities in the Strudel course were a step grid, three slider sets and an ordering.
+
+That makes today's bugs unrepresentable: the model never writes a button, so it cannot write
+an invisible one, and a declared activity states its initial state, so the parser can refuse
+a task whose expected answer equals it.
+
+Keep code Mini-apps for the bespoke case, because `docs/adr/0016` says the sealed frame may
+run the reader's own code and a template set that tried to cover a Strudel REPL would become
+a bad programming language in JSON. For those, add an execution gate: the app already boots
+a Mini-app in a sealed frame for its own tests, so the same machinery can load each activity
+at build time and require that it reports `ready`, throws nothing, and sends something when
+its action is pressed. Failures go back to the run with the file named, like a parse error.
+
+Cheap static checks worth having either way: the JavaScript parses; it calls
+`Kit.bridge.ready()`; it calls `Kit.bridge.action` when a Task answers through it; it uses
+toolkit widgets rather than raw `document.createElement('button')`.
+
+### 2. A live harness has never run several of the newer roles
+
+The Reviewer, the defect evaluation and the four newer revision kinds are covered by offline
+tests and have never spawned a real model. The prompts are the part most likely to be wrong.
+`scripts/prove-refusal.mjs` is the pattern for doing that deliberately and cheaply.
+
+### 3. Strudel-style live code, if that course is revisited
+
+`lib/strudel-engine.js` gives instruments (kick, hat, clap, tone, note names) and no
+language: no mini-notation parser, no cycle clock, no scheduler. A "press play and hear this
+line" widget needs a clock and a pattern-to-time mapping on top of what is there, perhaps
+eighty lines. An editable "fix the syntax" activity needs a real parser for a subset, and
+then `assertions-pass` assertions that run the parse and assert on the events rather than on
+the characters.
+
+### 4. Smaller things
+
+- **A signed build.** Still the only thing left from phase 7, and it needs a paid Apple
+  Developer membership, which Victor has decided against. The install script and the in-app
+  updater exist because of that decision.
+- **The spend cap never fires for `pi`,** which reports its cost once, after the run. Victor
+  handles limits at the provider portals. If it is ever picked up, the fix is a per-turn cost
+  moment from the harness and a cap that kills on a running total.
+- **The Brief has no stop condition.** It asks clarifying questions until the reader presses
+  a button; the role file never tells it to say when it has enough.
 
 ---
 
-## 4. What this deliberately does not do
+## 4. Things that are deliberately absent
 
-Unchanged from the phase that was just built, and worth re-reading before adding anything
-that measures the reader.
+Re-read before adding anything that measures the reader.
 
 - No score, no percentage, no average, no history of marks. The reveal screen is where this
   will be tempting: a list of nine ticks and crosses wants a "7 of 9" above it more than
   anything else in the app. Revisit only by rewriting PLAN 3.4, deliberately.
 - No timer on a Test. `minutes` is indicative and nothing counts down.
 - No thread on a project review, and no tutor panel on a project page.
-- No shelf life on a small course.
-- No fixed tag vocabulary.
-- No spend cap work.
+- No spaced-repetition scheduler. Missed is a plain list with no due date.
+- No fixed tag vocabulary, and no shelf life on a small course.
+- No telemetry. The update check is the only thing that touches the network unasked, it
+  runs once a launch, and it only ever tells.

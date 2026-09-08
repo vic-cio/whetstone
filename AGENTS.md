@@ -4,8 +4,9 @@ A single-user macOS learning environment. Read `PLAN.md` for the design, `CONTEX
 the vocabulary, `docs/adr/` for why each structural decision was made, and
 `docs/design-reference.html` for the visual contract.
 
-Read `NEXT.md` before starting work. It holds the open bug list and the settled design for
-the next phase.
+Read `NEXT.md` before starting work. It holds what is open, with the numbers behind it.
+`README.md` is for somebody installing the app rather than working on it: how it is
+installed, how it updates itself, and what it needs to run.
 
 Use the words in `CONTEXT.md` exactly. Page, Lesson, Test, Task, Try, Depth, Check, Tick,
 Harness, Toolkit and the rest all mean something specific here.
