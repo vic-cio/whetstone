@@ -187,6 +187,7 @@ export type LessonBlock =
   | { block: 'diagram'; src: string; alt: string }
   | { block: 'try'; question: Try }
   | { block: 'app'; id: string; height?: number }
+  | { block: 'codeblock'; lang: string; start: string; label?: string; height?: number }
   | { block: 'resource'; id: string }
 
 export interface Lesson {

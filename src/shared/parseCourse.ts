@@ -180,6 +180,24 @@ export function parseCourse(dir: string): ParseResult {
     }
   }
 
+  // A codeblock beyond `js` names a language the sealed frame has no built-in engine for
+  // (docs/adr/0025); the manifest's `runtimes` pointer is what the host inlines to supply
+  // one, so a codeblock naming a language the Course never pinned would draw and fail
+  // silently in the frame instead of failing the build where the mistake actually is.
+  const pinnedRuntimes = new Set(manifest.runtimes.map((runtime) => runtime.lang))
+  for (const [id, lesson] of Object.entries(lessons)) {
+    const file = `lessons/${id}.md`
+    for (const [index, block] of lesson.blocks.entries()) {
+      if (block.block === 'codeblock' && block.lang !== 'js' && !pinnedRuntimes.has(block.lang)) {
+        fail(
+          file,
+          `codeblock names language "${block.lang}", which is not in this course's runtimes`,
+          `blocks[${index}]`,
+        )
+      }
+    }
+  }
+
   for (const [id, test] of Object.entries(tests)) {
     const file = `tests/${id}.json`
     for (const taskId of test.tasks) {
@@ -450,6 +468,24 @@ function readLesson(dir: string, file: string, fail: Fail): Lesson | undefined {
         break
       }
 
+      case 'codeblock': {
+        const lang = attribute(attributes, 'lang') || 'js'
+        const label = attribute(attributes, 'label')
+        const height = Number(attribute(attributes, 'height') ?? NaN)
+        if (content === '') {
+          fail(file, 'a codeblock has no starting code in it', 'codeblock')
+          break
+        }
+        blocks.push({
+          block: 'codeblock',
+          lang,
+          start: content,
+          ...(label ? { label } : {}),
+          ...(Number.isFinite(height) ? { height } : {}),
+        })
+        break
+      }
+
       case 'resource':
         if (!id) fail(file, 'a resource block has no id', 'resource')
         else {
@@ -477,7 +513,11 @@ function readLesson(dir: string, file: string, fail: Fail): Lesson | undefined {
       }
 
       default:
-        fail(file, `unknown block ":::${name}"; the block set is prose, callout, diagram, try, app, resource`, name)
+        fail(
+          file,
+          `unknown block ":::${name}"; the block set is prose, callout, diagram, try, app, codeblock, resource`,
+          name,
+        )
     }
   }
   flushProse()

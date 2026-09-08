@@ -281,6 +281,68 @@ describe('test 3b — a Lesson holds no recorded Tasks', () => {
   })
 })
 
+describe('the Lesson codeblock (docs/adr/0025)', () => {
+  function withCodeblock(attrs: string, code: string, mutateManifest?: (value: any) => void): string {
+    return brokenCopy((dir) => {
+      const path = join(dir, 'lessons', 'les-what-a-derivative-measures.md')
+      const text = readFileSync(path, 'utf8')
+      writeFileSync(path, text + `\n:::codeblock{${attrs}}\n${code}\n:::\n`)
+      if (mutateManifest) editJson(dir, 'course.json', mutateManifest)
+    })
+  }
+
+  it('parses a js codeblock, defaulting the language and needing no runtimes pointer', () => {
+    const dir = withCodeblock('', 'console.log(1 + 1)')
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const lesson = result.course.lessons['les-what-a-derivative-measures']!
+    const block = lesson.blocks.at(-1)
+    expect(block).toEqual({ block: 'codeblock', lang: 'js', start: 'console.log(1 + 1)' })
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('reads lang, label, and height off the attributes', () => {
+    const dir = withCodeblock(
+      'lang=python label=Try-it height=180',
+      'print(1 + 1)',
+      (manifest) => {
+        manifest.runtimes = [{ lang: 'python', version: '0.26.1' }]
+      },
+    )
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const block = result.course.lessons['les-what-a-derivative-measures']!.blocks.at(-1)
+    expect(block).toEqual({
+      block: 'codeblock',
+      lang: 'python',
+      start: 'print(1 + 1)',
+      label: 'Try-it',
+      height: 180,
+    })
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('rejects a codeblock with no starting code', () => {
+    const dir = withCodeblock('lang=js', '')
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => /no starting code/.test(e.message))).toBe(true)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('rejects a codeblock naming a language the course never pinned', () => {
+    const dir = withCodeblock('lang=python', 'print(1)')
+    const result = parseCourse(dir)
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors.some((e) => /"python".*not in this course's runtimes/.test(e.message))).toBe(true)
+    }
+    rmSync(dir, { recursive: true, force: true })
+  })
+})
+
 /**
  * Part B, section 4. Three format changes land together, because the parser, the authoring
  * skills, the Constructor's instructions and every Course already written move as one.
