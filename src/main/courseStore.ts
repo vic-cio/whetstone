@@ -75,6 +75,16 @@ export function coursesRoot(): string {
 }
 
 /**
+ * The shared, deduplicated codeblock runtime cache (docs/adr/0025), outside any Course
+ * folder so one fetched runtime is reused by every Course that points to it.
+ */
+export function runtimeCacheRoot(): string {
+  const fromEnv = process.env['WHETSTONE_RUNTIME_CACHE']
+  if (fromEnv) return fromEnv
+  return join(app.getPath('userData'), 'runtimes')
+}
+
+/**
  * The Course that ships with the app.
  *
  * One, and it is about the app. Somebody opening Whetstone for the first time has no course

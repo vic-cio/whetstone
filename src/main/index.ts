@@ -4,7 +4,17 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 
-import { appFrame, coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
+import {
+  appFrame,
+  coursesRoot,
+  listCourses,
+  loadCourse,
+  openCourse,
+  progress,
+  runtimeCacheRoot,
+  setTick,
+} from './courseStore'
+import { gcRuntimeCache } from '../shared/runtimeCache'
 import {
   OUTLINE,
   addToTray,
@@ -641,14 +651,18 @@ app.whenReady().then(() => {
     buildCourse(coursesRoot(), harnessId, model, brief, report(event, run)),
   )
 
-  ipcMain.handle('courses:remove', (_event, slug: string) =>
-    removeCourse(
+  ipcMain.handle('courses:remove', async (_event, slug: string) => {
+    const result = await removeCourse(
       coursesRoot(),
       slug,
       (name) => progress().forget(name),
       (folder) => shell.trashItem(folder),
-    ),
-  )
+    )
+    // A deleted Course may have been the last one pointing at a cached runtime. Nothing
+    // was decremented on the way in, so this is what notices (docs/adr/0025).
+    if (result.ok) gcRuntimeCache(runtimeCacheRoot(), coursesRoot())
+    return result
+  })
   /**
    * Export a Course as a zip.
    *
