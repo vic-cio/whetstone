@@ -62,6 +62,14 @@ _Avoid_: API, IPC layer, interface, channel
 The code one Course carries for itself, listed in its manifest and inlined into every one of its Mini-apps. A Library is what a Course is about, such as the rules of chess and a board to play them on. The [[toolkit]] is the same in every Course; a Library belongs to one and no other Course can see it.
 _Avoid_: Package, module, dependency, plugin, service
 
+**Codeblock**:
+A `Kit.codeblock` or `Kit.editor` in a Mini-app: code the reader can run for real, in whatever language its `lang` set. `js` runs built in; any other language runs through a [[runtime]] the host inlined. `Kit.codeblock` shows what ran; `Kit.editor` additionally runs the Constructor's assertions against it, same as before.
+_Avoid_: Snippet, sandbox (that word means the frame itself here), REPL
+
+**Runtime**:
+What a codeblock language beyond `js` runs on: fetched once at build time from a short, hand-picked list (`ALLOWED_RUNTIMES`), proven to boot before it is trusted, and kept in one shared, deduplicated cache outside any Course folder rather than copied per Course like the [[toolkit]] and a [[library]] are. A Course carries only a pointer to one, `{ lang, version }`.
+_Avoid_: Interpreter, engine, VM, plugin
+
 ### Assessment
 
 **Task**:

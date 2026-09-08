@@ -109,6 +109,47 @@ eighty lines. An editable "fix the syntax" activity needs a real parser for a su
 then `assertions-pass` assertions that run the parse and assert on the events rather than on
 the characters.
 
+### 3b. Codeblocks now run any language the toolkit has a runtime for — most of the plumbing
+exists, none of it is finished end to end.
+
+`Kit.run` (toolkit/kit.js, toolkit 1.2.0) is a language-dispatch core: `js` is built in,
+anything else comes from `window.__whetstoneRuntimes[lang]`, an object the host is meant to
+inline into the frame. `Kit.editor` is now built on it (unchanged contract, same tests) and
+`Kit.codeblock` is new: the same execution, no assertions, real captured output, usable
+anywhere a Mini-app wants a runnable sample rather than a graded one. `docs/adr/0025` is the
+design record for the rest of this.
+
+Also built and tested (`tests/runtimeCache.test.ts`, `tests/runtimeFetch.test.ts`): a
+build-time `fetchRuntime(lang, cacheRoot, io)` that refuses anything off `ALLOWED_RUNTIMES`
+(`src/main/runtimeFetch.ts`; `python`/Pyodide is the only entry so far), never caches a
+runtime that doesn't boot-verify, and a shared cache (`src/shared/runtimeCache.ts`) outside
+any Course folder, reference-counted by re-deriving which Courses' `runtimes` pointers still
+name it rather than a live counter — garbage-collected on every Course delete.
+
+What is not built:
+
+- **Nothing actually supplies `window.__whetstoneRuntimes` inside a served frame yet.**
+  `fetchRuntime` writes a runtime's raw bytes to the cache as an opaque blob; getting a real
+  Pyodide from that to a working in-frame runtime object is unsolved, because Pyodide's
+  normal loading path fetches its own sub-assets over the network, which the frame does not
+  have (`connect-src 'none'`, permanently). Likely needs a self-contained bundle (every asset
+  as a data URI) computed at fetch time, not just the file Pyodide's own CDN serves.
+  `writing-a-mini-app/SKILL.md` currently tells the Constructor not to use any `lang` but
+  `js` because of exactly this gap — that line needs deleting once it's solved.
+- **No Lesson-level, ungraded codeblock exists yet.** The grilled design (with Victor) calls
+  for a codeblock usable directly in a Lesson's prose, not only inside a Mini-app — this
+  needs a new `LessonBlock` variant, a markdown directive in the parser, and a served-frame
+  route analogous to `serveMiniApp`/`frameSource` but sourced from a Lesson block's inline
+  code rather than a file on disk. Not started.
+- **Export/import does not carry a Course's runtime.** `courses:export` zips a Course's
+  folder, which no longer contains the runtimes it points to (that's the point of the shared
+  cache) — an imported Course would need to re-fetch and re-verify against the allowlist on
+  first open, and nothing does that yet. Flagged in `docs/adr/0025`'s Consequences.
+- This supersedes most of item 3 above for any language `assertions-pass` needs beyond raw
+  string/pattern checks on Strudel specifically — a `Kit.codeblock`/`Kit.editor` with a real
+  Python (or eventually other) runtime is the general answer that item was a special case of.
+  The Strudel mini-notation parser itself is still unbuilt regardless.
+
 ### 4. Smaller things
 
 - **A signed build.** Still the only thing left from phase 7, and it needs a paid Apple

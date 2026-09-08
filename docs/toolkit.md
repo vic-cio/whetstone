@@ -1,4 +1,4 @@
-# The toolkit, version 1.1.0
+# The toolkit, version 1.2.0
 
 Everything a Mini-app is built from. The host inlines `kit.css` and `kit.js` into the frame
 ahead of the Mini-app's own markup, so `Kit` always exists and nothing has to be fetched.
@@ -93,14 +93,15 @@ is still in the bank. `complete()` is true once every piece is placed.
 Click to mark a place. With `regions`, `value()` returns the id of the region that was hit.
 Without them it returns `{ x, y }` as fractions of the width and the height.
 
-**`Kit.editor({ mount, start, exports, assertions, label, runLabel })`**
+**`Kit.editor({ mount, start, exports, assertions, label, runLabel, lang })`**
 A code editor with the Constructor's assertions beside it. This is what `assertions-pass`
 runs on.
 
 `exports` names what the learner's code must define. Each assertion is
 `{ name, test(api) }`, where `api` holds those names. A test returns a value or throws; a
 throw is shown beside the assertion, so throw with a message that says what was wrong.
-`run()` runs them and returns the names that passed, which is what `answer` sends.
+`run()` runs them and returns the names that passed, which is what `answer` sends. `lang`
+defaults to `'js'` — see **Languages** below.
 
 ```js
 var code = Kit.editor({
@@ -120,6 +121,28 @@ Kit.bridge.action('Check my code', function () { return { passed: code.run() } }
 The assertion names in the Task and the names here must match exactly. The host passes only
 the ones it declared, so a Mini-app cannot pass by naming an assertion the Task never asked
 for.
+
+**`Kit.codeblock({ mount, start, label, runLabel, lang })`**
+A runnable code sample with real output beneath it — no assertions, nothing graded, nothing
+sent to the host. `run()` returns `{ ok, log, error }`: `log` is what the code printed
+(`console.log` is captured), `error` is set only when it threw. Use it to let the reader run
+something next to your explanation, rather than a static snippet they take on faith.
+
+```js
+Kit.codeblock({
+  mount: '#app',
+  lang: 'js',
+  start: "console.log('hello, ' + name)",
+})
+```
+
+## Languages
+
+`Kit.editor` and `Kit.codeblock` both call `Kit.run(lang, source, options)`, which actually
+executes the code rather than describing it. `lang: 'js'` is built in and always works. Any
+other language runs through a runtime the host fetched once at build time, from a short
+allowlist, and proved works before it shipped (docs/adr/0025) — `writing-a-mini-app/SKILL.md`
+has the current state of which languages that pipeline actually supplies.
 
 **`Kit.steps({ mount, steps })`**
 A walkthrough advanced one beat at a time, for a derivation or an algorithm trace. Each step
