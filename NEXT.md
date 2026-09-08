@@ -136,11 +136,14 @@ What is not built:
   as a data URI) computed at fetch time, not just the file Pyodide's own CDN serves.
   `writing-a-mini-app/SKILL.md` currently tells the Constructor not to use any `lang` but
   `js` because of exactly this gap — that line needs deleting once it's solved.
-- **No Lesson-level, ungraded codeblock exists yet.** The grilled design (with Victor) calls
-  for a codeblock usable directly in a Lesson's prose, not only inside a Mini-app — this
-  needs a new `LessonBlock` variant, a markdown directive in the parser, and a served-frame
-  route analogous to `serveMiniApp`/`frameSource` but sourced from a Lesson block's inline
-  code rather than a file on disk. Not started.
+- **A Lesson-level, ungraded codeblock now exists**: `:::codeblock{lang=js label=... height=...}`
+  (`writing-a-lesson/SKILL.md`), a new `LessonBlock` variant (`src/shared/format.ts`), parsed
+  in `parseCourse.ts` (which also rejects a non-`js` `lang` the Course never pinned in
+  `manifest.runtimes`), served over `whetstone-app://<slug>/__codeblock__/<lessonId>/<index>`
+  (`codeblockFrameSource` in `src/shared/miniapp.ts`, `codeblockFrame` in `courseStore.ts`,
+  routed in `src/main/index.ts`'s `serveMiniApp`), and rendered by a new `Codeblock.tsx` the
+  same way `MiniApp.tsx` renders an `app` block. It carries the same "nothing but `js` actually
+  runs yet" limitation as everything else in this section, for the same reason.
 - **Export/import does not carry a Course's runtime.** `courses:export` zips a Course's
   folder, which no longer contains the runtimes it points to (that's the point of the shared
   cache) — an imported Course would need to re-fetch and re-verify against the allowlist on

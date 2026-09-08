@@ -137,9 +137,10 @@ Any other `lang` needs a runtime the app fetches once at build time, from a shor
 list, and proves works before it ships. **As of this toolkit version, that fetch-and-inline
 pipeline exists but nothing has been wired through it yet, so no `lang` besides `'js'`
 actually runs in a built Course.** Do not write `lang: 'python'` or anything else non-`js`
-into a Mini-app: the reader would see "no runtime is available in this frame" instead of
-their code running. If your run genuinely needs a language beyond JavaScript, say so in
-your run rather than shipping a codeblock that cannot execute.
+into a Mini-app, and the same holds for a Lesson's `:::codeblock{}` block
+(`writing-a-lesson/SKILL.md`): the reader would see "no runtime is available in this frame"
+instead of their code running. If your run genuinely needs a language beyond JavaScript,
+say so in your run rather than shipping a codeblock that cannot execute.
 
 ## What the app does with what you send
 
