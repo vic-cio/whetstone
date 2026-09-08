@@ -16,7 +16,7 @@ import { join } from 'node:path'
  */
 
 /** The toolkit this build ships. It is written into a Course at build time, and nowhere else. */
-export const TOOLKIT_VERSION = '1.1.0'
+export const TOOLKIT_VERSION = '1.2.0'
 
 const MARKER = /whetstone-toolkit\s+(\d+\.\d+\.\d+)/
 

@@ -1,4 +1,4 @@
-/* whetstone-toolkit 1.1.0
+/* whetstone-toolkit 1.2.0
  *
  * The only library a Mini-app is given. The host inlines this file and kit.css into the
  * sandboxed frame ahead of the Mini-app's own markup, because the sandbox forbids
@@ -16,7 +16,7 @@
 window.Kit = (function () {
   'use strict'
 
-  var VERSION = '1.1.0'
+  var VERSION = '1.2.0'
 
   // ------------------------------------------------------------ small helpers
 
@@ -450,6 +450,54 @@ window.Kit = (function () {
     return { value: value, onPick: function (fn) { picked.add(fn) } }
   }
 
+  // ------------------------------------------------------------ Kit.run
+
+  /**
+   * Runs source in one language and reports what happened. It never throws and never
+   * judges: `ok`, the exports (or the injected runtime's return value) under `api`, every
+   * line the code printed under `log`, and an error message when it failed. `Kit.editor`
+   * and `Kit.codeblock` are both built on this; nothing else needs it.
+   *
+   * `js` is the only language built in. Anything else comes from `options.runtimes`
+   * (falling back to `window.__whetstoneRuntimes`, which is where the host inlines a
+   * fetched language runtime, docs/adr/0025) — a keyed map of
+   * `function (source, exportNames, print) { ...; return api }`. Writing a parser or
+   * interpreter for another language into this file was rejected (docs/adr/0016); the
+   * sandbox is what makes running any of them safe, not this function.
+   */
+  function run(lang, source, options) {
+    var settings = options || {}
+    var names = settings.exports || []
+    var runtimes = settings.runtimes || (typeof window !== 'undefined' && window.__whetstoneRuntimes) || {}
+    var engine = !lang || lang === 'js' ? jsEngine : runtimes[lang]
+    var log = []
+    var print = function () {
+      log.push(Array.prototype.slice.call(arguments).join(' '))
+    }
+    if (typeof engine !== 'function') {
+      return { ok: false, api: null, log: log, error: 'no "' + lang + '" runtime is available in this frame' }
+    }
+    try {
+      var api = engine(source, names, print)
+      return { ok: true, api: api || {}, log: log, error: null }
+    } catch (error) {
+      return { ok: false, api: null, log: log, error: String(error && error.message ? error.message : error) }
+    }
+  }
+
+  /** The built-in `js` engine. A local `console` is shadowed so real output is captured. */
+  function jsEngine(source, names, print) {
+    var give = names.map(function (name) {
+      return name + ': typeof ' + name + ' === "undefined" ? undefined : ' + name
+    })
+    var body =
+      '"use strict";\n' +
+      'var console = { log: __print, warn: __print, error: __print };\n' +
+      source +
+      '\n;return {' + give.join(',') + '};'
+    return new Function('__print', body)(print)
+  }
+
   // ------------------------------------------------------------ Kit.editor
 
   /**
@@ -462,6 +510,7 @@ window.Kit = (function () {
    */
   function editor(options) {
     var settings = options || {}
+    var lang = settings.lang || 'js'
     var names = settings.exports || []
     var assertions = settings.assertions || []
     var ran = callbacks()
@@ -477,11 +526,11 @@ window.Kit = (function () {
     area.rows = Math.min(Math.max(area.value.split('\n').length + 1, 8), 26)
 
     var bar = el('div', 'k-bar')
-    var run = el('button', 'k-btn k-quiet', settings.runLabel || 'Run')
-    run.type = 'button'
+    var runBtn = el('button', 'k-btn k-quiet', settings.runLabel || 'Run')
+    runBtn.type = 'button'
     var list = el('ul', 'k-asserts')
 
-    bar.appendChild(run)
+    bar.appendChild(runBtn)
     root.appendChild(area)
     root.appendChild(bar)
     root.appendChild(list)
@@ -496,32 +545,19 @@ window.Kit = (function () {
       area.selectionStart = area.selectionEnd = start + 2
     })
 
-    function build() {
-      var give = names.map(function (name) {
-        return name + ': typeof ' + name + ' === "undefined" ? undefined : ' + name
-      })
-      var body = '"use strict";\n' + area.value + '\n;return {' + give.join(',') + '};'
-      return new Function(body)()
-    }
-
     function evaluate() {
       results = []
-      var api = null
-      var built = null
-      try {
-        api = build()
-      } catch (error) {
-        built = String(error && error.message ? error.message : error)
-      }
+      var outcome = run(lang, area.value, { exports: names, runtimes: settings.runtimes })
+      var api = outcome.api
       for (var i = 0; i < assertions.length; i += 1) {
         var assertion = assertions[i]
-        if (built !== null) {
-          results.push({ name: assertion.name, passed: false, why: built })
+        if (!outcome.ok) {
+          results.push({ name: assertion.name, passed: false, why: outcome.error })
           continue
         }
         try {
-          var outcome = assertion.test(api)
-          results.push({ name: assertion.name, passed: outcome !== false, why: '' })
+          var passed = assertion.test(api)
+          results.push({ name: assertion.name, passed: passed !== false, why: '' })
         } catch (error) {
           results.push({ name: assertion.name, passed: false, why: String(error && error.message ? error.message : error) })
         }
@@ -544,7 +580,7 @@ window.Kit = (function () {
       }
     }
 
-    run.addEventListener('click', function () { evaluate() })
+    runBtn.addEventListener('click', function () { evaluate() })
     draw()
 
     return {
@@ -553,6 +589,76 @@ window.Kit = (function () {
         evaluate()
         return results.filter(function (found) { return found.passed }).map(function (found) { return found.name })
       },
+      code: function () { return area.value },
+      onRun: function (fn) { ran.add(fn) },
+    }
+  }
+
+  // ------------------------------------------------------------ Kit.codeblock
+
+  /**
+   * A runnable code sample with real output beneath it. This is the general form: no
+   * assertions, nothing graded, nothing sent to the host. `Kit.editor` is this same
+   * machinery with a Task's assertions run against the result.
+   *
+   * Use it wherever a Course wants to show code and let the reader actually run it —
+   * inside a Mini-app or, once a Lesson block wraps one (docs/adr/0025), in prose next to
+   * an explanation.
+   */
+  function codeblock(options) {
+    var settings = options || {}
+    var lang = settings.lang || 'js'
+    var ran = callbacks()
+    var last = null
+
+    var root = el('div', 'k-codeblock')
+    var area = document.createElement('textarea')
+    area.spellcheck = false
+    area.value = settings.start || ''
+    area.setAttribute('aria-label', settings.label || 'Code')
+    area.rows = Math.min(Math.max(area.value.split('\n').length + 1, 6), 26)
+
+    var bar = el('div', 'k-bar')
+    var runBtn = el('button', 'k-btn k-quiet', settings.runLabel || 'Run')
+    runBtn.type = 'button'
+    var out = el('pre', 'k-output')
+    out.setAttribute('aria-live', 'polite')
+
+    bar.appendChild(runBtn)
+    root.appendChild(area)
+    root.appendChild(bar)
+    root.appendChild(out)
+    mount(settings.mount).appendChild(root)
+
+    area.addEventListener('keydown', function (event) {
+      if (event.key !== 'Tab') return
+      event.preventDefault()
+      var start = area.selectionStart
+      area.value = area.value.slice(0, start) + '  ' + area.value.slice(area.selectionEnd)
+      area.selectionStart = area.selectionEnd = start + 2
+    })
+
+    function execute() {
+      last = run(lang, area.value, { runtimes: settings.runtimes })
+      draw()
+      ran.fire(last)
+      return last
+    }
+
+    function draw() {
+      out.className = 'k-output' + (last && !last.ok ? ' k-fail' : '')
+      if (!last) { out.textContent = ''; return }
+      var lines = last.log.slice()
+      if (!last.ok) lines.push('Error: ' + last.error)
+      out.textContent = lines.join('\n')
+    }
+
+    runBtn.addEventListener('click', function () { execute() })
+    draw()
+
+    return {
+      /** Run the code and report what it printed and whether it threw. Never graded. */
+      run: function () { return execute() },
       code: function () { return area.value },
       onRun: function (fn) { ran.add(fn) },
     }
@@ -810,6 +916,8 @@ window.Kit = (function () {
     pieces: pieces,
     hotspot: hotspot,
     editor: editor,
+    codeblock: codeblock,
+    run: run,
     steps: steps,
     sim: sim,
     order: order,
