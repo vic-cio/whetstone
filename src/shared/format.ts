@@ -275,6 +275,14 @@ export const ManifestSchema = z.object({
    * learning anything about the subject.
    */
   library: z.array(z.string().min(1)).default([]),
+  /**
+   * Pointers into the shared, deduplicated runtime cache (docs/adr/0025): a language
+   * `Kit.codeblock`/`Kit.editor` need beyond `js`, fetched once at build time and reused
+   * across every Course that names the same `{ lang, version }`, never copied per Course.
+   */
+  runtimes: z
+    .array(z.object({ lang: z.string().min(1), version: z.string().min(1) }))
+    .default([]),
   objectives: z.array(ObjectiveSchema).min(1),
   /** The Rungs this Course actually uses, drawn from the fixed scale. */
   ladder: z.array(z.enum(DEPTHS)).min(1),
