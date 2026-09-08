@@ -442,3 +442,33 @@ describe('a build that stopped part way', () => {
     expect(existsSync(folder)).toBe(true)
   })
 })
+
+/**
+ * The version that could not have written a record of itself.
+ *
+ * A build interrupted by an older app leaves a part-written course and nothing else. It
+ * cannot be carried on, and it must not be swept: it is still somebody's work, and the
+ * sweep added to protect stopped builds would otherwise have deleted exactly those.
+ */
+describe('a build stopped by an app that kept no record', () => {
+  it('is offered back as work rather than as a resume, and survives the sweep', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'whetstone-older-'))
+    process.env['WHETSTONE_STAGING'] = root
+    const { resumable, sweepStaging } = await import('../src/main/newCourse')
+
+    const partial = join(root, 'part-written')
+    mkdirSync(join(partial, 'lessons'), { recursive: true })
+    writeFileSync(join(partial, 'course.json'), '{"formatVersion":1}')
+    writeFileSync(join(partial, 'lessons', 'les-one.md'), '# one')
+    const week = new Date(Date.now() - 8 * 24 * 3600 * 1000)
+    utimesSync(partial, week, week)
+
+    const found = resumable()
+    expect(found?.at).toBe(partial)
+    // The honest half: there is work here, and no way to carry it on.
+    expect(found?.canResume).toBe(false)
+
+    expect(sweepStaging()).toBe(0)
+    expect(existsSync(partial)).toBe(true)
+  })
+})

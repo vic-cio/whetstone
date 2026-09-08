@@ -11,6 +11,7 @@ import type { Removal } from '../shared/remove'
 import type { Evaluation } from '../shared/defect'
 import type { Revision, Work } from '../main/revise'
 import type { Update } from '../main/update'
+import type { Left } from '../main/newCourse'
 import type { TutorReply } from '../main/tutor'
 import type { Outcome } from '../shared/grade'
 import type { PageType } from '../shared/format'
@@ -63,8 +64,7 @@ const api = {
      * by which time the app has been closed, so this is read from the folder rather than
      * from memory.
      */
-    resumable: (): Promise<{ at: string; started: string } | undefined> =>
-      ipcRenderer.invoke('brief:resumable'),
+    resumable: (): Promise<Left | undefined> => ipcRenderer.invoke('brief:resumable'),
     resume: (
       folder: string,
     ): Promise<{ ok: boolean; transcript?: string; harnessId?: string; model?: string }> =>

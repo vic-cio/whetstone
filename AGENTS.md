@@ -75,9 +75,13 @@ tests/         vitest, run against the fixtures
   again. Only starting another course, or saying to throw it away, deletes it. A usage limit
   is also named as one rather than reported as "stopped before it finished", because the
   useful fact is that waiting fixes it.
-- **Staging is swept at launch.** Every Brief leaves a folder and nothing ever removed them.
-  The newest stopped build is kept, because that is the one being offered back; everything
-  else older than a day goes.
+- **Staging is swept at launch, and a folder holding work is never swept.** Every Brief
+  leaves a folder and nothing ever removed them. What goes is the layout a Brief leaves when
+  nothing came of it, older than a day. A folder with a `course.json` or any lesson in it
+  stays whatever its age, because it is somebody's part-written course: the first version of
+  the sweep would have deleted exactly the builds the resume was added to protect. A build
+  interrupted before this existed has no `brief.json`, so it cannot be carried on; it is
+  still offered back, as work to look at rather than as a resume.
 - **A build outlives the screen that started it.** It runs in the main process and takes
   minutes, so the reader is free to navigate away and come back; the bar at the foot of the
   window is how they get back. Only Stop ends one. Leaving the New Course screen used to

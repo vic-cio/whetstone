@@ -67,7 +67,9 @@ export function App(): React.JSX.Element {
   })
   const [updating, setUpdating] = useState(false)
   /** A build that stopped and is still on disk, offered on the home screen until it is used. */
-  const [stopped, setStopped] = useState<{ at: string; started: string } | undefined>(undefined)
+  const [stopped, setStopped] = useState<
+    { at: string; started: string; canResume: boolean } | undefined
+  >(undefined)
 
   /**
    * Which harness answers the questions the host cannot. One row per role, from Settings,
@@ -624,7 +626,7 @@ function Home({
   onNew: () => void
   onRemove: (slug: string, title: string) => void
   /** A build that stopped part way and is still on disk, if there is one. */
-  stopped: { at: string; started: string } | undefined
+  stopped: { at: string; started: string; canResume: boolean } | undefined
   onResume: () => void
   onForget: () => void
 }): React.JSX.Element {
@@ -656,17 +658,28 @@ function Home({
         <div className="offer">
           <b>A course was left part way through</b>
           <span>
-            Building it stopped on {new Date(stopped.started).toLocaleString()}. Everything
-            written so far is still here, and carrying on continues from that point rather
-            than starting again.
+            Building it stopped on {new Date(stopped.started).toLocaleString()}.{' '}
+            {stopped.canResume
+              ? 'Everything written so far is still here, and carrying on continues from that point rather than starting again.'
+              : 'Everything written so far is still here. It was interrupted by a version of this app that kept no record of the conversation, so it cannot be carried on, but nothing has been deleted.'}
           </span>
           <div className="acts">
             <button type="button" className="quiet danger" onClick={onForget}>
               Throw it away
             </button>
-            <button type="button" className="btn" onClick={onResume}>
-              Carry on building it
-            </button>
+            {stopped.canResume ? (
+              <button type="button" className="btn" onClick={onResume}>
+                Carry on building it
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="quiet"
+                onClick={() => void window.whetstone.courses.reveal(stopped.at)}
+              >
+                Show me what it wrote
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -131,6 +131,9 @@ export function sweepStaging(): number {
     if (folder === keep || folder === current?.folder) continue
     try {
       if (statSync(folder).mtimeMs > day) continue
+      // Never a folder holding written work. What is swept is the layout a Brief leaves
+      // behind when nothing came of it: a toolkit, a set of skills, an empty tray.
+      if (holdsWork(folder)) continue
       rmSync(folder, { recursive: true, force: true })
       gone += 1
     } catch {
@@ -168,22 +171,56 @@ function remember(brief: Brief): void {
  * is what happens while a usage limit resets. The newest one wins: the app holds one Brief
  * at a time, so there is only ever one worth offering.
  */
-export function resumable(): { at: string; started: string } | undefined {
+export interface Left {
+  at: string
+  started: string
+  /**
+   * False for a build that stopped before the app knew how to write down what it would
+   * need. Those cannot be carried on, because the conversation and the harness session are
+   * gone, but what they wrote is still on disk and is still the reader's.
+   */
+  canResume: boolean
+}
+
+export function resumable(): Left | undefined {
   const root = stagingRoot()
   if (!existsSync(root)) return undefined
 
-  let best: Stopped | undefined
+  let best: { folder: string; at: string; canResume: boolean } | undefined
   for (const name of readdirSync(root)) {
-    const file = join(root, name, HOUSE, STATE)
-    if (!existsSync(file)) continue
-    try {
-      const state = JSON.parse(readFileSync(file, 'utf8')) as Stopped
-      if (!best || state.at > best.at) best = { ...state, folder: join(root, name) }
-    } catch {
-      // A half-written state file is not a build worth offering back.
+    const folder = join(root, name)
+    const file = join(folder, HOUSE, STATE)
+
+    if (existsSync(file)) {
+      try {
+        const state = JSON.parse(readFileSync(file, 'utf8')) as Stopped
+        if (!best?.canResume || state.at > best.at) best = { folder, at: state.at, canResume: true }
+        continue
+      } catch {
+        // A half-written state file falls through to the test below, which is about the
+        // course rather than about the state.
+      }
     }
+    // No state, but something was written. A build interrupted by an older version of this
+    // app leaves exactly this, and it is still somebody's work.
+    if (!existsSync(join(folder, 'course.json'))) continue
+    if (best?.canResume) continue
+    const at = new Date(statSync(folder).mtimeMs).toISOString()
+    if (!best || at > best.at) best = { folder, at, canResume: false }
   }
-  return best === undefined ? undefined : { at: best.folder, started: best.at }
+
+  return best === undefined ? undefined : { at: best.folder, started: best.at, canResume: best.canResume }
+}
+
+/** True when a folder holds something somebody wrote, rather than the layout of a Brief. */
+function holdsWork(folder: string): boolean {
+  if (existsSync(join(folder, 'course.json'))) return true
+  const lessons = join(folder, 'lessons')
+  try {
+    return existsSync(lessons) && readdirSync(lessons).length > 0
+  } catch {
+    return false
+  }
 }
 
 /**
