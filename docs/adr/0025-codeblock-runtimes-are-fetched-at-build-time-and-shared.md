@@ -84,14 +84,45 @@ next thing to resolve: either the export inlines the pointed-to runtime from the
 an imported Course re-fetches it against the allowlist on first open. Neither is decided
 yet.
 
-Actually inlining a fetched runtime into `frameSource()` — so a Mini-app's `lang: 'python'`
-codeblock can run — is not built by this change. `fetchRuntime` writes the runtime's raw
-bytes into the cache as `runtime.bin`; getting from that to a working
-`window.__whetstoneRuntimes.python` inside a frame with `connect-src 'none'` is real work
-still open, because Pyodide's ordinary loading path fetches its own sub-assets (the wasm
-binary, the stdlib archive) over the network, which the frame does not have. That likely
-means precomputing a single self-contained bundle (every asset inlined as a data URI, a
-`loadPyodide({ indexURL: 'data:...' })` or equivalent) as part of what gets written to the
-cache, not simply mirroring Pyodide's own distribution layout. Until that is solved,
-`lang: 'python'` is reachable through `Kit.run`'s injected-runtime path (proven by
-`tests/kit-run.test.ts`) but nothing yet supplies a real Pyodide runtime object to inject.
+Actually inlining a fetched runtime into `frameSource()` — so a Mini-app's or a Lesson
+codeblock's `lang: 'python'` can run — is not built by this change, and is now more
+precisely scoped than when this ADR was first written (verified against the real assets,
+not assumed):
+
+`ALLOWED_RUNTIMES.python.url` names only `pyodide.js`, the ~16KB loader/orchestrator.
+`fetchRuntime` currently caches just that file as `runtime.bin` — nowhere near enough to
+run Python. The loader's own two dependencies, fetched separately at its runtime by URLs
+relative to `indexURL`, are `pyodide.asm.wasm` (~10MB, the compiled CPython interpreter)
+and `python_stdlib.zip` (~2.3MB, the standard library). Both must be fetched at build time
+and cached alongside the loader before anything can work; `ALLOWED_RUNTIMES` and
+`fetchRuntime` need to grow from one URL to the small, fixed set of assets one Pyodide
+release actually needs.
+
+The frame having `connect-src 'none'` is the real obstacle, and it rules out the two
+approaches that assume some server exists to answer a request: neither an `indexURL`
+pointing at an embedded static server nor a Service Worker intercepting `fetch` is
+possible here — a Service Worker cannot even register inside a `sandbox="allow-scripts"`
+frame, because that sandbox token alone gives the frame an opaque origin, and Service
+Worker registration requires a real (non-opaque) origin.
+
+The approach that survives that constraint: **override `window.fetch` inside the frame,
+before `loadPyodide()` runs, with a pure in-memory responder** for the fixed set of asset
+paths Pyodide's loader asks for (`pyodide.asm.wasm`, `python_stdlib.zip`, and whatever
+`pyodide-lock.json` — the package index — resolves to, if `Kit.run`'s python engine ever
+supports `micropip`-installed packages beyond the stdlib; the stdlib alone does not need
+it). Each asset's bytes would already be inlined into the served document as base64,
+exactly like the toolkit and course library already are; the override decodes them and
+returns a synthetic `Response` without the real network-layer `fetch` algorithm ever
+running, so `connect-src 'none'` never has anything to block — no capability is added to
+the frame beyond what inlining the toolkit already grants it. This needs no private
+Emscripten `Module` hook names and does not depend on Pyodide's internal loading
+implementation staying stable across versions, which a `Module.instantiateWasm`/
+`Module.locateFile` override (the other viable approach) would.
+
+This is judged feasible, not merely hoped for, but embedding and correctly proving ~12.5MB
+of interpreter and stdlib bytes — and getting Python's own import system working against
+a zip mounted this way — is real engineering that deserves a dedicated pass with its own
+verification budget, not a rushed addition here. Until it lands, `lang: 'python'` is
+reachable through `Kit.run`'s injected-runtime path (proven by `tests/kit-run.test.ts`) but
+nothing yet supplies a real Pyodide runtime object to inject, and `writing-a-mini-app/SKILL.md`
+tells the Constructor not to use it yet for exactly that reason.

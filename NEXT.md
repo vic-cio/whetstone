@@ -128,14 +128,20 @@ name it rather than a live counter — garbage-collected on every Course delete.
 
 What is not built:
 
-- **Nothing actually supplies `window.__whetstoneRuntimes` inside a served frame yet.**
-  `fetchRuntime` writes a runtime's raw bytes to the cache as an opaque blob; getting a real
-  Pyodide from that to a working in-frame runtime object is unsolved, because Pyodide's
-  normal loading path fetches its own sub-assets over the network, which the frame does not
-  have (`connect-src 'none'`, permanently). Likely needs a self-contained bundle (every asset
-  as a data URI) computed at fetch time, not just the file Pyodide's own CDN serves.
-  `writing-a-mini-app/SKILL.md` currently tells the Constructor not to use any `lang` but
-  `js` because of exactly this gap — that line needs deleting once it's solved.
+- **Nothing actually supplies `window.__whetstoneRuntimes` inside a served frame yet, and
+  `fetchRuntime` doesn't even cache enough to make it possible.** `ALLOWED_RUNTIMES.python`
+  only names the 16KB `pyodide.js` loader, not the ~10MB `pyodide.asm.wasm` or the ~2.3MB
+  `python_stdlib.zip` it needs at its own runtime (verified against the real CDN assets this
+  session — `fetchRuntime` and `ALLOWED_RUNTIMES` need to grow to cover the full small asset
+  set one Pyodide release needs, not just its loader). Once cached, wiring them into the
+  frame needs `window.fetch` overridden inside the frame, before `loadPyodide()` runs, to
+  answer those specific asset paths from the already-inlined base64 bytes rather than a real
+  network call — an `indexURL`-pointed static server and a Service Worker were both ruled
+  out (the latter cannot even register in an opaque-origin sandboxed frame). See
+  `docs/adr/0025`'s Consequences for the full reasoning; this is judged feasible but is real
+  engineering (~12.5MB of bytes to embed and prove Python's import system actually works
+  against a zip mounted this way) that deserves its own pass. `writing-a-mini-app/SKILL.md`
+  still tells the Constructor not to use any `lang` but `js` because of this gap.
 - **A Lesson-level, ungraded codeblock now exists**: `:::codeblock{lang=js label=... height=...}`
   (`writing-a-lesson/SKILL.md`), a new `LessonBlock` variant (`src/shared/format.ts`), parsed
   in `parseCourse.ts` (which also rejects a non-`js` `lang` the Course never pinned in
