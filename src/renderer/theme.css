@@ -64,8 +64,14 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
   background: var(--rail);
   color: var(--rail-ink);
   padding: 34px 0 14px;
-  display: grid;
-  align-content: start;
+  /*
+   * A column rather than a grid of rows, so the foot can be pushed to the bottom of the
+   * rail instead of trailing the last course. What is in the foot is what you reach for
+   * between things rather than while reading: a new course, settings, the version.
+   */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   overflow-y: auto;
 }
 .rail .brand {
@@ -82,7 +88,12 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
 }
 .rail button:hover { color: #fff; background: #ffffff0a; }
 .rail button.on { border-left-color: var(--amber); color: #fff; font-weight: 600; background: #ffffff0a; }
-.rail .foot { margin-top: 14px; padding: 11px 12px 0; border-top: 1px solid var(--rail-line); }
+/* `auto` is what puts it at the bottom: it takes the spare height when the list is short,
+   and behaves like an ordinary margin when the list has filled the rail. */
+.rail .foot {
+  margin-top: auto; padding: 14px 12px 0; border-top: 1px solid var(--rail-line);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+}
 .rail .foot button { padding: 3px 0; border-left: 0; }
 .rail .foot button.hi { color: #fff; font-weight: 600; }
 
