@@ -96,8 +96,10 @@ reader finds out before you do.
    the question, and what the reader has to produce.
 8. Depth belongs to a Task, not to a Module. A late Module may hold `recall` Tasks.
 9. A Mini-app is one file with everything inline and no external reference of any kind.
-   Build it from the toolkit, and read `.whetstone/skills/writing-a-mini-app/SKILL.md`.
-   Code the Course needs in more than one Mini-app goes in `lib/`, listed under `library`,
+   Build it from the toolkit, and read `.whetstone/skills/writing-a-mini-app/SKILL.md` —
+   it covers writing `activities/<id>.json` (data, preferred for the eight common widget
+   shapes) as well as writing `apps/<id>/index.html` by hand (for everything else). Code
+   the Course needs in more than one Mini-app goes in `lib/`, listed under `library`,
    one name on `window` per file. Name a file inside the Course, never a path to anything.
 9b. A diagram is a separate file, so the app cannot hand it the theme. Write it as an SVG
    carrying both colour schemes in its own `<style>`, under
