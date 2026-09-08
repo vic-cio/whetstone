@@ -145,8 +145,14 @@ export function sweepStaging(): number {
 
 /** Throw the Brief away, stopped build and all. Only a deliberate act calls this. */
 export function dropBrief(): void {
+  if (running !== undefined) return
   kept = false
+  // The stopped build the reader is throwing away is usually not this session's Brief. The
+  // app was closed while a usage limit reset, so `current` is empty and the folder is known
+  // only from disk. Without this, the folder stayed and the offer came straight back.
+  const left = resumable()
   discardBrief()
+  if (left !== undefined) rmSync(left.at, { recursive: true, force: true })
 }
 
 /** Write down what a stopped build would need to carry on, beside what it has written. */

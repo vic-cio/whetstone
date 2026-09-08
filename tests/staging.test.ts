@@ -472,3 +472,26 @@ describe('a build stopped by an app that kept no record', () => {
     expect(existsSync(partial)).toBe(true)
   })
 })
+
+/**
+ * Throwing away a stopped build the app only knows from disk.
+ *
+ * The reader meets the offer after the app was closed and reopened, so there is no Brief in
+ * memory to bin. Dropping used to remove nothing, and the offer came straight back.
+ */
+describe('throwing away a stopped build from a previous session', () => {
+  it('removes the folder, so the offer does not come back', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'whetstone-drop-'))
+    process.env['WHETSTONE_STAGING'] = root
+    const { resumable, dropBrief } = await import('../src/main/newCourse')
+
+    const partial = join(root, 'part-written')
+    mkdirSync(join(partial, 'lessons'), { recursive: true })
+    writeFileSync(join(partial, 'course.json'), '{"formatVersion":1}')
+
+    expect(resumable()?.at).toBe(partial)
+    dropBrief()
+    expect(existsSync(partial)).toBe(false)
+    expect(resumable()).toBeUndefined()
+  })
+})
