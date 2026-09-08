@@ -44,10 +44,9 @@ describe('what the app hands a harness', () => {
 
   it('carries every rule the plan says the Constructor prompt states', () => {
     const build = readFileSync(join(AGENT, 'roles', 'constructor-build.md'), 'utf8')
-    // Numbered 1 to 21, with 9b and 9c beside 9.
+    // Numbered 1 to 21, with 7b, 9b, 9c and 14b beside their own.
     for (let rule = 1; rule <= 21; rule += 1) expect(build).toContain(`\n${rule}. `)
-    expect(build).toContain('9b.')
-    expect(build).toContain('9c.')
+    for (const beside of ['7b.', '9b.', '9c.', '14b.']) expect(build).toContain(beside)
     // The two that were learned the hard way, rather than designed.
     expect(build).toContain('Marking a right answer wrong')
     expect(build).toContain('Depth and Check are independent')
@@ -105,6 +104,22 @@ describe('what the app hands a harness', () => {
     const build = readFileSync(join(AGENT, 'roles', 'constructor-build.md'), 'utf8')
     expect(build).toContain('may also **open** with a short Test')
     expect(build).toContain('14b.')
+  })
+
+  /**
+   * Repetition, and what kind. Measured on a real build: six questions per objective, of
+   * which 31 out of 42 were multiple choice, every one of them inside the test at the end
+   * of the module the idea was introduced in.
+   */
+  it('asks for an idea to be practised more than once, and not all in one sitting', () => {
+    const build = readFileSync(join(AGENT, 'roles', 'constructor-build.md'), 'utf8')
+    expect(build).toContain('Practise an idea more than once, and not all at once')
+    expect(build).toContain('Repetition is not identical repetition')
+    const task = readFileSync(join(SKILLS, 'writing-a-task', 'SKILL.md'), 'utf8')
+    expect(task).toContain('How many questions one idea gets')
+    expect(task).toContain('In more than one Test')
+    // And the run is told the app measures it, so it can aim above the floor first.
+    expect(build).toContain('The app counts too')
   })
 
   it('tells the mini-app skill to build the subject, not a quiz with buttons', () => {

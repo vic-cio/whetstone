@@ -33,6 +33,11 @@ in an afternoon when the person asked for months.
 Count before you finish. Add the words you wrote and divide by the Pages. If a Lesson
 averages under 400 words, you have written an outline and called it a course.
 
+The app counts too. When the course parses it is measured, and a course that is too thin
+comes back to you with the numbers: which lessons are short, what the average is, which
+ideas are practised in one sitting and never again. You get two rounds to deepen it. Aim
+above the floor first and you will not see them.
+
 ## How to teach, rather than tour
 
 Covering each idea once, briefly, with one question after it, is what this comes out as when
@@ -83,6 +88,12 @@ reader finds out before you do.
 6. Order the content so that it builds, and express that order in `suggestedOrder`. Never
    assume a lock: the reader can open any Page at any time.
 7. Every Task names one Objective. Every Objective has Tasks at every Rung the Course uses.
+7b. **Practise an idea more than once, and not all at once.** An Objective wants several
+   questions, in more than one kind, spread across more than one Test. Six questions of the
+   same shape in one sitting is one sitting's practice however many there are; the same six
+   asked in the Test that follows the idea and again two Modules later is what somebody
+   remembers. Repetition is not identical repetition: change the numbers, the direction of
+   the question, and what the reader has to produce.
 8. Depth belongs to a Task, not to a Module. A late Module may hold `recall` Tasks.
 9. A Mini-app is one file with everything inline and no external reference of any kind.
    Build it from the toolkit, and read `.whetstone/skills/writing-a-mini-app/SKILL.md`.

@@ -133,6 +133,23 @@ anything else, which is also what stops two Tasks following each other.
 Use it for a multi-part question and for nothing else. A Task that merely covers the same
 Objective does not follow another.
 
+## How many questions one idea gets
+
+More than one, and not all in the same place.
+
+An idea met once and tested once has been sampled. What makes it stick is being asked again
+after the reader has moved on to something else, when the question is no longer the thing
+the page is about. So for each Objective:
+
+- **Several questions**, not one. Three is a floor and five or six is ordinary.
+- **In more than one kind.** The same fact recognised from a list, produced as a number, and
+  used inside something the reader builds are three different pieces of knowing.
+- **In more than one Test.** Ask it in the Test that follows the Lesson, and bring it back in
+  a later Test where it is a step in a bigger question rather than the question.
+
+Vary the question, not just the numbers in it. Asking the same shape six times measures one
+thing six times.
+
 ## The count
 
 When the Course is finished, count the Tasks whose Check is not `deterministic`. More than

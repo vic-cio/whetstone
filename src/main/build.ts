@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { TOOLKIT_VERSION } from '../shared/miniapp'
+import { substancePrompt, thin } from '../shared/substance'
 import {
   BRIEF,
   inspect,
@@ -34,6 +35,15 @@ import type { CourseError } from '../shared/format'
 
 /** How many times a Run is asked to fix its own Course before the build fails (PLAN 3.19). */
 const REPAIRS = 3
+
+/**
+ * How many times a Run is asked to deepen a Course that parses but is thin.
+ *
+ * Two, and then the Course goes in whatever it says. Each round is another whole run, and
+ * the second one is where the returns stop: a run that has twice been told its lessons are
+ * short and has twice written 400 words is not going to write 700 on the third ask.
+ */
+const DEEPENINGS = 2
 
 /**
  * The run that is going on now, if there is one.
@@ -198,6 +208,12 @@ export interface BuildResult {
  * One Run, one Course, into a folder outside the library. A folder the parser refuses goes
  * back to the same session with the errors, at most three times, and if it still will not
  * parse the build fails and staging stays where it is.
+ *
+ * A folder that parses meets a second gate. `thin()` measures whether there is enough here
+ * to learn from, and a Course that is too thin goes back to the same session with what was
+ * measured. That gate asks and never refuses: after two rounds the Course moves into the
+ * library whatever it says, because thinness is a matter of degree and a Course somebody
+ * waited minutes for beats a Course that met a threshold.
  */
 export async function build(
   folder: string,
@@ -215,9 +231,16 @@ export async function build(
   let usd = 0
   let session = resume
   let errors: CourseError[] = []
+  let complaints: CourseError[] = []
+  let deepenings = 0
 
-  for (let attempt = 1; attempt <= REPAIRS; attempt += 1) {
-    const prompt = attempt === 1 ? firstPrompt(folder, brief) : repairPrompt(errors)
+  for (let attempt = 1; attempt <= REPAIRS + DEEPENINGS; attempt += 1) {
+    const prompt =
+      attempt === 1
+        ? firstPrompt(folder, brief)
+        : errors.length > 0
+          ? repairPrompt(errors)
+          : substancePrompt(complaints)
     const request = {
       harness,
       model: choice.model,
@@ -249,10 +272,25 @@ export async function build(
       // Said out loud, because a course that tours its subject in an afternoon parses
       // exactly as well as one that teaches it, and the difference is a count.
       onMoment({ at: 'doing', what: `Read the course: ${sizeLine(gate.course)}` })
+      errors = []
+      complaints = thin(gate.course)
+
+      // Thin, and there is a round left to say so in. The run wrote this course and is
+      // the only thing that can deepen it, so it goes back to the same session.
+      if (complaints.length > 0 && deepenings < DEEPENINGS) {
+        deepenings += 1
+        onMoment({
+          at: 'doing',
+          what: `Reading what is there, and asking for ${complaints.length} thing${complaints.length === 1 ? '' : 's'} to be deeper`,
+        })
+        continue
+      }
+
       moveIn(folder, root, gate.slug, adapterFor(harness)?.litter ?? [])
       return { ok: true, slug: gate.slug, folder, errors: [], attempts: attempt, usd }
     }
     errors = gate.errors
+    complaints = []
     // Each attempt is a line in the feed, in the app's own words, with what was wrong.
     onMoment({ at: 'doing', what: `Checking the course, and asking for ${errors.length} fix${errors.length === 1 ? '' : 'es'}` })
   }

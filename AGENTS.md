@@ -21,6 +21,7 @@ src/shared/    format.ts (zod schemas), parseCourse.ts (folder -> Course), grade
                vocabulary and nothing else),
                miniapp.ts (the sealed frame), courseFile.ts (paths a Course points at),
                samples.ts (keeping the shipped Courses current in a library),
+               substance.ts (the second gate: is there enough here to learn from),
                harness.ts (what a Harness is, and the Moment union), claude.ts (the CLI
                adapter), staging.ts (the gate into the library), remove.ts (deleting)
 src/main/      Electron main process. Node lives here and nowhere else. harness.ts spawns,
@@ -176,6 +177,15 @@ tests/         vitest, run against the fixtures
   reported only once its result says the tool worked, which is why reading a stream is a
   reader with memory rather than a pure function of a line. The first version got this wrong
   and would have told the reader that two refused files had appeared.
+- **There are two gates, and only one of them refuses.** The parser says whether a Course is
+  well formed; `src/shared/substance.ts` says whether there is enough there to learn from,
+  which is a different question and the one both real builds failed. It measures words per
+  lesson, questions per objective, whether an idea is ever asked again after its own Test,
+  whether every question is one to pick from a list, and whether a long Module has one Test
+  at the end of it. A thin Course goes back to the same session with the numbers, twice, and
+  then goes into the library anyway: thinness is a matter of degree and a Course somebody
+  waited minutes for beats a Course that met a threshold. A Course marked `small` is exempt,
+  because it is short on purpose.
 - **A Course is built in staging, and the parser is the only gate.** A Run writes outside the
   library, and a folder the parser accepts is renamed into place in one step. A folder it
   refuses goes back to the same session at most three times. The app writes `toolkit/` into
