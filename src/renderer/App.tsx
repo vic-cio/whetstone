@@ -293,10 +293,15 @@ export function App(): React.JSX.Element {
                   {entry.title}
                 </button>
               ))}
+              {/*
+                Starting a course belongs with the courses: it is the next thing in that
+                list rather than a setting. Bold, because it is the one that makes something
+                rather than opening something.
+              */}
+              <button type="button" className="hi" onClick={() => setRoute({ at: 'new' })}>
+                + New course
+              </button>
               <div className="foot">
-                <button type="button" className="hi" onClick={() => setRoute({ at: 'new' })}>
-                  + New course
-                </button>
                 <button type="button" onClick={() => setRoute({ at: 'settings' })}>
                   Settings
                 </button>
