@@ -54,6 +54,18 @@ export function App(): React.JSX.Element {
    * run carries on in the main process. Only Stop ends it.
    */
   const [build, setBuild] = useState<BuildState | undefined>(undefined)
+  /**
+   * Whether there is a newer build than this one.
+   *
+   * Checked once a launch, and it only ever tells: the version sits at the foot of the rail
+   * and becomes a button when there is something newer. Updating from a terminal is not a
+   * thing to ask of somebody who was given this app by a friend.
+   */
+  const [update, setUpdate] = useState<{ current: string; latest?: string; newer: boolean; url?: string }>({
+    current: '',
+    newer: false,
+  })
+  const [updating, setUpdating] = useState(false)
 
   /**
    * Which harness answers the questions the host cannot. One row per role, from Settings,
@@ -102,6 +114,10 @@ export function App(): React.JSX.Element {
       }),
     [],
   )
+
+  useEffect(() => {
+    void window.whetstone.update.check().then(setUpdate)
+  }, [])
 
   const refreshLibrary = useCallback(() => {
     void window.whetstone.courses.list().then((result) => {
@@ -231,6 +247,29 @@ export function App(): React.JSX.Element {
                 <button type="button" onClick={() => setRoute({ at: 'settings' })}>
                   Settings
                 </button>
+                {/*
+                  Which version this is, and the way to get the next one. It is a line of
+                  text until there is something newer, and a button when there is.
+                */}
+                {update.newer && update.url !== undefined ? (
+                  <button
+                    type="button"
+                    className="newer"
+                    disabled={updating}
+                    onClick={() => {
+                      if (!window.confirm(`Update to ${update.latest}? Whetstone will restart.`)) return
+                      setUpdating(true)
+                      void window.whetstone.update.apply(update.url ?? '').then((done) => {
+                        setUpdating(false)
+                        if (!done.ok) window.alert(done.message ?? 'The update did not finish.')
+                      })
+                    }}
+                  >
+                    {updating ? 'Updating…' : `Update to ${update.latest}`}
+                  </button>
+                ) : (
+                  update.current !== '' && <span className="version">Whetstone {update.current}</span>
+                )}
               </div>
             </>
           ) : (

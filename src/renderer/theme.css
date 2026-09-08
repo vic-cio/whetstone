@@ -612,6 +612,19 @@ pre.code {
 .tag:hover { border-color: var(--frame); }
 .tag.on { background: var(--amber); border-color: var(--amber); color: var(--on-amber); }
 
+/* Which version this is, at the foot of the rail. A line of text until there is a newer
+   build, and a button when there is: updating an app somebody was given should not need a
+   terminal. */
+.version {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
+  letter-spacing: 0.08em; color: var(--rail-muted); padding: 6px 0;
+}
+.rail .foot .newer {
+  color: var(--amber); font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.rail .foot .newer:disabled { color: var(--rail-muted); cursor: default; }
+
 /* A control that takes something away. Quiet until it is hovered, because it sits beside
    ordinary controls and must not read as the thing to press. */
 .quiet.danger { color: var(--muted); }

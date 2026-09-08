@@ -22,6 +22,7 @@ import { removeCourse } from '../shared/remove'
 import { answer, check } from './answering'
 import { evaluate } from './defect'
 import { review } from './reviewer'
+import { apply as applyUpdate, check as checkForUpdate } from './update'
 import { publicTask } from '../shared/format'
 import { reviewSession } from '../shared/again'
 import { revise } from './revise'
@@ -558,6 +559,14 @@ app.whenReady().then(() => {
   // Whether a build is going. The window asks on mount, so a reader who navigated away and
   // came back is shown the build rather than an empty New Course screen.
   ipcMain.handle('brief:status', () => buildingNow())
+
+  /**
+   * Updating the app. The check runs once a launch and only reports; nothing is downloaded
+   * or replaced without a press. It is the one thing here that touches the network on its
+   * own, and it fails quietly, because no network is the ordinary state on a train.
+   */
+  ipcMain.handle('update:check', () => checkForUpdate())
+  ipcMain.handle('update:apply', (_event, url: string) => applyUpdate(url))
 
   ipcMain.handle('harnesses:list', () => harnesses())
 

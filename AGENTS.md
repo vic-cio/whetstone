@@ -29,7 +29,7 @@ src/main/      Electron main process. Node lives here and nowhere else. harness.
                reviewer.ts (a Project) and defect.ts (a report) are the other roles,
                answering.ts routes a Task to whichever judges it and holds the sitting,
                study.ts owns the sitting and the tick rules, revise.ts changes a Course,
-               workspace.ts owns the folders a run is given
+               workspace.ts owns the folders a run is given, update.ts replaces the app
 src/preload/   the only bridge into the renderer, one namespace per feature
 src/renderer/  React. No Node access
 toolkit/       the toolkit this build ships. See docs/toolkit.md
@@ -73,6 +73,13 @@ tests/         vitest, run against the fixtures
   call `discardBrief`, which deletes the staging folder the run is writing into, and that
   destroyed two real builds before it was found. A Brief that is building refuses to be
   discarded, and `tests/staging.test.ts` fails if that guard is removed.
+- **The update check is the only thing that touches the network on its own.** Once a launch,
+  to `api.github.com`, and it only ever tells: the version sits at the foot of the rail and
+  becomes a button when a release is newer. Nothing downloads and nothing is replaced
+  without a press, and a failed check is silent, because no network is the ordinary state on
+  a train. `electron-updater` is not usable here: macOS applies an update through Squirrel,
+  which requires a valid signature, and this build is unsigned. `src/main/update.ts` does
+  what `scripts/install.sh` does, from inside the app.
 - **Most study needs no model.** Nothing spawns on navigation. A harness starts only when
   the user builds a Course, sends a chat message, submits work, or presses Review.
   `docs/adr/0012`.

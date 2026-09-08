@@ -350,3 +350,23 @@ describe('naming a file in the feed', () => {
     if (moment?.at === 'doing') expect(moment.what).toBe('Reading writing-a-task/SKILL.md')
   })
 })
+
+/**
+ * Which build is newer.
+ *
+ * The one piece of the updater that is worth testing without a network: a release is a tag
+ * and a running app is a version, and comparing them as text says 0.10.0 is older than
+ * 0.9.0. It is compared piece by piece.
+ */
+describe('deciding there is a newer build', () => {
+  it('compares the pieces, not the string', async () => {
+    const { newerThan } = await import('../src/main/update')
+    expect(newerThan('0.2.0', '0.1.0')).toBe(true)
+    expect(newerThan('v0.2.0', '0.1.0')).toBe(true)
+    // The one a string comparison gets wrong.
+    expect(newerThan('0.10.0', '0.9.0')).toBe(true)
+    expect(newerThan('0.1.0', '0.1.0')).toBe(false)
+    expect(newerThan('0.1.0', '0.2.0')).toBe(false)
+    expect(newerThan('1.0.0', '0.99.99')).toBe(true)
+  })
+})

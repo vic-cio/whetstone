@@ -10,6 +10,7 @@ import type { PublicTask } from '../shared/format'
 import type { Removal } from '../shared/remove'
 import type { Evaluation } from '../shared/defect'
 import type { Revision, Work } from '../main/revise'
+import type { Update } from '../main/update'
 import type { TutorReply } from '../main/tutor'
 import type { Outcome } from '../shared/grade'
 import type { PageType } from '../shared/format'
@@ -177,6 +178,16 @@ const api = {
       model: string,
     ): Promise<{ at: 'reviewed'; submissions: Submission[] } | { at: 'trouble'; message: string }> =>
       ipcRenderer.invoke('projects:submit', run, slug, projectId, folder, links, harnessId, model),
+  },
+
+  /**
+   * The app updating itself. `check` is called once a launch and only ever reports; `apply`
+   * is a press, and it replaces the bundle and relaunches.
+   */
+  update: {
+    check: (): Promise<Update> => ipcRenderer.invoke('update:check'),
+    apply: (url: string): Promise<{ ok: boolean; message?: string }> =>
+      ipcRenderer.invoke('update:apply', url),
   },
 
   settings: {
