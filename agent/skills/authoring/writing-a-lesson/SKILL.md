@@ -92,6 +92,23 @@ theme: carry both colour schemes in the SVG's own `<style>`, with the dark one u
 **`:::app{id=slope-explorer height=320}`** a Mini-app to play with. In a Lesson it demonstrates
 and answers nothing.
 
+**`:::codeblock{lang=js label=Try-it height=180}`** a runnable code sample with real output
+beneath it, right in the prose — no `apps/<id>` folder needed. The body of the block is the
+starting code. `lang` defaults to `js`, which needs nothing else; a language beyond that
+must already be in this Course's `runtimes` (`course.json`), or the build fails naming the
+language, not the reader finding a dead block. `label` and `height` are both optional. It
+demonstrates and answers nothing, same as `app` — reach for `assertions-pass` inside a
+Mini-app's `Kit.editor` when the point is to grade what the reader wrote.
+
+```markdown
+:::codeblock{lang=js label=Try-it}
+function square(n) {
+  return n * n
+}
+console.log(square(4))
+:::
+```
+
 **`:::resource{id=res-3b1b-backprop}`** a link from `resources.json`, drawn as a card.
 
 **`:::try{id=try-inner-derivative}`** a question the reader answers in place, gets an answer

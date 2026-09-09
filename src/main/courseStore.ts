@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { frameSource } from '../shared/miniapp'
+import { codeblockFrameSource, frameSource } from '../shared/miniapp'
 import { seedSamples } from '../shared/samples'
 import { parseCourse } from '../shared/parseCourse'
 import { openProgress } from './progress'
@@ -72,6 +72,16 @@ export function coursesRoot(): string {
     )
   }
   return root
+}
+
+/**
+ * The shared, deduplicated codeblock runtime cache (docs/adr/0025), outside any Course
+ * folder so one fetched runtime is reused by every Course that points to it.
+ */
+export function runtimeCacheRoot(): string {
+  const fromEnv = process.env['WHETSTONE_RUNTIME_CACHE']
+  if (fromEnv) return fromEnv
+  return join(app.getPath('userData'), 'runtimes')
 }
 
 /**
@@ -169,6 +179,22 @@ export function loadCourse(slug: string): Course {
  */
 export function appFrame(slug: string, appId: string): string {
   return frameSource(loadCourse(slug).path, appId)
+}
+
+/**
+ * The document for one Lesson codeblock, addressed by the Lesson it lives in and its
+ * position among that Lesson's blocks — a codeblock carries no id of its own, unlike a
+ * `try` or an `app` block, because nothing else ever needs to refer back to it.
+ */
+export function codeblockFrame(slug: string, lessonId: string, blockIndex: number): string {
+  const course = loadCourse(slug)
+  const lesson = course.lessons[lessonId]
+  if (!lesson) throw new Error(`lesson "${lessonId}" does not exist`)
+  const block = lesson.blocks[blockIndex]
+  if (!block || block.block !== 'codeblock') {
+    throw new Error(`lesson "${lessonId}" has no codeblock at position ${blockIndex}`)
+  }
+  return codeblockFrameSource(course.path, block)
 }
 
 export function setTick(slug: string, pageId: string, pageType: PageType, ticked: boolean): CourseView {

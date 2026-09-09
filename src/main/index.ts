@@ -4,7 +4,18 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fileURLToPath } from 'node:url'
 
-import { appFrame, coursesRoot, listCourses, loadCourse, openCourse, progress, setTick } from './courseStore'
+import {
+  appFrame,
+  codeblockFrame,
+  coursesRoot,
+  listCourses,
+  loadCourse,
+  openCourse,
+  progress,
+  runtimeCacheRoot,
+  setTick,
+} from './courseStore'
+import { gcRuntimeCache } from '../shared/runtimeCache'
 import {
   OUTLINE,
   addToTray,
@@ -74,6 +85,14 @@ function serveCourseFile(request: Request): Promise<Response> {
  * of its own gives the frame a response with its own policy, and `sandbox="allow-scripts"`
  * still leaves it on an opaque origin with no reach into the host.
  */
+/**
+ * A Lesson codeblock has no `apps/<id>` folder to address, so it is routed by a reserved
+ * first path segment instead of an app id: `/__codeblock__/<lessonId>/<blockIndex>`. Real
+ * app ids can never collide with this because `:::app{id=...}` ids come from the
+ * Constructor and `__codeblock__` is not a shape the parser accepts for one (docs/adr/0025).
+ */
+const CODEBLOCK_PREFIX = '__codeblock__'
+
 function serveMiniApp(request: Request): Response {
   const url = new URL(request.url)
   const headers = {
@@ -81,7 +100,14 @@ function serveMiniApp(request: Request): Response {
     'Content-Security-Policy': POLICY,
   }
   try {
-    const document = appFrame(decodeURIComponent(url.hostname), decodeURIComponent(url.pathname).replace(/^\/+/, ''))
+    const slug = decodeURIComponent(url.hostname)
+    const path = decodeURIComponent(url.pathname).replace(/^\/+/, '')
+    const [first, lessonId, blockIndex] = path.split('/')
+
+    const document =
+      first === CODEBLOCK_PREFIX
+        ? codeblockFrame(slug, lessonId ?? '', Number(blockIndex))
+        : appFrame(slug, path)
     return new Response(document, { headers })
   } catch (cause) {
     // A Course the parser accepted always has its mini-apps, so this is a broken folder
@@ -670,14 +696,18 @@ app.whenReady().then(async () => {
     buildCourse(coursesRoot(), harnessId, model, brief, report(event, run)),
   )
 
-  ipcMain.handle('courses:remove', (_event, slug: string) =>
-    removeCourse(
+  ipcMain.handle('courses:remove', async (_event, slug: string) => {
+    const result = await removeCourse(
       coursesRoot(),
       slug,
       (name) => progress().forget(name),
       (folder) => shell.trashItem(folder),
-    ),
-  )
+    )
+    // A deleted Course may have been the last one pointing at a cached runtime. Nothing
+    // was decremented on the way in, so this is what notices (docs/adr/0025).
+    if (result.ok) gcRuntimeCache(runtimeCacheRoot(), coursesRoot())
+    return result
+  })
   /**
    * Export a Course as a zip.
    *

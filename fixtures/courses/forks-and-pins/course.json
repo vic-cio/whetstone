@@ -4,7 +4,7 @@
   "title": "The knight fork",
   "subject": "Chess",
   "summary": "One move, two targets. Learn to see the square a knight can reach that attacks two pieces at once, and play it against the board.",
-  "toolkitVersion": "1.1.0",
+  "toolkitVersion": "1.2.0",
   "library": [
     "chess.js",
     "board.css",

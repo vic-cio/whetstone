@@ -16,7 +16,7 @@ import { join } from 'node:path'
  */
 
 /** The toolkit this build ships. It is written into a Course at build time, and nowhere else. */
-export const TOOLKIT_VERSION = '1.1.0'
+export const TOOLKIT_VERSION = '1.2.0'
 
 const MARKER = /whetstone-toolkit\s+(\d+\.\d+\.\d+)/
 
@@ -108,23 +108,16 @@ function courseLibrary(courseDir: string): { css: string[]; js: string[] } {
 }
 
 /**
- * Build the document for one Mini-app. Throws only for a Course the parser already
- * accepted, so a failure here is a programming error rather than a broken Course.
+ * Assemble the sealed document itself: the policy, the toolkit, the Course's library, and
+ * finally the body markup the caller supplied. Both a hand-written Mini-app and a
+ * generated Lesson codeblock go through this one place, so neither can drift from the
+ * other's policy or inlining order.
  *
  * Order is the contract. The toolkit is first, then the Course's library in the order the
- * Course listed it, then the app. So a library file may use the toolkit, an app may use
+ * Course listed it, then the body. So a library file may use the toolkit, the body may use
  * both, and the toolkit can be read without knowing either.
  */
-export function frameSource(courseDir: string, appId: string): string {
-  const file = join(courseDir, 'apps', appId, 'index.html')
-  if (!existsSync(file)) throw new Error(`mini-app "${appId}" has no index.html`)
-  const toolkit = readToolkit(join(courseDir, 'toolkit'))
-  if (!toolkit) throw new Error(`course at ${courseDir} has no pinned toolkit`)
-  const library = courseLibrary(courseDir)
-
-  const markup = readFileSync(file, 'utf8')
-  if (EXTERNAL.test(markup)) throw new Error(`mini-app "${appId}" refers to something outside itself`)
-
+function assembleFrame(toolkit: Toolkit, library: { css: string[]; js: string[] }, body: string): string {
   return [
     '<!doctype html>',
     '<html lang="en">',
@@ -135,8 +128,56 @@ export function frameSource(courseDir: string, appId: string): string {
     '</head>',
     '<body>',
     `<script>\n${[toolkit.js, ...library.js].join('\n')}\n</script>`,
-    markup,
+    body,
     '</body>',
     '</html>',
   ].join('\n')
+}
+
+/** Read a Course's pinned toolkit and library, or throw for a Course the parser accepted. */
+function frameParts(courseDir: string): { toolkit: Toolkit; library: { css: string[]; js: string[] } } {
+  const toolkit = readToolkit(join(courseDir, 'toolkit'))
+  if (!toolkit) throw new Error(`course at ${courseDir} has no pinned toolkit`)
+  return { toolkit, library: courseLibrary(courseDir) }
+}
+
+/**
+ * Build the document for one Mini-app. Throws only for a Course the parser already
+ * accepted, so a failure here is a programming error rather than a broken Course.
+ */
+export function frameSource(courseDir: string, appId: string): string {
+  const file = join(courseDir, 'apps', appId, 'index.html')
+  if (!existsSync(file)) throw new Error(`mini-app "${appId}" has no index.html`)
+  const markup = readFileSync(file, 'utf8')
+  if (EXTERNAL.test(markup)) throw new Error(`mini-app "${appId}" refers to something outside itself`)
+
+  const { toolkit, library } = frameParts(courseDir)
+  return assembleFrame(toolkit, library, markup)
+}
+
+/**
+ * Build the document for one Lesson codeblock: a `Kit.codeblock` wired up with the
+ * declared language and starting code, nothing else. Unlike a Mini-app there is no
+ * `apps/<id>/index.html` to read — the config comes straight from the parsed Lesson block
+ * (docs/adr/0025), so the only way this throws is a Course the parser already accepted.
+ */
+export function codeblockFrameSource(
+  courseDir: string,
+  block: { lang: string; start: string; label?: string },
+): string {
+  const { toolkit, library } = frameParts(courseDir)
+  // `<` is escaped so starting code containing a literal "</script>" (plausible in an
+  // example about HTML or JS itself) cannot close this tag early.
+  const config = JSON.stringify({ mount: '#app', lang: block.lang, start: block.start, label: block.label }).replace(
+    /</g,
+    '\\u003c',
+  )
+  const body = [
+    '<div id="app"></div>',
+    '<script>',
+    `Kit.codeblock(${config});`,
+    'Kit.bridge.ready();',
+    '</script>',
+  ].join('\n')
+  return assembleFrame(toolkit, library, body)
 }

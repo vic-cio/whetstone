@@ -138,10 +138,17 @@ ordering, matching, labelling, or building an expression. `value()`, `complete()
 **`Kit.hotspot({ mount, src, alt, width, height, regions })`** click to mark a place.
 `value()` gives the region id, or `{ x, y }` as fractions.
 
-**`Kit.editor({ mount, start, exports, assertions, label, runLabel })`** a code editor with
-your assertions beside it. This is what an `assertions-pass` Task runs on. Each assertion is
-`{ name, test(api) }` and throws with a message saying what was wrong. `run()` returns the
-names that passed. The names here and in the Task must match exactly.
+**`Kit.editor({ mount, start, exports, assertions, label, runLabel, lang })`** a code editor
+with your assertions beside it. This is what an `assertions-pass` Task runs on. Each
+assertion is `{ name, test(api) }` and throws with a message saying what was wrong. `run()`
+returns the names that passed. The names here and in the Task must match exactly. `lang`
+defaults to `'js'` — see **Languages** below before setting it to anything else.
+
+**`Kit.codeblock({ mount, start, label, runLabel, lang })`** a runnable code sample with real
+output beneath it: no assertions, nothing graded, nothing sent to the host. Use it to let the
+reader run something and see what happens, next to your explanation of why. `run()` re-runs
+it and returns `{ ok, log, error }` — `log` is what it printed (`console.log` is captured for
+`js`), `error` is set only when it threw. `code()` reads the current text back.
 
 **`Kit.steps({ mount, steps })`** a walkthrough advanced one beat at a time. Each step is
 `{ title, body }`. `index()`, `go(n)`, `onStep(fn)`.
@@ -154,6 +161,21 @@ a row or pressing the arrows beside it. `order()`, `items()`, `set(list)`, `enab
 play control. `step(state)` returns the next state, `draw(context, state, size)` paints it.
 
 **`Kit.theme`** `color(name)` and `tint(depth)` for a value a style has to set from code.
+
+## Languages
+
+`Kit.editor` and `Kit.codeblock` both run real code, not a description of it — the code
+actually executes and what you get back is what it actually did (docs/adr/0025). `lang:
+'js'`, the default, needs nothing from you: it always works, in every Course.
+
+Any other `lang` needs a runtime the app fetches once at build time, from a short, trusted
+list, and proves works before it ships. **As of this toolkit version, that fetch-and-inline
+pipeline exists but nothing has been wired through it yet, so no `lang` besides `'js'`
+actually runs in a built Course.** Do not write `lang: 'python'` or anything else non-`js`
+into a Mini-app, and the same holds for a Lesson's `:::codeblock{}` block
+(`writing-a-lesson/SKILL.md`): the reader would see "no runtime is available in this frame"
+instead of their code running. If your run genuinely needs a language beyond JavaScript,
+say so in your run rather than shipping a codeblock that cannot execute.
 
 ## What the app does with what you send
 

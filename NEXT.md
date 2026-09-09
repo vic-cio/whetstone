@@ -109,6 +109,56 @@ eighty lines. An editable "fix the syntax" activity needs a real parser for a su
 then `assertions-pass` assertions that run the parse and assert on the events rather than on
 the characters.
 
+### 3b. Codeblocks now run any language the toolkit has a runtime for — most of the plumbing
+exists, none of it is finished end to end.
+
+`Kit.run` (toolkit/kit.js, toolkit 1.2.0) is a language-dispatch core: `js` is built in,
+anything else comes from `window.__whetstoneRuntimes[lang]`, an object the host is meant to
+inline into the frame. `Kit.editor` is now built on it (unchanged contract, same tests) and
+`Kit.codeblock` is new: the same execution, no assertions, real captured output, usable
+anywhere a Mini-app wants a runnable sample rather than a graded one. `docs/adr/0025` is the
+design record for the rest of this.
+
+Also built and tested (`tests/runtimeCache.test.ts`, `tests/runtimeFetch.test.ts`): a
+build-time `fetchRuntime(lang, cacheRoot, io)` that refuses anything off `ALLOWED_RUNTIMES`
+(`src/main/runtimeFetch.ts`; `python`/Pyodide is the only entry so far), never caches a
+runtime that doesn't boot-verify, and a shared cache (`src/shared/runtimeCache.ts`) outside
+any Course folder, reference-counted by re-deriving which Courses' `runtimes` pointers still
+name it rather than a live counter — garbage-collected on every Course delete.
+
+What is not built:
+
+- **Nothing actually supplies `window.__whetstoneRuntimes` inside a served frame yet, and
+  `fetchRuntime` doesn't even cache enough to make it possible.** `ALLOWED_RUNTIMES.python`
+  only names the 16KB `pyodide.js` loader, not the ~10MB `pyodide.asm.wasm` or the ~2.3MB
+  `python_stdlib.zip` it needs at its own runtime (verified against the real CDN assets this
+  session — `fetchRuntime` and `ALLOWED_RUNTIMES` need to grow to cover the full small asset
+  set one Pyodide release needs, not just its loader). Once cached, wiring them into the
+  frame needs `window.fetch` overridden inside the frame, before `loadPyodide()` runs, to
+  answer those specific asset paths from the already-inlined base64 bytes rather than a real
+  network call — an `indexURL`-pointed static server and a Service Worker were both ruled
+  out (the latter cannot even register in an opaque-origin sandboxed frame). See
+  `docs/adr/0025`'s Consequences for the full reasoning; this is judged feasible but is real
+  engineering (~12.5MB of bytes to embed and prove Python's import system actually works
+  against a zip mounted this way) that deserves its own pass. `writing-a-mini-app/SKILL.md`
+  still tells the Constructor not to use any `lang` but `js` because of this gap.
+- **A Lesson-level, ungraded codeblock now exists**: `:::codeblock{lang=js label=... height=...}`
+  (`writing-a-lesson/SKILL.md`), a new `LessonBlock` variant (`src/shared/format.ts`), parsed
+  in `parseCourse.ts` (which also rejects a non-`js` `lang` the Course never pinned in
+  `manifest.runtimes`), served over `whetstone-app://<slug>/__codeblock__/<lessonId>/<index>`
+  (`codeblockFrameSource` in `src/shared/miniapp.ts`, `codeblockFrame` in `courseStore.ts`,
+  routed in `src/main/index.ts`'s `serveMiniApp`), and rendered by a new `Codeblock.tsx` the
+  same way `MiniApp.tsx` renders an `app` block. It carries the same "nothing but `js` actually
+  runs yet" limitation as everything else in this section, for the same reason.
+- **Export/import does not carry a Course's runtime.** `courses:export` zips a Course's
+  folder, which no longer contains the runtimes it points to (that's the point of the shared
+  cache) — an imported Course would need to re-fetch and re-verify against the allowlist on
+  first open, and nothing does that yet. Flagged in `docs/adr/0025`'s Consequences.
+- This supersedes most of item 3 above for any language `assertions-pass` needs beyond raw
+  string/pattern checks on Strudel specifically — a `Kit.codeblock`/`Kit.editor` with a real
+  Python (or eventually other) runtime is the general answer that item was a special case of.
+  The Strudel mini-notation parser itself is still unbuilt regardless.
+
 ### 4. Smaller things
 
 - **A signed build.** Still the only thing left from phase 7, and it needs a paid Apple
