@@ -47,8 +47,12 @@ An external link the constructor curated, stored as a URL, a title, a type, and 
 _Avoid_: Reference, material, link
 
 **Mini-app**:
-An interactive artifact the Constructor wrote as code and stored inside the Course folder. It runs in a sandbox, is built from the [[toolkit]], and reaches the host through one narrow message channel.
+An interactive artifact stored inside the Course folder as one `index.html`. It runs in a sandbox, is built from the [[toolkit]], and reaches the host through one narrow message channel. Written by hand for a bespoke case, or produced by compiling a [[Declared activity]] for the common ones.
 _Avoid_: Widget, applet, component, embed
+
+**Declared activity**:
+Data, not code: one of the toolkit's widgets, described as JSON under a Course's `activities/`, that compiles into an ordinary [[Mini-app]] before the parser ever reads the Course. Its point is what it cannot express — a Task whose expected answer equals the widget's own untouched starting state, or an assertion that checks the raw text of what the reader typed instead of running it — rather than what it can. A bespoke, hand-written Mini-app remains the path for anything a Declared activity cannot say.
+_Avoid_: Template, generator, config, blueprint
 
 **Toolkit**:
 The widget set and host bridge the app injects into every Mini-app, pinned per Course so a shared Course behaves the same everywhere. It is what makes activities across different Courses look and work alike. It carries no subject: what one Course is about goes in that Course's [[library]].

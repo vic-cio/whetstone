@@ -20,6 +20,41 @@ at the reader's.
 </script>
 ```
 
+## Declare it, if it is one of the eight common shapes
+
+Before writing `apps/<id>/index.html` by hand, check whether the activity is one of the
+eight toolkit widgets doing what it already does well: a slider, an order, a set of
+pieces, a hotspot, a code editor with assertions, a sim, a steps walkthrough, or a plot.
+If so, write `activities/<id>.json` instead — data, not code — and the build compiles it
+into an ordinary Mini-app for you, at the id you gave it. From that point on it is a
+Mini-app like any other: reference it from a Task's `app` field exactly the same way.
+
+```json
+{
+  "id": "order-the-layers",
+  "widget": "order",
+  "label": "Put the layers in the order the signal passes through them",
+  "items": ["input", "hidden", "output"]
+}
+```
+
+Two things a declared activity cannot do, on purpose, because they are the bugs that
+shipped without it: an `app-result` Task's `answer` may never equal the widget's own
+untouched starting state (the build refuses it), and a declared `editor`'s assertions are
+`{name, export, args, check: {type: 'equals'|'range'|'matches', ...}}` — a comparison
+against the reader's real executed code, never against the raw text they typed. `Kit.steps`
+and `Kit.plot` are presentation only here; neither has a natural answer, so the schema does
+not let you invent one. `Kit.sim` still takes `stepBody`/`drawBody` as JavaScript strings —
+a simulation is its behaviour, and pretending that is data would be dishonest — but its
+`start` state still goes through the same untouched-state check as everything else.
+
+Reach for a hand-written `apps/<id>/index.html` instead when the activity is not one of
+the eight shapes, needs a library engine from `lib/`, needs sound, or needs anything else
+this page describes below that a declared activity's data cannot say. Every Mini-app, declared
+or hand-written, is booted for real at build time before the Course ships: it must call
+`Kit.bridge.ready()` without throwing, and pressing at least one of its action buttons must
+produce an answer or a review.
+
 ## What to build with it
 
 The Mini-app is the reason this is not a web page with questions under it. Reach for the
