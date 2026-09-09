@@ -48,7 +48,7 @@ A Mini-app's id is its folder name under `apps/`, with no prefix.
   "title": "Gradients by hand",
   "subject": "Machine learning",
   "summary": "One sentence on what the reader will be able to do.",
-  "toolkitVersion": "1.1.0",
+  "toolkitVersion": "1.2.0",
   "library": [],
   "tags": ["calculus", "machine-learning"],
   "small": false,
