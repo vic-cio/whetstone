@@ -136,6 +136,17 @@ host judge.
 A stepped model with a play control. `step(state)` returns the next state and `draw(context,
 state, size)` paints it on a canvas. The toolkit supplies the loop and the transport.
 
+## Declared activities
+
+For the eight common widget shapes, a Course may describe the activity as data
+(`activities/<id>.json`) rather than hand-writing `apps/<id>/index.html`. The
+build compiles it into the same ordinary Mini-app before the parser runs. See
+`agent/skills/authoring/writing-a-mini-app/SKILL.md` and `docs/adr/0025` for the
+full schema, the universal untouched-state rule (`answer` must not equal the
+widget's initial state), and the closed comparison DSL for `Kit.editor` assertions.
+A bespoke hand-written `index.html` remains fully supported for anything the
+declared schema cannot express.
+
 ## When the toolkit is missing something
 
 Write the widget anyway, and say in the run which one was missing. A gap is a defect in the
