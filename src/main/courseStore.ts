@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { codeblockFrameSource, frameSource } from '../shared/miniapp'
 import { seedSamples } from '../shared/samples'
 import { parseCourse } from '../shared/parseCourse'
+import { ALLOWED_RUNTIMES, fetchRuntime, realRuntimeIO } from './runtimeFetch'
 import { openProgress } from './progress'
 import { courseView } from './study'
 import type { Progress } from './progress'
@@ -75,7 +76,7 @@ export function coursesRoot(): string {
 }
 
 /**
- * The shared, deduplicated codeblock runtime cache (docs/adr/0025), outside any Course
+ * The shared, deduplicated codeblock runtime cache (docs/adr/0026), outside any Course
  * folder so one fetched runtime is reused by every Course that points to it.
  */
 export function runtimeCacheRoot(): string {
@@ -161,9 +162,32 @@ function read(slug: string): Course | undefined {
 
 export type OpenResult = { ok: true; course: CourseView } | { ok: false; errors: CourseError[] }
 
-export function openCourse(slug: string): OpenResult {
+/**
+ * A Course whose folder was placed into the library from outside a build — dropped in from
+ * an exported zip, restored from a backup — carries only its `runtimes` pointers, not the
+ * runtime bytes themselves: the shared cache is deliberately outside every Course folder
+ * (docs/adr/0026). Re-fetching here, on first open, is what makes such a Course's codeblock
+ * work without a build ever having run on this machine; a Course whose runtime is already
+ * cached costs nothing extra (`fetchRuntime` is idempotent). Best-effort: a network hiccup
+ * here should not stop the Course from opening, only leave that one codeblock showing "no
+ * runtime is available in this frame" until it succeeds on a later open.
+ */
+async function ensureDeclaredRuntimes(runtimes: { lang: string; version: string }[]): Promise<void> {
+  const io = realRuntimeIO()
+  for (const ref of runtimes) {
+    if (ALLOWED_RUNTIMES[ref.lang]?.version !== ref.version) continue
+    try {
+      await fetchRuntime(ref.lang, runtimeCacheRoot(), io)
+    } catch {
+      // Best-effort; see doc comment above.
+    }
+  }
+}
+
+export async function openCourse(slug: string): Promise<OpenResult> {
   const result = parseCourse(join(coursesRoot(), slug))
   if (!result.ok) return { ok: false, errors: result.errors }
+  await ensureDeclaredRuntimes(result.course.runtimes)
   return { ok: true, course: courseView(slug, result.course, progress()) }
 }
 
@@ -178,7 +202,7 @@ export function loadCourse(slug: string): Course {
  * as a string it puts in `srcdoc`. The renderer never reads a Course file itself.
  */
 export function appFrame(slug: string, appId: string): string {
-  return frameSource(loadCourse(slug).path, appId)
+  return frameSource(loadCourse(slug).path, appId, runtimeCacheRoot())
 }
 
 /**
@@ -194,7 +218,7 @@ export function codeblockFrame(slug: string, lessonId: string, blockIndex: numbe
   if (!block || block.block !== 'codeblock') {
     throw new Error(`lesson "${lessonId}" has no codeblock at position ${blockIndex}`)
   }
-  return codeblockFrameSource(course.path, block)
+  return codeblockFrameSource(course.path, block, runtimeCacheRoot())
 }
 
 export function setTick(slug: string, pageId: string, pageType: PageType, ticked: boolean): CourseView {

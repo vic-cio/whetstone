@@ -89,7 +89,7 @@ function serveCourseFile(request: Request): Promise<Response> {
  * A Lesson codeblock has no `apps/<id>` folder to address, so it is routed by a reserved
  * first path segment instead of an app id: `/__codeblock__/<lessonId>/<blockIndex>`. Real
  * app ids can never collide with this because `:::app{id=...}` ids come from the
- * Constructor and `__codeblock__` is not a shape the parser accepts for one (docs/adr/0025).
+ * Constructor and `__codeblock__` is not a shape the parser accepts for one (docs/adr/0026).
  */
 const CODEBLOCK_PREFIX = '__codeblock__'
 
@@ -254,9 +254,10 @@ async function runGateCheckAndExit(): Promise<void> {
   const [courseDir, appIdList] = spec.split('::')
   const appIds = (appIdList ?? '').split(',').filter(Boolean)
   const { checkAllMiniApps } = await import('./executionGate')
+  const { runtimeCacheRoot } = await import('./courseStore')
   const { writeFileSync } = await import('node:fs')
   try {
-    const errors = await checkAllMiniApps(courseDir ?? '', appIds)
+    const errors = await checkAllMiniApps(courseDir ?? '', appIds, runtimeCacheRoot())
     if (outputPath) writeFileSync(outputPath, JSON.stringify({ errors }))
   } catch (cause) {
     if (outputPath) writeFileSync(outputPath, JSON.stringify({ errors: [], crash: String(cause) }))
@@ -264,9 +265,40 @@ async function runGateCheckAndExit(): Promise<void> {
   app.exit(0)
 }
 
+/**
+ * `WHETSTONE_RUNTIME_CHECK=<lang>` fetches and boot-verifies one allowlisted runtime for
+ * real — real network, real sandboxed `BrowserWindow` — into a throwaway cache dir, and
+ * writes the outcome to `WHETSTONE_RUNTIME_OUTPUT`, then quits. `fetchRuntime`'s `boot`
+ * needs the real Electron sandbox machinery (`sandboxHarness.ts`), so this is the narrow
+ * entry point a test drives instead of running `fetchRuntime` under plain Node
+ * (`tests/runtimePyodide.test.ts`); ordinary use only ever reaches `fetchRuntime` through
+ * `build.ts` or `courseStore.ts`'s `openCourse`.
+ */
+async function runRuntimeCheckAndExit(): Promise<void> {
+  const lang = process.env['WHETSTONE_RUNTIME_CHECK']
+  if (!lang) return
+  const outputPath = process.env['WHETSTONE_RUNTIME_OUTPUT']
+  const { fetchRuntime, realRuntimeIO } = await import('./runtimeFetch')
+  const { runtimeCacheRoot } = await import('./courseStore')
+  const { writeFileSync } = await import('node:fs')
+  try {
+    // `runtimeCacheRoot()` honors `WHETSTONE_RUNTIME_CACHE`, so a test can point this at its
+    // own temp dir and inspect exactly what was cached afterward.
+    const ref = await fetchRuntime(lang, runtimeCacheRoot(), realRuntimeIO())
+    if (outputPath) writeFileSync(outputPath, JSON.stringify({ ok: true, ref }))
+  } catch (cause) {
+    if (outputPath) writeFileSync(outputPath, JSON.stringify({ ok: false, error: String((cause as Error)?.message ?? cause) }))
+  }
+  app.exit(0)
+}
+
 app.whenReady().then(async () => {
   if (process.env['WHETSTONE_GATE_CHECK']) {
     await runGateCheckAndExit()
+    return
+  }
+  if (process.env['WHETSTONE_RUNTIME_CHECK']) {
+    await runRuntimeCheckAndExit()
     return
   }
 
@@ -704,7 +736,7 @@ app.whenReady().then(async () => {
       (folder) => shell.trashItem(folder),
     )
     // A deleted Course may have been the last one pointing at a cached runtime. Nothing
-    // was decremented on the way in, so this is what notices (docs/adr/0025).
+    // was decremented on the way in, so this is what notices (docs/adr/0026).
     if (result.ok) gcRuntimeCache(runtimeCacheRoot(), coursesRoot())
     return result
   })

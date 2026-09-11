@@ -204,7 +204,7 @@ export function parseCourse(dir: string): ParseResult {
   }
 
   // A codeblock beyond `js` names a language the sealed frame has no built-in engine for
-  // (docs/adr/0025); the manifest's `runtimes` pointer is what the host inlines to supply
+  // (docs/adr/0026); the manifest's `runtimes` pointer is what the host inlines to supply
   // one, so a codeblock naming a language the Course never pinned would draw and fail
   // silently in the frame instead of failing the build where the mistake actually is.
   const pinnedRuntimes = new Set(manifest.runtimes.map((runtime) => runtime.lang))

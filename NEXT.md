@@ -53,46 +53,23 @@ still unmeasured is the activities, and that is item 1 below.
 
 ## 3. What is open
 
-### 1. Mini-apps have no real gate. This is the important one.
+### 1. Mini-apps have a real gate now. Shipped in v0.3.0.
 
-Everything the app checks about a Mini-app is three things: that `apps/<id>/index.html`
-exists, that it holds no external reference, and that the Course's toolkit version matches
-the manifest. Nothing checks that the JavaScript parses, that it draws, that pressing Answer
-sends anything, or that it throws on line one. **The most complex artefact in a Course is
-the only one with no gate**, and it is the only one that is arbitrary code.
+The Constructor declares the common activities as data against a schema
+(`compileDeclaredActivities`, `src/shared/declaredActivity.ts`) rather than writing code for
+them — a declaration compiles to an ordinary `apps/<id>/index.html` before the parser ever
+sees it, so the parser's own `apps/` checks, the execution gate, and `frameSource` at
+runtime all treat it exactly like a hand-written Mini-app. A declared activity states its
+initial state, so a task whose expected answer equals it is refused structurally, closing
+that specific bug for good rather than only catching it after the fact.
 
-What that produced, twice, in courses that parsed perfectly:
-
-- a drum grid whose expected answer was its own initial state, so pressing Answer passed
-  without doing anything
-- an editor whose four `assertions-pass` checks were `indexOf` on the raw text, so prose
-  containing `bd*4` passed and correct code with `bd*8` failed
-- controls built from bare `<button>` elements, which inherit the frame's ink on the user
-  agent's light button face and are invisible in the dark theme. `AGENTS.md` documents that
-  exact trap for the app's own UI and nothing carries it into `writing-a-mini-app`
-- all six `app-result` tasks stating their expected values in the prompt, which makes them
-  instruction-following rather than questions
-
-**Victor's proposal, and the one to build:** the Constructor declares the common activities
-as data against a schema, rather than writing code. The toolkit already draws every shape
-those activities needed — `Kit.steps`, `Kit.order`, `Kit.pieces`, `Kit.slider`, `Kit.plot`,
-`Kit.editor`, `Kit.hotspot`, `Kit.sim` — so a declaration is thin, and five of the six
-activities in the Strudel course were a step grid, three slider sets and an ordering.
-
-That makes today's bugs unrepresentable: the model never writes a button, so it cannot write
-an invisible one, and a declared activity states its initial state, so the parser can refuse
-a task whose expected answer equals it.
-
-Keep code Mini-apps for the bespoke case, because `docs/adr/0016` says the sealed frame may
-run the reader's own code and a template set that tried to cover a Strudel REPL would become
-a bad programming language in JSON. For those, add an execution gate: the app already boots
-a Mini-app in a sealed frame for its own tests, so the same machinery can load each activity
-at build time and require that it reports `ready`, throws nothing, and sends something when
-its action is pressed. Failures go back to the run with the file named, like a parse error.
-
-Cheap static checks worth having either way: the JavaScript parses; it calls
-`Kit.bridge.ready()`; it calls `Kit.bridge.action` when a Task answers through it; it uses
-toolkit widgets rather than raw `document.createElement('button')`.
+For the bespoke case (code Mini-apps stay, per `docs/adr/0016` — the sealed frame may run
+the reader's own code, and a template set covering something like a Strudel REPL would
+become a bad programming language in JSON), `checkMiniApp`/`checkAllMiniApps`
+(`src/main/executionGate.ts`) boot every Mini-app for real in a sealed frame at build time
+and require that it reports `ready`, throws nothing, sends something when its action is
+pressed, and is legible in both themes. Failures go back to the run with the file named,
+like a parse error (`build.ts`).
 
 ### 2. A live harness has never run several of the newer roles
 
@@ -109,55 +86,46 @@ eighty lines. An editable "fix the syntax" activity needs a real parser for a su
 then `assertions-pass` assertions that run the parse and assert on the events rather than on
 the characters.
 
-### 3b. Codeblocks now run any language the toolkit has a runtime for — most of the plumbing
-exists, none of it is finished end to end.
+### 3b. Codeblocks run any language the toolkit has a runtime for. Done, for `python`.
 
-`Kit.run` (toolkit/kit.js, toolkit 1.2.0) is a language-dispatch core: `js` is built in,
-anything else comes from `window.__whetstoneRuntimes[lang]`, an object the host is meant to
-inline into the frame. `Kit.editor` is now built on it (unchanged contract, same tests) and
-`Kit.codeblock` is new: the same execution, no assertions, real captured output, usable
-anywhere a Mini-app wants a runnable sample rather than a graded one. `docs/adr/0025` is the
-design record for the rest of this.
+`Kit.run` (toolkit/kit.js, toolkit 1.3.0) is a language-dispatch core: `js` is built in,
+anything else comes from `window.__whetstoneRuntimes[lang]`, wired into the frame by
+`runtimeBootstrapScript` (`src/shared/runtimeBootstrap.ts`) once a Course pins it in
+`manifest.runtimes`. `Kit.editor` and `Kit.codeblock` are both built on it. `docs/adr/0026`
+is the design record, updated with what actually shipped and the sandboxed-frame obstacles
+found while building it (opaque-origin `sessionStorage` throwing, Pyodide's glue file
+loading via dynamic `import()` rather than `fetch`, `Kit.bridge.ready()` needing to wait on
+the runtime before firing since `Kit.run` is synchronous but loading Pyodide cannot be).
 
-Also built and tested (`tests/runtimeCache.test.ts`, `tests/runtimeFetch.test.ts`): a
-build-time `fetchRuntime(lang, cacheRoot, io)` that refuses anything off `ALLOWED_RUNTIMES`
-(`src/main/runtimeFetch.ts`; `python`/Pyodide is the only entry so far), never caches a
-runtime that doesn't boot-verify, and a shared cache (`src/shared/runtimeCache.ts`) outside
-any Course folder, reference-counted by re-deriving which Courses' `runtimes` pointers still
-name it rather than a live counter — garbage-collected on every Course delete.
+`fetchRuntime(lang, cacheRoot, io)` (`src/main/runtimeFetch.ts`) fetches every asset
+`ALLOWED_RUNTIMES[lang]` names (five for `python`: the loader, its Emscripten glue, the
+wasm, the stdlib zip, and the package-index JSON — not just the loader, which is all the
+first pass here had checked), refuses anything off the allowlist, and never caches a
+runtime that doesn't boot-verify against a known-good snippet that specifically exercises
+the stdlib's own import machinery. The shared cache (`src/shared/runtimeCache.ts`) lives
+outside any Course folder, reference-counted by re-deriving which Courses' `runtimes`
+pointers still name it rather than a live counter — garbage-collected on every Course
+delete. `build.ts` now actually calls `fetchRuntime` for everything a Course's manifest
+pins, as a gate step alongside the Mini-app execution gate; `openCourse()`
+(`courseStore.ts`) does the same, best-effort, so a Course whose folder was placed into the
+library some other way than a build (a restored backup, a folder copied in by hand — there
+is no dedicated import feature) still gets its runtime fetched the first time it opens.
 
-What is not built:
+A Lesson-level, ungraded codeblock also exists: `:::codeblock{lang=js label=... height=...}`
+(`writing-a-lesson/SKILL.md`), a `LessonBlock` variant (`src/shared/format.ts`), parsed in
+`parseCourse.ts` (which rejects a non-`js` `lang` the Course never pinned in
+`manifest.runtimes`), served over `whetstone-app://<slug>/__codeblock__/<lessonId>/<index>`
+(`codeblockFrameSource` in `src/shared/miniapp.ts`, `codeblockFrame` in `courseStore.ts`,
+routed in `src/main/index.ts`'s `serveMiniApp`), and rendered by `Codeblock.tsx` the same
+way `MiniApp.tsx` renders an `app` block.
 
-- **Nothing actually supplies `window.__whetstoneRuntimes` inside a served frame yet, and
-  `fetchRuntime` doesn't even cache enough to make it possible.** `ALLOWED_RUNTIMES.python`
-  only names the 16KB `pyodide.js` loader, not the ~10MB `pyodide.asm.wasm` or the ~2.3MB
-  `python_stdlib.zip` it needs at its own runtime (verified against the real CDN assets this
-  session — `fetchRuntime` and `ALLOWED_RUNTIMES` need to grow to cover the full small asset
-  set one Pyodide release needs, not just its loader). Once cached, wiring them into the
-  frame needs `window.fetch` overridden inside the frame, before `loadPyodide()` runs, to
-  answer those specific asset paths from the already-inlined base64 bytes rather than a real
-  network call — an `indexURL`-pointed static server and a Service Worker were both ruled
-  out (the latter cannot even register in an opaque-origin sandboxed frame). See
-  `docs/adr/0025`'s Consequences for the full reasoning; this is judged feasible but is real
-  engineering (~12.5MB of bytes to embed and prove Python's import system actually works
-  against a zip mounted this way) that deserves its own pass. `writing-a-mini-app/SKILL.md`
-  still tells the Constructor not to use any `lang` but `js` because of this gap.
-- **A Lesson-level, ungraded codeblock now exists**: `:::codeblock{lang=js label=... height=...}`
-  (`writing-a-lesson/SKILL.md`), a new `LessonBlock` variant (`src/shared/format.ts`), parsed
-  in `parseCourse.ts` (which also rejects a non-`js` `lang` the Course never pinned in
-  `manifest.runtimes`), served over `whetstone-app://<slug>/__codeblock__/<lessonId>/<index>`
-  (`codeblockFrameSource` in `src/shared/miniapp.ts`, `codeblockFrame` in `courseStore.ts`,
-  routed in `src/main/index.ts`'s `serveMiniApp`), and rendered by a new `Codeblock.tsx` the
-  same way `MiniApp.tsx` renders an `app` block. It carries the same "nothing but `js` actually
-  runs yet" limitation as everything else in this section, for the same reason.
-- **Export/import does not carry a Course's runtime.** `courses:export` zips a Course's
-  folder, which no longer contains the runtimes it points to (that's the point of the shared
-  cache) — an imported Course would need to re-fetch and re-verify against the allowlist on
-  first open, and nothing does that yet. Flagged in `docs/adr/0025`'s Consequences.
-- This supersedes most of item 3 above for any language `assertions-pass` needs beyond raw
-  string/pattern checks on Strudel specifically — a `Kit.codeblock`/`Kit.editor` with a real
-  Python (or eventually other) runtime is the general answer that item was a special case of.
-  The Strudel mini-notation parser itself is still unbuilt regardless.
+This supersedes most of item 3 above for any language `assertions-pass` needs beyond raw
+string/pattern checks on Strudel specifically — a `Kit.codeblock`/`Kit.editor` with a real
+Python runtime is the general answer that item was a special case of. The Strudel
+mini-notation parser itself is still unbuilt regardless, and adding a second language beyond
+`python` is still one entry in `ALLOWED_RUNTIMES` plus that language's own loader-specific
+wiring in `runtimeBootstrapScript` — the quirks found here (storage stubs, non-`fetch`
+loading paths) are not something a fully generic shape could have hidden.
 
 ### 4. Smaller things
 

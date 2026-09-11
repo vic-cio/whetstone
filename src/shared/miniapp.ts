@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { readRuntimeAssets } from './runtimeCache'
+import { runtimeBootstrapScript } from './runtimeBootstrap'
+import type { RuntimeRef } from './runtimeCache'
+
 /**
  * Composing the sealed frame a Mini-app runs in.
  *
@@ -16,7 +20,7 @@ import { join } from 'node:path'
  */
 
 /** The toolkit this build ships. It is written into a Course at build time, and nowhere else. */
-export const TOOLKIT_VERSION = '1.2.0'
+export const TOOLKIT_VERSION = '1.3.0'
 
 const MARKER = /whetstone-toolkit\s+(\d+\.\d+\.\d+)/
 
@@ -84,15 +88,7 @@ export const EXTERNAL = /\b(?:src|href)\s*=\s*["']?(?:https?:|\/\/|file:|blob:)/
 function courseLibrary(courseDir: string): { css: string[]; js: string[] } {
   const css: string[] = []
   const js: string[] = []
-  const manifest = join(courseDir, 'course.json')
-  if (!existsSync(manifest)) return { css, js }
-
-  let listed: unknown
-  try {
-    listed = (JSON.parse(readFileSync(manifest, 'utf8')) as Record<string, unknown>)['library']
-  } catch {
-    return { css, js }
-  }
+  const listed = manifestField(courseDir, 'library')
   if (!Array.isArray(listed)) return { css, js }
 
   for (const name of listed) {
@@ -107,17 +103,55 @@ function courseLibrary(courseDir: string): { css: string[]; js: string[] } {
   return { css, js }
 }
 
+/** One field out of `course.json`, or `undefined` for a Course whose manifest cannot be read. */
+function manifestField(courseDir: string, field: string): unknown {
+  const manifest = join(courseDir, 'course.json')
+  if (!existsSync(manifest)) return undefined
+  try {
+    return (JSON.parse(readFileSync(manifest, 'utf8')) as Record<string, unknown>)[field]
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The runtime pointers a Course's manifest names (docs/adr/0026), read back out of the
+ * shared cache for inlining. A pointer the cache has nothing for (never fetched, or a cache
+ * wiped since) is silently skipped rather than thrown: `fetchRuntime` already refused to
+ * finish the build without it, so reaching this with an empty cache means the cache itself
+ * was cleared after the fact — the Mini-app should still render, just without that language.
+ */
+function courseRuntimes(courseDir: string, cacheRoot: string): { lang: string; assets: { name: string; bytes: Buffer }[] }[] {
+  const listed = manifestField(courseDir, 'runtimes')
+  if (!Array.isArray(listed)) return []
+
+  const runtimes: { lang: string; assets: { name: string; bytes: Buffer }[] }[] = []
+  for (const entry of listed) {
+    const ref = entry as Partial<RuntimeRef> | undefined
+    if (typeof ref?.lang !== 'string' || typeof ref.version !== 'string') continue
+    const assets = readRuntimeAssets(cacheRoot, { lang: ref.lang, version: ref.version })
+    if (assets.length > 0) runtimes.push({ lang: ref.lang, assets })
+  }
+  return runtimes
+}
+
 /**
  * Assemble the sealed document itself: the policy, the toolkit, the Course's library, and
  * finally the body markup the caller supplied. Both a hand-written Mini-app and a
  * generated Lesson codeblock go through this one place, so neither can drift from the
  * other's policy or inlining order.
  *
- * Order is the contract. The toolkit is first, then the Course's library in the order the
- * Course listed it, then the body. So a library file may use the toolkit, the body may use
- * both, and the toolkit can be read without knowing either.
+ * Order is the contract. Any runtime the Course needs is wired first (so it can start
+ * loading before anything else runs), then the toolkit, then the Course's library in the
+ * order the Course listed it, then the body. So a library file may use the toolkit, the
+ * body may use both, and the toolkit can be read without knowing either.
  */
-function assembleFrame(toolkit: Toolkit, library: { css: string[]; js: string[] }, body: string): string {
+function assembleFrame(
+  toolkit: Toolkit,
+  library: { css: string[]; js: string[] },
+  body: string,
+  runtimeScript: string,
+): string {
   return [
     '<!doctype html>',
     '<html lang="en">',
@@ -127,6 +161,7 @@ function assembleFrame(toolkit: Toolkit, library: { css: string[]; js: string[] 
     `<style>\n${[toolkit.css, ...library.css].join('\n')}\n</style>`,
     '</head>',
     '<body>',
+    ...(runtimeScript ? [runtimeScript] : []),
     `<script>\n${[toolkit.js, ...library.js].join('\n')}\n</script>`,
     body,
     '</body>',
@@ -134,38 +169,57 @@ function assembleFrame(toolkit: Toolkit, library: { css: string[]; js: string[] 
   ].join('\n')
 }
 
-/** Read a Course's pinned toolkit and library, or throw for a Course the parser accepted. */
-function frameParts(courseDir: string): { toolkit: Toolkit; library: { css: string[]; js: string[] } } {
+/** Read a Course's pinned toolkit, library, and inlined runtimes, or throw for a Course the parser accepted. */
+function frameParts(
+  courseDir: string,
+  cacheRoot: string,
+): { toolkit: Toolkit; library: { css: string[]; js: string[] }; runtimeScript: string } {
   const toolkit = readToolkit(join(courseDir, 'toolkit'))
   if (!toolkit) throw new Error(`course at ${courseDir} has no pinned toolkit`)
-  return { toolkit, library: courseLibrary(courseDir) }
+  return {
+    toolkit,
+    library: courseLibrary(courseDir),
+    runtimeScript: runtimeBootstrapScript(courseRuntimes(courseDir, cacheRoot)),
+  }
 }
 
 /**
  * Build the document for one Mini-app. Throws only for a Course the parser already
  * accepted, so a failure here is a programming error rather than a broken Course.
+ *
+ * `cacheRoot` is the shared runtime cache (`runtimeCacheRoot()`, `src/main/courseStore.ts`):
+ * every runtime the Course's manifest names is inlined here, since a hand-written Mini-app's
+ * own script is not something this can inspect for which language it actually calls
+ * `Kit.run` with.
  */
-export function frameSource(courseDir: string, appId: string): string {
+export function frameSource(courseDir: string, appId: string, cacheRoot: string): string {
   const file = join(courseDir, 'apps', appId, 'index.html')
   if (!existsSync(file)) throw new Error(`mini-app "${appId}" has no index.html`)
   const markup = readFileSync(file, 'utf8')
   if (EXTERNAL.test(markup)) throw new Error(`mini-app "${appId}" refers to something outside itself`)
 
-  const { toolkit, library } = frameParts(courseDir)
-  return assembleFrame(toolkit, library, markup)
+  const { toolkit, library, runtimeScript } = frameParts(courseDir, cacheRoot)
+  return assembleFrame(toolkit, library, markup, runtimeScript)
 }
 
 /**
  * Build the document for one Lesson codeblock: a `Kit.codeblock` wired up with the
  * declared language and starting code, nothing else. Unlike a Mini-app there is no
  * `apps/<id>/index.html` to read — the config comes straight from the parsed Lesson block
- * (docs/adr/0025), so the only way this throws is a Course the parser already accepted.
+ * (docs/adr/0026), so the only way this throws is a Course the parser already accepted.
+ *
+ * Only the block's own `lang` is inlined here, unlike a Mini-app: the config names exactly
+ * which language `Kit.codeblock` will call, so a Course using `python` in one Lesson and
+ * nothing but `js` in every Mini-app never pays for a runtime nothing here needs.
  */
 export function codeblockFrameSource(
   courseDir: string,
   block: { lang: string; start: string; label?: string },
+  cacheRoot: string,
 ): string {
-  const { toolkit, library } = frameParts(courseDir)
+  const { toolkit, library } = frameParts(courseDir, cacheRoot)
+  const runtimeScript =
+    block.lang === 'js' ? '' : runtimeBootstrapScript(courseRuntimes(courseDir, cacheRoot).filter((r) => r.lang === block.lang))
   // `<` is escaped so starting code containing a literal "</script>" (plausible in an
   // example about HTML or JS itself) cannot close this tag early.
   const config = JSON.stringify({ mount: '#app', lang: block.lang, start: block.start, label: block.label }).replace(
@@ -179,5 +233,5 @@ export function codeblockFrameSource(
     'Kit.bridge.ready();',
     '</script>',
   ].join('\n')
-  return assembleFrame(toolkit, library, body)
+  return assembleFrame(toolkit, library, body, runtimeScript)
 }

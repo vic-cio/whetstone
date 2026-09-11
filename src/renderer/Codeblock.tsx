@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 /**
  * The host side of a Lesson codeblock: `Kit.codeblock` running in the same sealed frame a
- * Mini-app runs in (docs/adr/0025), served by the main process at
+ * Mini-app runs in (docs/adr/0026), served by the main process at
  * `whetstone-app://<slug>/__codeblock__/<lessonId>/<blockIndex>`.
  *
  * Unlike `MiniApp`, this never answers and never reviews — a codeblock is ungraded, so the

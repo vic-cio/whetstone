@@ -1,6 +1,7 @@
-import { BrowserWindow, nativeTheme } from 'electron'
+import { nativeTheme } from 'electron'
 
 import { frameSource } from '../shared/miniapp'
+import { boot, pollUntil, withErrorProbe } from './sandboxHarness'
 import type { CourseError } from '../shared/format'
 
 /**
@@ -23,50 +24,7 @@ import type { CourseError } from '../shared/format'
 
 const READY_TIMEOUT_MS = 5_000
 const ACTION_TIMEOUT_MS = 4_000
-const POLL_INTERVAL_MS = 100
 const MIN_CONTRAST = 3
-
-/** An error-catching header, spliced in ahead of the toolkit so a throw on line one is caught. */
-function withErrorProbe(html: string): string {
-  const probe =
-    '<script>window.__gateErrors = [];' +
-    'window.addEventListener("error", function (e) { window.__gateErrors.push(String(e.message)) })</script>'
-  return html.includes('<body>') ? html.replace('<body>', `<body>${probe}`) : probe + html
-}
-
-/**
- * The outer harness page. The Mini-app is loaded into a real `sandbox="allow-scripts"`
- * iframe on a `data:` URL, the same way `MiniApp.tsx` loads it (just against a
- * self-contained page instead of the `whetstone-app://` protocol, since staging is not a
- * Course the store has opened yet). `data:`, not `srcdoc`: `srcdoc` inherits the host
- * page's CSP, which is why production does not use it either (`src/main/index.ts`).
- */
-function harnessPage(innerHtml: string): string {
-  const encoded = Buffer.from(innerHtml, 'utf8').toString('base64')
-  return [
-    '<!doctype html><html><body>',
-    `<iframe id="frame" sandbox="allow-scripts" src="data:text/html;base64,${encoded}"></iframe>`,
-    '<script>',
-    'window.__gate = { events: [] }',
-    'window.addEventListener("message", function (event) {',
-    '  var frame = document.getElementById("frame")',
-    '  if (!frame || event.source !== frame.contentWindow) return',
-    '  window.__gate.events.push(event.data)',
-    '})',
-    '</script>',
-    '</body></html>',
-  ].join('\n')
-}
-
-async function pollUntil(win: BrowserWindow, expression: string, timeoutMs: number): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    const value = (await win.webContents.executeJavaScript(expression)) as boolean
-    if (value) return true
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
-  }
-  return false
-}
 
 const CONTRAST_SCRIPT = `(function () {
   function luminance(color) {
@@ -93,41 +51,24 @@ const CONTRAST_SCRIPT = `(function () {
   return failures
 })()`
 
-interface Booted {
-  win: BrowserWindow
-  frame: Electron.WebFrameMain
-}
-
-async function boot(html: string): Promise<Booted | undefined> {
-  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
-  const page = harnessPage(withErrorProbe(html))
-  await win.loadURL(`data:text/html;base64,${Buffer.from(page, 'utf8').toString('base64')}`)
-  const frame = win.webContents.mainFrame.frames[0]
-  if (!frame) {
-    win.destroy()
-    return undefined
-  }
-  return { win, frame }
-}
-
 /**
  * One Mini-app, checked. Errors are shaped exactly like a parse error — a file and a
  * message — so they flow through the same repair loop (`src/main/build.ts`) a Constructor
  * already gets a parse error through, rather than needing a repair path of their own.
  */
-export async function checkMiniApp(courseDir: string, appId: string): Promise<CourseError[]> {
+export async function checkMiniApp(courseDir: string, appId: string, cacheRoot: string): Promise<CourseError[]> {
   const file = `apps/${appId}/index.html`
   let raw: string
   try {
-    raw = frameSource(courseDir, appId)
+    raw = frameSource(courseDir, appId, cacheRoot)
   } catch (cause) {
     return [{ file, message: String((cause as Error)?.message ?? cause) }]
   }
 
   const errors: CourseError[] = []
-  const booted = await boot(raw)
+  const booted = await boot(withErrorProbe(raw))
   if (!booted) return [{ file, message: 'the sealed frame never loaded' }]
-  const { win, frame } = booted
+  const { win, frame, cleanup } = booted
 
   try {
     const ready = await pollUntil(win, 'window.__gate.events.some(function (m) { return m && m.type === "ready" })', READY_TIMEOUT_MS)
@@ -170,6 +111,7 @@ export async function checkMiniApp(courseDir: string, appId: string): Promise<Co
     }
   } finally {
     win.destroy()
+    cleanup()
   }
 
   if (errors.length === 0) {
@@ -177,7 +119,7 @@ export async function checkMiniApp(courseDir: string, appId: string): Promise<Co
       const previous = nativeTheme.themeSource
       nativeTheme.themeSource = scheme
       try {
-        const themed = await boot(raw)
+        const themed = await boot(withErrorProbe(raw))
         if (themed) {
           try {
             await pollUntil(themed.win, 'window.__gate.events.some(function (m) { return m && m.type === "ready" })', READY_TIMEOUT_MS)
@@ -187,6 +129,7 @@ export async function checkMiniApp(courseDir: string, appId: string): Promise<Co
             }
           } finally {
             themed.win.destroy()
+            themed.cleanup()
           }
         }
       } finally {
@@ -199,8 +142,8 @@ export async function checkMiniApp(courseDir: string, appId: string): Promise<Co
 }
 
 /** Every Mini-app the Course declares, checked. */
-export async function checkAllMiniApps(courseDir: string, appIds: string[]): Promise<CourseError[]> {
+export async function checkAllMiniApps(courseDir: string, appIds: string[], cacheRoot: string): Promise<CourseError[]> {
   const errors: CourseError[] = []
-  for (const appId of appIds) errors.push(...(await checkMiniApp(courseDir, appId)))
+  for (const appId of appIds) errors.push(...(await checkMiniApp(courseDir, appId, cacheRoot)))
   return errors
 }

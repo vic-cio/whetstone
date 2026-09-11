@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:f
 import { join } from 'node:path'
 
 /**
- * The shared codeblock runtime cache (docs/adr/0025).
+ * The shared codeblock runtime cache (docs/adr/0026).
  *
  * A language runtime the Constructor fetches for `Kit.codeblock`/`Kit.editor` (Pyodide for
  * `python`, for instance) is tens of megabytes, so unlike the toolkit (docs/adr/0014) and a
@@ -32,6 +32,21 @@ export function runtimeDir(cacheRoot: string, ref: RuntimeRef): string {
 
 export function hasRuntime(cacheRoot: string, ref: RuntimeRef): boolean {
   return existsSync(runtimeDir(cacheRoot, ref))
+}
+
+/**
+ * Read a cached runtime's assets back out, for inlining into a served frame
+ * (`runtimeBootstrapScript`, `src/shared/miniapp.ts`). Reads whatever `fetchRuntime` staged
+ * there rather than naming files, since the staging→rename pattern in `fetchRuntime`
+ * guarantees a runtime's directory holds exactly the assets that were fetched and
+ * boot-verified together, nothing else.
+ */
+export function readRuntimeAssets(cacheRoot: string, ref: RuntimeRef): { name: string; bytes: Buffer }[] {
+  const dir = runtimeDir(cacheRoot, ref)
+  if (!existsSync(dir)) return []
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => ({ name: entry.name, bytes: readFileSync(join(dir, entry.name)) }))
 }
 
 /** Every runtime key a Course under `coursesRoot` still points to. */

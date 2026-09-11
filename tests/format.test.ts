@@ -281,7 +281,7 @@ describe('test 3b — a Lesson holds no recorded Tasks', () => {
   })
 })
 
-describe('the Lesson codeblock (docs/adr/0025)', () => {
+describe('the Lesson codeblock (docs/adr/0026)', () => {
   function withCodeblock(attrs: string, code: string, mutateManifest?: (value: any) => void): string {
     return brokenCopy((dir) => {
       const path = join(dir, 'lessons', 'les-what-a-derivative-measures.md')

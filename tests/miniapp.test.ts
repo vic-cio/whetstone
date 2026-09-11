@@ -11,6 +11,8 @@ const ROOT = join(import.meta.dirname, '..')
 const FIXTURE = join(ROOT, 'fixtures', 'courses', 'gradients-by-hand')
 const CHESS = join(ROOT, 'fixtures', 'courses', 'forks-and-pins')
 const PROBE = join(ROOT, 'fixtures', 'courses-sealed', 'sandbox-probe')
+/** None of these fixtures pin a runtime, so an empty cache is all `frameSource` ever needs here. */
+const CACHE_ROOT = mkdtempSync(join(tmpdir(), 'whetstone-runtime-cache-'))
 
 /** A copy of the fixture Course somewhere writable, for the cases that need a broken one. */
 function copyFixture(): string {
@@ -28,7 +30,7 @@ beforeAll(() => {
 
 describe('the sealed frame', () => {
   it('carries the policy, the toolkit, and then the mini-app', () => {
-    const frame = frameSource(FIXTURE, 'slope-explorer')
+    const frame = frameSource(FIXTURE, 'slope-explorer', CACHE_ROOT)
 
     expect(frame).toContain(POLICY)
     expect(POLICY).toContain("default-src 'none'")
@@ -75,7 +77,7 @@ describe('test 18 — the host injects the course’s pinned toolkit, not the ap
     const result = parseCourse(dir)
     expect(result.ok).toBe(true)
 
-    const frame = frameSource(dir, 'slope-explorer')
+    const frame = frameSource(dir, 'slope-explorer', CACHE_ROOT)
     expect(frame).toContain('whetstone-toolkit 0.9.0')
     expect(frame).toContain('version: "0.9.0"')
     // Nothing from this build's toolkit reached the frame.
@@ -169,9 +171,9 @@ describe('test 17 — a mini-app built from the toolkit has no colour of its own
   })
 })
 
-describe('the Lesson codeblock frame (docs/adr/0025)', () => {
+describe('the Lesson codeblock frame (docs/adr/0026)', () => {
   it('carries the policy, the toolkit, then a Kit.codeblock call built from the block', () => {
-    const frame = codeblockFrameSource(FIXTURE, { lang: 'js', start: 'console.log(1)' })
+    const frame = codeblockFrameSource(FIXTURE, { lang: 'js', start: 'console.log(1)' }, CACHE_ROOT)
 
     expect(frame).toContain(POLICY)
     const toolkit = frame.indexOf('whetstone-toolkit')
@@ -184,7 +186,7 @@ describe('the Lesson codeblock frame (docs/adr/0025)', () => {
   })
 
   it('escapes a literal "</script>" in the starting code so it cannot close the tag early', () => {
-    const frame = codeblockFrameSource(FIXTURE, { lang: 'js', start: '"</script><script>evil()</script>"' })
+    const frame = codeblockFrameSource(FIXTURE, { lang: 'js', start: '"</script><script>evil()</script>"' }, CACHE_ROOT)
     expect(frame).not.toContain('</script><script>evil()')
     // The real closing tag for the generated script is still there, just once.
     expect(frame.match(/<\/script>/g)?.length).toBeGreaterThan(0)
@@ -233,7 +235,7 @@ describe('a course’s own library', () => {
    * Course and into no other.
    */
   it('inlines what the course listed, in the order it listed it', () => {
-    const frame = frameSource(CHESS, 'find-the-fork')
+    const frame = frameSource(CHESS, 'find-the-fork', CACHE_ROOT)
     const chess = frame.indexOf('window.Chess = ')
     const css = frame.indexOf('.b-grid {')
     const board = frame.indexOf('window.Board = ')
@@ -247,7 +249,7 @@ describe('a course’s own library', () => {
   })
 
   it('gives a course nothing another course listed', () => {
-    const other = frameSource(FIXTURE, 'slope-explorer')
+    const other = frameSource(FIXTURE, 'slope-explorer', CACHE_ROOT)
     expect(other).not.toContain('window.Chess = ')
     expect(other).not.toContain('window.Board = ')
   })

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { TOOLKIT_VERSION } from '../shared/miniapp'
 import { compileDeclaredActivities } from '../shared/declaredActivity'
 import { checkAllMiniApps } from './executionGate'
+import { ALLOWED_RUNTIMES, fetchRuntime, realRuntimeIO } from './runtimeFetch'
 import { substancePrompt, thin } from '../shared/substance'
 import {
   BRIEF,
@@ -19,7 +20,7 @@ import {
   trayContents,
 } from '../shared/staging'
 import { adapterFor, agentDir, registry, roleFile, start } from './harness'
-import { tagsInLibrary } from './courseStore'
+import { runtimeCacheRoot, tagsInLibrary } from './courseStore'
 import { stateFor } from './workspace'
 import type { AgentProfile, Harness, Moment } from '../shared/harness'
 import type { CourseError } from '../shared/format'
@@ -285,12 +286,27 @@ export async function build(
 
     const gate = inspect(folder, root)
     if (gate.ok) {
+      // A codeblock beyond `js` is only as real as the runtime it names being fetched,
+      // boot-verified, and in the shared cache — `parseCourse` already checked the pin
+      // exists, not that the app trusts it or that it actually works (docs/adr/0026).
+      const runtimeErrors = await fetchDeclaredRuntimes(gate.course.runtimes)
+      if (runtimeErrors.length > 0) {
+        errors = runtimeErrors
+        complaints = []
+        onMoment({
+          at: 'doing',
+          what: `Checking the course, and asking for ${runtimeErrors.length} fix${runtimeErrors.length === 1 ? '' : 'es'}`,
+        })
+        continue
+      }
+
       // A Mini-app that exists, holds no external reference and matches the pinned
       // toolkit can still throw on line one, draw no way to answer, or draw a button
       // nobody can read. Booting it for real, once, at build time, is the only way to
       // know (build-time only: a later toolkit update is not re-checked, since acting on
       // a failure needs the Constructor, which may be unavailable or out of credit).
-      const executionErrors = gate.course.apps.length > 0 ? await checkAllMiniApps(folder, gate.course.apps) : []
+      const executionErrors =
+        gate.course.apps.length > 0 ? await checkAllMiniApps(folder, gate.course.apps, runtimeCacheRoot()) : []
       if (executionErrors.length > 0) {
         errors = executionErrors
         complaints = []
@@ -332,6 +348,39 @@ export async function build(
     usd,
     message: 'The course still does not parse after three tries, so nothing was added to the library.',
   }
+}
+
+/**
+ * Fetch, boot-verify, and cache every runtime a Course's manifest names (docs/adr/0026).
+ * A version that does not match what the app actually trusts is a repairable gate error,
+ * the same way an unpinned language is caught earlier in `parseCourse`; a lang missing from
+ * `ALLOWED_RUNTIMES` entirely reaches here as one too, rather than only failing deep inside
+ * `fetchRuntime`, so the run gets a file-and-message error like every other gate failure.
+ */
+async function fetchDeclaredRuntimes(runtimes: { lang: string; version: string }[]): Promise<CourseError[]> {
+  const errors: CourseError[] = []
+  const io = realRuntimeIO()
+  for (const ref of runtimes) {
+    const allowed = ALLOWED_RUNTIMES[ref.lang]
+    if (!allowed) {
+      const known = Object.keys(ALLOWED_RUNTIMES).join(', ') || 'none'
+      errors.push({ file: 'course.json', message: `runtimes names "${ref.lang}", which is not trusted (known: ${known})` })
+      continue
+    }
+    if (ref.version !== allowed.version) {
+      errors.push({
+        file: 'course.json',
+        message: `runtimes pins "${ref.lang}" version "${ref.version}", but this app only trusts "${allowed.version}"`,
+      })
+      continue
+    }
+    try {
+      await fetchRuntime(ref.lang, runtimeCacheRoot(), io)
+    } catch (cause) {
+      errors.push({ file: 'course.json', message: `fetching the "${ref.lang}" runtime failed: ${(cause as Error).message}` })
+    }
+  }
+  return errors
 }
 
 /** Lay out staging and say what the Run is for. The brief is the conversation so far. */
@@ -392,6 +441,11 @@ function firstPrompt(folder: string, brief: string): string {
     `The toolkit is already there and is version ${TOOLKIT_VERSION}. Put exactly that string`,
     'in `toolkitVersion` in course.json, and do not write or read anything under `toolkit/`:',
     'the skill below is its reference and it is complete.',
+    '',
+    'If any codeblock or Mini-app needs a language beyond `js`, pin it first: put',
+    `\`{ "lang": "python", "version": "${ALLOWED_RUNTIMES['python']?.version}" }\` in \`runtimes\``,
+    'in course.json, exactly that version string. `python` is the only language available',
+    'right now.',
     '',
     ...offerSkills(folder),
     '',

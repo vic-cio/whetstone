@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { gcRuntimeCache, hasRuntime, runtimeDir, runtimeKey } from '../src/shared/runtimeCache'
+import { gcRuntimeCache, hasRuntime, readRuntimeAssets, runtimeDir, runtimeKey } from '../src/shared/runtimeCache'
 
 /**
  * The shared runtime cache is deduplicated across courses and reference-counted by
- * derivation (docs/adr/0025): nothing is decremented on delete, the next GC pass just
+ * derivation (docs/adr/0026): nothing is decremented on delete, the next GC pass just
  * reads which courses still point at a runtime and removes what none of them do.
  */
 
@@ -41,6 +41,24 @@ describe('runtimeKey / runtimeDir', () => {
   it('keys a runtime by lang and version', () => {
     expect(runtimeKey({ lang: 'python', version: '0.26.1' })).toBe('python@0.26.1')
     expect(runtimeDir('/cache', { lang: 'python', version: '0.26.1' })).toBe('/cache/python@0.26.1')
+  })
+})
+
+describe('readRuntimeAssets', () => {
+  it('reads back every file fetchRuntime staged, by name', () => {
+    const dir = runtimeDir(cacheRoot, { lang: 'python', version: '0.26.1' })
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'pyodide.js'), 'loader')
+    writeFileSync(join(dir, 'pyodide.asm.wasm'), Buffer.from([1, 2, 3]))
+
+    const assets = readRuntimeAssets(cacheRoot, { lang: 'python', version: '0.26.1' })
+    expect(assets.map((asset) => asset.name).sort()).toEqual(['pyodide.asm.wasm', 'pyodide.js'])
+    expect(assets.find((asset) => asset.name === 'pyodide.js')?.bytes.toString('utf8')).toBe('loader')
+    expect(assets.find((asset) => asset.name === 'pyodide.asm.wasm')?.bytes).toEqual(Buffer.from([1, 2, 3]))
+  })
+
+  it('is empty for a runtime that was never cached', () => {
+    expect(readRuntimeAssets(cacheRoot, { lang: 'python', version: '0.26.1' })).toEqual([])
   })
 })
 

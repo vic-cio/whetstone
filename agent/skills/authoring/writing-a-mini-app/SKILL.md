@@ -165,17 +165,23 @@ play control. `step(state)` returns the next state, `draw(context, state, size)`
 ## Languages
 
 `Kit.editor` and `Kit.codeblock` both run real code, not a description of it — the code
-actually executes and what you get back is what it actually did (docs/adr/0025). `lang:
+actually executes and what you get back is what it actually did (docs/adr/0026). `lang:
 'js'`, the default, needs nothing from you: it always works, in every Course.
 
 Any other `lang` needs a runtime the app fetches once at build time, from a short, trusted
-list, and proves works before it ships. **As of this toolkit version, that fetch-and-inline
-pipeline exists but nothing has been wired through it yet, so no `lang` besides `'js'`
-actually runs in a built Course.** Do not write `lang: 'python'` or anything else non-`js`
-into a Mini-app, and the same holds for a Lesson's `:::codeblock{}` block
-(`writing-a-lesson/SKILL.md`): the reader would see "no runtime is available in this frame"
-instead of their code running. If your run genuinely needs a language beyond JavaScript,
-say so in your run rather than shipping a codeblock that cannot execute.
+list, and proves works before it ships (docs/adr/0026). `python` (Pyodide) is the only one
+today. Using it costs one step: pin it first, in `course.json`,
+
+```json
+"runtimes": [{ "lang": "python", "version": "0.26.1" }]
+```
+
+with the exact version the build prompt tells you — a codeblock naming a language the
+Course never pinned fails the build by name. Once pinned, `lang: 'python'` runs for real,
+in both a Mini-app's `Kit.editor`/`Kit.codeblock` and a Lesson's `:::codeblock{}` block
+(`writing-a-lesson/SKILL.md`). Loading the interpreter takes a moment the first time a
+frame opens; `Kit.bridge.ready()` already waits for it, so nothing in your own Mini-app
+needs to.
 
 ## What the app does with what you send
 

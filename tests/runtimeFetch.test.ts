@@ -7,10 +7,11 @@ import { ALLOWED_RUNTIMES, fetchRuntime } from '../src/main/runtimeFetch'
 import { hasRuntime, runtimeDir } from '../src/shared/runtimeCache'
 
 /**
- * Build-time fetching of a codeblock language runtime (docs/adr/0025). The Constructor may
- * only ask for a language on `ALLOWED_RUNTIMES`; whatever it fetches must boot and run a
- * known-good snippet before it is trusted into the shared cache, so `fetch`/`boot` are
- * always injected here rather than reaching the network or a real sealed frame.
+ * Build-time fetching of a codeblock language runtime (docs/adr/0026). The Constructor may
+ * only ask for a language on `ALLOWED_RUNTIMES`; every asset it names must be fetched, and
+ * all of them must boot and run a known-good snippet together before anything is trusted
+ * into the shared cache, so `fetch`/`boot` are always injected here rather than reaching the
+ * network or a real sealed frame.
  */
 
 let box = ''
@@ -28,7 +29,15 @@ describe('ALLOWED_RUNTIMES', () => {
   it('names python as the only non-js entry today', () => {
     expect(Object.keys(ALLOWED_RUNTIMES)).toEqual(['python'])
     expect(ALLOWED_RUNTIMES['python']?.version).toBeTruthy()
-    expect(ALLOWED_RUNTIMES['python']?.url).toMatch(/^https:\/\//)
+    const assets = ALLOWED_RUNTIMES['python']?.assets ?? []
+    expect(assets.length).toBeGreaterThan(0)
+    for (const asset of assets) {
+      expect(asset.name).toBeTruthy()
+      expect(asset.url).toMatch(/^https:\/\//)
+    }
+    expect(assets.map((asset) => asset.name)).toEqual(
+      expect.arrayContaining(['pyodide.js', 'pyodide.asm.js', 'pyodide.asm.wasm', 'python_stdlib.zip']),
+    )
   })
 })
 
@@ -42,19 +51,26 @@ describe('fetchRuntime', () => {
     ).rejects.toThrow(/ruby.*allowlist|allowlist.*ruby/i)
   })
 
-  it('fetches, verifies, and writes the runtime into the shared cache', async () => {
+  it('fetches every asset, verifies them together, and writes them into the shared cache', async () => {
+    const requested: string[] = []
     const ref = await fetchRuntime('python', cacheRoot, {
       fetch: async (url) => {
-        expect(url).toBe(ALLOWED_RUNTIMES['python']?.url)
-        return Buffer.from('pretend runtime bytes')
+        requested.push(url)
+        return Buffer.from(`pretend bytes for ${url}`)
       },
-      boot: async () => true,
+      boot: async (assets) => {
+        expect(assets.length).toBe(ALLOWED_RUNTIMES['python']?.assets.length)
+        return true
+      },
     })
     expect(ref).toEqual({ lang: 'python', version: ALLOWED_RUNTIMES['python']?.version })
+    expect(requested.sort()).toEqual(ALLOWED_RUNTIMES['python']?.assets.map((asset) => asset.url).sort())
     expect(hasRuntime(cacheRoot, ref)).toBe(true)
-    expect(readFileSync(join(runtimeDir(cacheRoot, ref), 'runtime.bin'))).toEqual(
-      Buffer.from('pretend runtime bytes'),
-    )
+    for (const asset of ALLOWED_RUNTIMES['python']?.assets ?? []) {
+      expect(readFileSync(join(runtimeDir(cacheRoot, ref), asset.name))).toEqual(
+        Buffer.from(`pretend bytes for ${asset.url}`),
+      )
+    }
   })
 
   it('is idempotent: a second call reuses the cached copy without fetching again', async () => {
@@ -68,7 +84,7 @@ describe('fetchRuntime', () => {
     }
     await fetchRuntime('python', cacheRoot, io)
     await fetchRuntime('python', cacheRoot, io)
-    expect(fetches).toBe(1)
+    expect(fetches).toBe(ALLOWED_RUNTIMES['python']?.assets.length)
   })
 
   it('does not cache a runtime that fails to boot', async () => {

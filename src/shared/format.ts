@@ -277,7 +277,7 @@ export const ManifestSchema = z.object({
    */
   library: z.array(z.string().min(1)).default([]),
   /**
-   * Pointers into the shared, deduplicated runtime cache (docs/adr/0025): a language
+   * Pointers into the shared, deduplicated runtime cache (docs/adr/0026): a language
    * `Kit.codeblock`/`Kit.editor` need beyond `js`, fetched once at build time and reused
    * across every Course that names the same `{ lang, version }`, never copied per Course.
    */

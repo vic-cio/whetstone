@@ -1,4 +1,4 @@
-/* whetstone-toolkit 1.2.0
+/* whetstone-toolkit 1.3.0
  *
  * The only library a Mini-app is given. The host inlines this file and kit.css into the
  * sandboxed frame ahead of the Mini-app's own markup, because the sandbox forbids
@@ -16,7 +16,7 @@
 window.Kit = (function () {
   'use strict'
 
-  var VERSION = '1.2.0'
+  var VERSION = '1.3.0'
 
   // ------------------------------------------------------------ small helpers
 
@@ -75,10 +75,23 @@ window.Kit = (function () {
   }
 
   var bridge = {
-    /** The Mini-app has drawn itself and is ready to be used. */
+    /**
+     * The Mini-app has drawn itself and is ready to be used.
+     *
+     * If the frame inlined a codeblock language runtime (docs/adr/0026), `window.
+     * __whetstoneRuntimesReady` exists and this waits on it first: the runtime is not done
+     * loading the instant the page's scripts run, and firing early would let the host show
+     * an activity a reader could click before `Kit.run` has anything to call. Neither a
+     * hand-written Mini-app nor a generated Lesson codeblock has to know this happens.
+     */
     ready: function () {
-      measure()
-      post({ type: 'ready' })
+      var runtimesReady = typeof window !== 'undefined' && window.__whetstoneRuntimesReady
+      if (runtimesReady && typeof runtimesReady.then === 'function') {
+        runtimesReady.then(function () { measure(); post({ type: 'ready' }) })
+      } else {
+        measure()
+        post({ type: 'ready' })
+      }
     },
 
     /** Report what the user did. The host compares it against the Task and decides. */
@@ -460,7 +473,7 @@ window.Kit = (function () {
    *
    * `js` is the only language built in. Anything else comes from `options.runtimes`
    * (falling back to `window.__whetstoneRuntimes`, which is where the host inlines a
-   * fetched language runtime, docs/adr/0025) — a keyed map of
+   * fetched language runtime, docs/adr/0026) — a keyed map of
    * `function (source, exportNames, print) { ...; return api }`. Writing a parser or
    * interpreter for another language into this file was rejected (docs/adr/0016); the
    * sandbox is what makes running any of them safe, not this function.
@@ -602,7 +615,7 @@ window.Kit = (function () {
    * machinery with a Task's assertions run against the result.
    *
    * Use it wherever a Course wants to show code and let the reader actually run it —
-   * inside a Mini-app or, once a Lesson block wraps one (docs/adr/0025), in prose next to
+   * inside a Mini-app or, once a Lesson block wraps one (docs/adr/0026), in prose next to
    * an explanation.
    */
   function codeblock(options) {
